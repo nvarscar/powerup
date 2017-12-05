@@ -87,16 +87,12 @@ function New-PowerUpPackage {
 	)
 	
 	begin {
-		$currentDate = Get-Date
-		if (!$Build) {
-			$Build = [string]$currentDate.Year + '.' + [string]$currentDate.Month + '.' + [string]$currentDate.Day + '.' + [string]$currentDate.Hour
-		}
-		
+		#Set package extension
 		if ($Name.EndsWith('.zip') -eq $false) {
 			$Name = "$Name.zip"
 		}
 		
-		
+		#Check configuration parameter if specified
 		if ($ConfigurationFile -and (Test-Path $ConfigurationFile) -eq $false) {
 			throw 'Configuration file does not exist'
 			return
