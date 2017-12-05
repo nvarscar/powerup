@@ -7,7 +7,7 @@ Returns all module files based on json file in the module root
 Returns objects from PowerUp.json
 
 .EXAMPLE
-Get-ModuleContents
+Get-ModuleFileList
 
 .NOTES
 Nothing here
