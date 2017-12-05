@@ -85,4 +85,37 @@ Describe "$commandName tests" {
 			$output | Should Be (Get-Content '.\etc\log2.txt')
 		}
 	}
+	Context "testing timeouts" {
+		BeforeAll {
+			$file = "$workFolder\delay.sql"
+			"WAITFOR DELAY '00:00:03'; PRINT ('Successful!')" | Out-File $file
+			$null = New-PowerUpPackage -ScriptPath $file -Name "$workFolder\delay" -Build 1.0 -Force -ExecutionTimeout 2
+		}
+		BeforeEach {
+			$null = Invoke-SqlCmd2 -ServerInstance $script:instance1 -Database $script:database1 -InputFile $cleanupScript
+		}
+		It "should return timeout error " {
+			$results = Install-PowerUpPackage "$workFolder\delay.zip" -SqlInstance $script:instance1 -Database $script:database1 -SchemaVersionTable $logTable -OutputFile "$workFolder\log.txt" -Silent
+			$results.Successful | Should Be $false
+			$output = Get-Content "$workFolder\log.txt" -Raw
+			$output | Should BeLike '*Execution Timeout Expired*'
+			$output | Should Not BeLike '*Successful!*'
+		}
+		It "should successfully run within specified timeout" {
+			$results = Install-PowerUpPackage "$workFolder\delay.zip" -SqlInstance $script:instance1 -Database $script:database1 -SchemaVersionTable $logTable -OutputFile "$workFolder\log.txt" -Silent -ExecutionTimeout 6
+			$results.Successful | Should Be $true
+			$results.Scripts.Name | Should Be '1.0\delay.sql'
+			$output = Get-Content "$workFolder\log.txt" -Raw
+			$output | Should Not BeLike '*Execution Timeout Expired*'
+			$output | Should BeLike '*Successful!*'
+		}
+		It "should successfully run with infinite timeout" {
+			$results = Install-PowerUpPackage "$workFolder\delay.zip" -SqlInstance $script:instance1 -Database $script:database1 -SchemaVersionTable $logTable -OutputFile "$workFolder\log.txt" -Silent -ExecutionTimeout 0
+			$results.Successful | Should Be $true
+			$results.Scripts.Name | Should Be '1.0\delay.sql'
+			$output = Get-Content "$workFolder\log.txt" -Raw
+			$output | Should Not BeLike '*Execution Timeout Expired*'
+			$output | Should BeLike '*Successful!*'
+		}
+	}
 }

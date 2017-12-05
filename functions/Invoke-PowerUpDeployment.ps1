@@ -1,5 +1,5 @@
 ﻿function Invoke-PowerUpDeployment {
-<#
+	<#
 	.SYNOPSIS
 		Deploys extracted PowerUp package from the specified location
 	
@@ -21,6 +21,7 @@
 		[ValidateSet('SingleTransaction', 'TransactionPerScript', 'NoTransaction')]
 		[string]$DeploymentMethod = 'NoTransaction',
 		[int]$ConnectionTimeout,
+		[int]$ExecutionTimeout,
 		[switch]$Encrypt,
 		[pscredential]$Credential,
 		[string]$UserName,
@@ -58,7 +59,7 @@
 		foreach ($variable in $config.Variables.psobject.Properties.Name) {
 			if ($variable -notin $runtimeVariables.Keys) {
 				$runtimeVariables += @{
-					$variable  = $config.Variables.$variable
+					$variable = $config.Variables.$variable
 				}
 			}
 		}
@@ -79,7 +80,8 @@
 	#Apply default values if not set
 	if (!$config.ApplicationName) { $config.ApplicationName = 'PowerUp' }
 	if (!$config.SqlInstance) { $config.SqlInstance = 'localhost' }
-	if (!$config.ConnectionTimeout) { $config.ConnectionTimeout = 30 }
+	if ($config.ConnectionTimeout -like '') { $config.ConnectionTimeout = 30 }
+	if ($config.ExecutionTimeout -like '') { $config.ConnectionTimeout = 180 }
 	if (!$config.SchemaVersionTable) { $config.SchemaVersionTable = 'dbo.SchemaVersions' }
 	
 	
@@ -166,7 +168,10 @@
 		
 		$dbUp = [SqlServerExtensions]::JournalToSqlTable($dbUp, $schemaName, $tableName)
 	}
-	
+
+	#Adding execution timeout - defaults to 180 seconds
+	$dbUp = [StandardExtensions]::WithExecutionTimeout($dbUp, [timespan]::FromSeconds($config.ExecutionTimeout))
+
 	#Build and Upgrade
 	$build = $dbUp.Build()
 	
@@ -190,10 +195,10 @@
 	}
 	#>
 	#}
-#	catch {
-#		Write-Host "Gotcha!"
-#		#throw $_	
-#	}
+	#	catch {
+	#		Write-Host "Gotcha!"
+	#		#throw $_	
+	#	}
 	$upgradeResult
 	
 	

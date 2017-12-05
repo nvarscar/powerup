@@ -79,6 +79,7 @@
 		[ValidateSet('SingleTransaction', 'TransactionPerScript', 'NoTransaction')]
 		[string]$DeploymentMethod = 'NoTransaction',
 		[int]$ConnectionTimeout,
+		[int]$ExecutionTimeout,
 		[switch]$Encrypt,
 		[pscredential]$Credential,
 		[string]$UserName,
@@ -138,6 +139,7 @@
 						'Database',
 						'DeploymentMethod',
 						'ConnectionTimeout',
+						'ExecutionTimeout',						
 						'Encrypt',
 						'Credential',
 						'UserName',

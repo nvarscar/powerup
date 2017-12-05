@@ -28,6 +28,9 @@
 	
 	.PARAMETER ConnectionTimeout
 		A description of the ConnectionTimeout parameter.
+
+	.PARAMETER ExecutionTimeout
+		A description of the ExecutionTimeout parameter.
 	
 	.PARAMETER Encrypt
 		A description of the Encrypt parameter.
@@ -49,15 +52,15 @@
 #>
 function New-PowerUpPackage {
 	[CmdletBinding(DefaultParameterSetName = 'Default',
-				   SupportsShouldProcess = $true)]
+		SupportsShouldProcess = $true)]
 	param
 	(
 		[Parameter(Mandatory = $true,
-				   ValueFromPipeline = $true,
-				   Position = 2)]
+			ValueFromPipeline = $true,
+			Position = 2)]
 		[object[]]$ScriptPath,
 		[Parameter(Mandatory = $false,
-				   Position = 1)]
+			Position = 1)]
 		[Alias('FileName', 'Path', 'Package')]
 		[string]$Name = (Split-Path (Get-Location) -Leaf),
 		[Parameter(ParameterSetName = 'Default')]
@@ -72,7 +75,9 @@ function New-PowerUpPackage {
 		[Parameter(ParameterSetName = 'Default')]
 		[securestring]$Password,
 		[Parameter(ParameterSetName = 'Default')]
-		[int]$ConnectionTimeout = 30,
+		[int]$ConnectionTimeout,
+		[Parameter(ParameterSetName = 'Default')]
+		[int]$ExecutionTimeout,
 		[Parameter(ParameterSetName = 'Default')]
 		[switch]$Encrypt,
 		[switch]$Force,
