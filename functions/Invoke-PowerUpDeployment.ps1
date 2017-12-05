@@ -174,33 +174,6 @@
 
 	#Build and Upgrade
 	$build = $dbUp.Build()
-	
-	#try {
-	$upgradeResult = $build.PerformUpgrade() <#*>&1 | ForEach-Object {
-		$record = $_
-		switch ($_.GetType().Name) {
-			ErrorRecord {
-				Write-Error $record 
-			}
-			WarningRecord {
-				Write-Warning $record
-			}
-			InformationRecord {
-				Write-Host $record
-			}
-			default {
-				$record
-			}
-		}
-	}
-	#>
-	#}
-	#	catch {
-	#		Write-Host "Gotcha!"
-	#		#throw $_	
-	#	}
+	$upgradeResult = $build.PerformUpgrade() 
 	$upgradeResult
-	
-	
-	#TODO: Place script here
 }

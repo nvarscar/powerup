@@ -1,7 +1,8 @@
-*.TempPoint.*
-*.Export.*
-*.psprojs
-*.RestorePoint.*
-*.Run.ps1
-*.Package.ps1
-CustomMenu.inf
+# ignore the settings folder and files for VSCode
+.vscode/*
+
+# VIM backup files
+*~
+
+# Local constant file
+tests/constants.local.ps1

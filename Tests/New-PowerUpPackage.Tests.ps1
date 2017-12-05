@@ -3,15 +3,18 @@ $here = Split-Path -Parent $MyInvocation.MyCommand.Path
 $sut = (Split-Path -Leaf $MyInvocation.MyCommand.Path) -replace '\.Tests\.', '.'
 
 . '..\internal\Get-ArchiveItems.ps1'
+. '..\internal\New-TempWorkspaceFolder.ps1'
 
-$packagePath = '.\etc\PowerUpTest.zip'
+$workFolder = New-TempWorkspaceFolder
+$packagePath = "$workFolder\PowerUpTest.zip"
+
 Describe "$commandName tests" {	
 	
 	BeforeAll {
 		if (Test-Path $packagePath) { Remove-Item $packagePath -Force }
 	}
 	AfterAll {
-		if (Test-Path $packagePath) { Remove-Item $packagePath -Force }
+		if ($workFolder.Name -like 'PowerUpWorkspace*') { Remove-Item $workFolder -Recurse }
 	}
 	It "returns error when path does not exist" {
 		try {
