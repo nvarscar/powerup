@@ -1,19 +1,14 @@
-﻿Get-ChildItem -Path "$PSScriptRoot\bin\*.dll" -Recurse | Unblock-File -ErrorAction SilentlyContinue
-
-foreach ($assembly in (Get-ChildItem -Path "$PSScriptRoot\bin\*.dll")) {
-	Add-Type -Path $assembly.FullName
+﻿$moduleCatalog = Get-Content "$PSScriptRoot\PowerUp.json" -Raw | ConvertFrom-Json
+foreach ($bin in $moduleCatalog.Libraries) {
+	Unblock-File -Path "$PSScriptRoot\$bin" -ErrorAction SilentlyContinue
+	Add-Type -Path "$PSScriptRoot\$bin"
 }
 
-
-foreach ($function in (Get-ChildItem "$PSScriptRoot\internal\*.ps1")) {
-	. $function.FullName
+foreach ($function in $moduleCatalog.Functions) {
+	. "$PSScriptRoot\$function"
 }
 
-foreach ($function in (Get-ChildItem "$PSScriptRoot\functions\*.ps1")) {
-	. $function.FullName
+foreach ($function in $moduleCatalog.Internal) {
+	. "$PSScriptRoot\$function"
 }
-
-
-
-
 
