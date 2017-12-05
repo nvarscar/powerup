@@ -171,7 +171,7 @@ function New-PowerUpPackage {
 			$moduleSrc = (Get-Module PowerUp).ModuleBase
 			$moduleDir = New-Item (Join-Path $workFolder "Modules") -ItemType Directory
 			Write-Verbose "Copying module files into the package"
-			Copy-Item $moduleSrc $moduleDir -Recurse -Force
+			Copy-Item $moduleSrc $moduleDir\PowerUp -Recurse -Force
 			
 			Write-Verbose "Creating archive file $Name"
 			Compress-Archive "$workFolder\*" -DestinationPath $Name -Force:$Force
