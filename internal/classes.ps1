@@ -112,7 +112,7 @@ class PowerUpBuild {
 	#[int]$deployOrder
 	[string]$build
 	[PowerUpFile[]]$Scripts
-	[datetime]$CreatedDate
+	[string]$CreatedDate
 	
 	#Hidden properties
 	#hidden $parent
@@ -124,7 +124,7 @@ class PowerUpBuild {
 		}
 		$this.build = $build
 		#$this.parent = $parent
-		$this.CreatedDate = Get-Date
+		$this.CreatedDate = (Get-Date).Datetime
 		#$this.deployOrder = $parent.GetLastBuildDeployOrder() + 10
 		#$this.scripts = [PowerUpFile[]]@()
 	}
