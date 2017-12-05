@@ -168,11 +168,15 @@ function New-PowerUpPackage {
 			$package.SaveToFile($packagePath)
 			
 			#Copy module into the archive
-			$moduleSrc = (Get-Module PowerUp).ModuleBase
-			$moduleDir = New-Item (Join-Path $workFolder "Modules") -ItemType Directory
+			$moduleDir = New-Item (Join-Path $workFolder "Modules\PowerUp") -ItemType Directory
 			Write-Verbose "Copying module files into the package"
-			Copy-Item $moduleSrc $moduleDir\PowerUp -Recurse -Force
-			
+			foreach ($file in (Get-ModuleFileList)) {
+				if (-not (Test-Path "$moduleDir\$($file.Directory)" -PathType Container)) {
+					$null = New-Item "$moduleDir\$($file.Directory)" -ItemType Directory
+				}
+				Copy-Item $file.FullName "$moduleDir\$($file.Path)" -Force -Recurse
+			}
+
 			Write-Verbose "Creating archive file $Name"
 			Compress-Archive "$workFolder\*" -DestinationPath $Name -Force:$Force
 			
