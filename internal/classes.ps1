@@ -1,4 +1,5 @@
 ﻿class PowerUpPackage {
+	#Public properties
 	[PowerUpBuild[]]$Builds
 	[string]$ScriptDirectory
 	[string]$DeploySource
@@ -10,6 +11,7 @@
 	[string]$ConfigurationFile
 	[string]$PackageFile
 	
+	#Constructors
 	PowerUpPackage () {
 		$this.ScriptDirectory = 'content'
 		$this.DeployScript = "Deploy.ps1"
@@ -34,13 +36,17 @@
 			$this.AddBuild($newBuild)
 		}
 	}
+
+	#Static Methods
 	static [PowerUpPackage] FromJsonString ([string]$jsonString) {
 		return [PowerUpPackage]::new($jsonString)
 	}
 	static [PowerUpPackage] FromFile ([string]$path) {
 		return [PowerUpPackage]::new((Get-Content $path -Raw -ErrorAction Stop))
 	}
-	[PowerUpBuild]NewBuild ([string]$build) {
+
+	#Methods
+	[PowerUpBuild] NewBuild ([string]$build) {
 		if (!$build) {
 			Write-Error 'Build name is not specified.'
 			return $null
@@ -56,7 +62,8 @@
 			return $newBuild
 		}
 	}
-	[array]EnumBuilds () {
+
+	[array] EnumBuilds () {
 		return $this.builds.build
 	}
 	<#
@@ -67,8 +74,8 @@
 		else { return 0 }
 	}
 	#>
-	[PowerUpBuild]GetBuild ([string]$build) {
-		
+
+	[PowerUpBuild] GetBuild ([string]$build) {
 		if ($currentBuild = $this.builds | Where-Object { $_.build -eq $build }) {
 			return $currentBuild
 		}
@@ -77,29 +84,14 @@
 			return $null
 		}
 	}
-	[void]AddBuild ([PowerUpBuild]$build) {
+	[void] AddBuild ([PowerUpBuild]$build) {
 		if ($currentBuild = $this.builds | Where-Object { $_.build -eq $build.build }) {
 			Write-Error 'Build $build already exists.'
 		}
 		else {
 			$this.builds += $build
 		}
-		
-		
 	}
-	<#
-	[string]ToJson () {
-		$outObject = @{ } | Select-Object Builds, Configuration, ScriptDirectory
-		$outObject.Builds = @()
-		$outObject.Configuration = @{ } | Select-Object ApplicationName, Build, SqlInstance, Database, DeploymentMethod, ConnectionTimeout, Encrypt, Credential, Username, Password, LogToTable, Silent, Variables
-		$outObject.ScriptDirectory = $this.ScriptDirectory
-		
-		foreach ($build in $this.builds) {
-			$outObject.Builds += $build.ToJson()
-		}
-		
-	}
-	#>
 	[void] SaveToFile ([string]$fileName) {
 		$this | ConvertTo-Json -Depth 5 | Out-File $fileName
 	}
@@ -109,13 +101,9 @@
 }
 class PowerUpBuild {
 	#Public properties
-	#[int]$deployOrder
 	[string]$build
 	[PowerUpFile[]]$Scripts
 	[string]$CreatedDate
-	
-	#Hidden properties
-	#hidden $parent
 	
 	#Constructors
 	PowerUpBuild ([string]$build) {
@@ -123,65 +111,45 @@ class PowerUpBuild {
 			throw 'Build name cannot be empty';
 		}
 		$this.build = $build
-		#$this.parent = $parent
 		$this.CreatedDate = (Get-Date).Datetime
 		#$this.deployOrder = $parent.GetLastBuildDeployOrder() + 10
-		#$this.scripts = [PowerUpFile[]]@()
 	}
-#	PowerUpBuild ([string]$build, [PowerUpPackage]$parent) {
-#		$this.build = $build
-#		#$this.parent = $parent
-#		$this.CreatedDate = Get-Date
-#		#$this.deployOrder = $parent.GetLastBuildDeployOrder() + 10
-#		#$this.scripts = [PowerUpFile[]]@()
-#		$parent.AddBuild($this)
-#	}
+
 	hidden PowerUpBuild ([psobject]$object) {
 		if (!$object.build) {
 			throw 'Build name cannot be empty';
 		}
 		$this.build = $object.build
-		#$this.parent = $parent
 		$this.CreatedDate = $object.CreatedDate
 		foreach ($script in $object.scripts) {
 			$newScript = [PowerUpFile]::AddPackageFile($script)
 			$this.AddScript($newScript)
 		}
 		#$this.deployOrder = $parent.GetLastBuildDeployOrder() + 10
-		#$this.scripts = [PowerUpFile[]]@()
 	}
-	<#
-	PowerUpBuild ([string]$build, $parent, [int]$deployOrder) {
-		$this.build = $build
-		$this.parent = $parent
-		#$this.deployOrder = $deployOrder
-		$this.scripts = @()
-	}
-	#>
+
 	#Methods 
-	[void]NewScript ([string[]]$fileName) {
+	[void] NewScript ([string[]]$fileName) {
 		foreach ($p in $fileName) {
 			if ($currentFile = $this.scripts | Where-Object { $_.sourcePath -eq $p }) {
 				throw "Script $p already exists."
 			}
 			else {
-				$packagePath = (($p -replace '\:', '\') -replace '\\\\', '\') -replace '^\.\\',''
+				$packagePath = (($p -replace '\:', '\') -replace '\\\\', '\') -replace '^\.\\', ''
 				$this.scripts += New-Object PowerUpFile ($p, "$($this.build)\$packagePath")
-				#return $newScript
 			}
 		}
 	}
-	[void]NewScript ([string]$fileName, [string]$relativePath) {
-			if ($currentFile = $this.scripts | Where-Object { $_.sourcePath -eq $fileName }) {
-				throw "Script $fileName already exists."
-			}
-			else {
-				$packagePath = $fileName.Replace($relativePath, '').TrimStart('\').Replace('\:', '\').Replace('\\', '\') -replace '^\.\\', ''
-				$this.scripts += New-Object PowerUpFile ($fileName, "$($this.build)\$packagePath")
-				#return $newScript
-			}
+	[void] NewScript ([string]$fileName, [string]$relativePath) {
+		if ($currentFile = $this.scripts | Where-Object { $_.sourcePath -eq $fileName }) {
+			throw "Script $fileName already exists."
+		}
+		else {
+			$packagePath = $fileName.Replace($relativePath, '').TrimStart('\').Replace('\:', '\').Replace('\\', '\') -replace '^\.\\', ''
+			$this.scripts += New-Object PowerUpFile ($fileName, "$($this.build)\$packagePath")
+		}
 	}
-	[void]AddScript ([PowerUpFile[]]$script) {
+	[void] AddScript ([PowerUpFile[]]$script) {
 		foreach ($s in $script) {
 			if ($this.scripts | Where-Object { $_.sourcePath -eq $s.sourcePath }) {
 				throw "External script $($s.sourcePath) already exists."
@@ -194,16 +162,20 @@ class PowerUpBuild {
 			}
 		}
 	}
-	[string]ToString() {
+	[string] ToString() {
 		return "[Build $($this.build)]"
 	}
 }
 
 class PowerUpFile {
+	#Public properties
 	[string]$sourcePath
 	[string]$PackagePath
+
+	#Hidden properties
 	hidden [string]$Hash
 	
+	#Constructors
 	PowerUpFile ([string]$sourcePath, [string]$packagePath) {
 		if (!(Test-Path $sourcePath)) {
 			throw "Path not found: $sourcePath"
@@ -215,6 +187,7 @@ class PowerUpFile {
 		$this.packagePath = $packagePath
 		$this.Hash = (Get-FileHash $sourcePath).Hash
 	}
+
 	hidden PowerUpFile ([psobject]$object) {
 		if (!$object.packagePath) {
 			throw 'Path inside the package cannot be empty';
@@ -223,60 +196,25 @@ class PowerUpFile {
 		$this.packagePath = $object.packagePath
 		$this.Hash = $object.hash
 	}
-	[string]ToString() {
-		return "$($this.packagePath)"
-	}
+
+	#Static methods 
 	static [PowerUpFile] AddPackageFile ([psobject]$object) {
 		return [PowerUpFile]::new($object)
 	}
+
+	#Methods 
+	[string] ToString() {
+		return "$($this.packagePath)"
+	}
+	
 }
 
-<#
-class PowerUpScript : PowerUpFile {
-	hidden [string]$Build
-	
-	PowerUpScript ([string]$sourcePath, [string]$build) : base ($sourcePath, "$build\$sourcePath") {
-		if (!$build) {
-			throw 'Build name cannot be empty';
-		}
-		$this.build = $build
-	}
-	PowerUpScript ([string]$sourcePath, [string]$packagePath, [string]$build) : base ($sourcePath, $packagePath) {
-		if (!$build) {
-			throw 'Build name cannot be empty';
-		}
-		$this.build = $build
-	}
-	hidden PowerUpScript ([string]$sourcePath, [string]$packagePath, [string]$build , [string]$hash): base ($sourcePath, $packagePath, $hash) {
-		if (!$build) {
-			throw 'Build name cannot be empty';
-		}
-		$this.build = $build
-	}
-	static [PowerUpScript] AddPackageFile ([string]$sourcePath, [string]$packagePath, [string]$hash) {
-		return [PowerUpScript]::new($sourcePath, $packagePath, $hash)
-	}
-}
-#>
-class PowerUpLog: DbUp.Engine.Output.IUpgradeLog {
+class PowerUpLog : DbUp.Engine.Output.IUpgradeLog {
+	#Hidden properties
 	hidden [string]$logToFile
 	hidden [bool]$silent
 	
-	<#
-	PowerUpLog ([bool]$silent) {
-		$this.silent = $silent
-	}
-	PowerUpLog ([string]$outFile, [bool]$append) {
-		$this.logToFile = $outFile
-		$txt = "Logging started at " + (get-date).ToString()
-		if ($append) {
-			$txt | Out-File $this.logToFile -Append
-		}
-		else {
-			$txt | Out-File $this.logToFile -Force
-		}
-	}
-	#>
+	#Constructors
 	PowerUpLog ([bool]$silent, [string]$outFile, [bool]$append) {
 		$this.silent = $silent
 		$this.logToFile = $outFile
@@ -291,23 +229,7 @@ class PowerUpLog: DbUp.Engine.Output.IUpgradeLog {
 		}
 	}
 	
-	<#
-	[PowerUpLog] LogToFile([string]$outFile, [bool]$append) {
-		$this.logToFile = $outFile
-		$txt = "Logging started at " + (get-date).ToString()
-		if ($append) {
-			$txt | Out-File $this.logToFile -Append
-		}
-		else {
-			$txt | Out-File $this.logToFile -Force
-		}
-		return $this
-	}
-	[PowerUpLog] Silent([bool]$silent) {
-		$this.silent = $silent
-		return $this
-	}
-	#>
+	#Methods
 	[void] WriteInformation([string]$format, [object[]]$params) {
 		if (!$this.silent) {
 			Write-Host ($format -f $params)

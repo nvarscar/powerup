@@ -12,7 +12,7 @@
 	if ($FileName -and (Test-Path $FileName)) {
 		$jsonConfig = Get-Content $FileName -Raw | ConvertFrom-Json -ErrorAction Stop
 	}
-	$config = @{ } | Select-Object ApplicationName, Build, SqlInstance, Database, DeploymentMethod, ConnectionTimeout, Encrypt, Credential, Username, Password, SchemaVersionTable, Silent, Variables
+	$config = @{ } | Select-Object ApplicationName, Build, SqlInstance, Database, DeploymentMethod, ConnectionTimeout, ExecutionTimeout, Encrypt, Credential, Username, Password, SchemaVersionTable, Silent, Variables
 	$config.Build = [string]$currentDate.Year + '.' + [string]$currentDate.Month + '.' + [string]$currentDate.Day + '.' + [string]$currentDate.Hour + [string]$currentDate.Minute + [string]$currentDate.Second
 	#$config.SqlInstance = 'localhost'
 	#$config.ConnectionTimeout = 30

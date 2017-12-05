@@ -1,5 +1,5 @@
 ﻿function Install-PowerUpPackage {
-<#
+	<#
 	.SYNOPSIS
 		Deploys a prepared PowerUp package
 	
@@ -23,6 +23,9 @@
 	
 	.PARAMETER ConnectionTimeout
 		A description of the ConnectionTimeout parameter.
+		
+	.PARAMETER ExecutionTimeout
+		A description of the ExecutionTimeout parameter.
 	
 	.PARAMETER Encrypt
 		A description of the Encrypt parameter.
@@ -68,7 +71,7 @@
 	param
 	(
 		[Parameter(Mandatory = $true,
-				   Position = 1)]
+			Position = 1)]
 		[Alias('Name', 'Package', 'Filename')]
 		[string]$Path,
 		[string]$WorkSpace,
@@ -79,6 +82,7 @@
 		[ValidateSet('SingleTransaction', 'TransactionPerScript', 'NoTransaction')]
 		[string]$DeploymentMethod = 'NoTransaction',
 		[int]$ConnectionTimeout,
+		[int]$ExecutionTimeout,
 		[switch]$Encrypt,
 		[pscredential]$Credential,
 		[string]$UserName,
@@ -138,6 +142,7 @@
 						'Database',
 						'DeploymentMethod',
 						'ConnectionTimeout',
+						'ExecutionTimeout',						
 						'Encrypt',
 						'Credential',
 						'UserName',
