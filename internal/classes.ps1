@@ -1,4 +1,26 @@
-﻿class PowerUpPackage {
+﻿class PowerUpClass {
+	# Shared methods
+	[void] SaveToFile ([string]$fileName) {
+		$this | ConvertTo-Json -Depth 5 | Out-File $fileName
+	}
+	[void] SaveToFile ([string]$fileName, [bool]$force) {
+		$this | ConvertTo-Json -Depth 5 | Out-File $fileName -Force
+	}
+
+	hidden [void] ThrowException ([string]$exceptionType, [string]$errorText, [object]$object, [System.Management.Automation.ErrorCategory]$errorCategory) {
+		$errorMessageObject = [System.Management.Automation.ErrorRecord]::new( `
+			(New-Object -TypeName $exceptionType -ArgumentList $errorText),
+			"[$($this.gettype().Name)]",
+			$errorCategory,
+			$object)
+		$PSCmdlet.ThrowTerminatingError($errorMessageObject)
+	}
+
+	hidden [void] ThrowArgumentException ([string]$message, [object]$object) {
+		$this.ThrowException('ArgumentException', $message, $object, 'InvalidArgument')
+	}
+}
+class PowerUpPackage : PowerUpClass {
 	#Public properties
 	[PowerUpBuild[]]$Builds
 	[string]$ScriptDirectory
@@ -48,17 +70,18 @@
 	#Methods
 	[PowerUpBuild] NewBuild ([string]$build) {
 		if (!$build) {
-			Write-Error 'Build name is not specified.'
+			$this.ThrowArgumentException('Build name is not specified.', $build)
 			return $null
 		}
 		if ($currentBuild = $this.builds | Where-Object { $_.build -eq $build }) {
-			Write-Error 'Build $build already exists.'
+			$this.ThrowArgumentException("Build $build already exists.", $build)
 			return $null
 		}
 		else {
 			
 			$newBuild = [PowerUpBuild]::new($build)
 			$this.builds += $newBuild
+			$newBuild.Parent = $this
 			return $newBuild
 		}
 	}
@@ -80,35 +103,34 @@
 			return $currentBuild
 		}
 		else {
-			Write-Error 'Build not found.'
+			$this.ThrowArgumentException('Build not found.', $build)
 			return $null
 		}
 	}
 	[void] AddBuild ([PowerUpBuild]$build) {
 		if ($currentBuild = $this.builds | Where-Object { $_.build -eq $build.build }) {
-			Write-Error 'Build $build already exists.'
+			$this.ThrowArgumentException("Build $build already exists.", $build)
 		}
 		else {
 			$this.builds += $build
+			$build.Parent = $this
 		}
 	}
-	[void] SaveToFile ([string]$fileName) {
-		$this | ConvertTo-Json -Depth 5 | Out-File $fileName
-	}
-	[void] SaveToFile ([string]$fileName, [bool]$force) {
-		$this | ConvertTo-Json -Depth 5 | Out-File $fileName -Force
-	}
+
 }
-class PowerUpBuild {
+class PowerUpBuild : PowerUpClass {
 	#Public properties
-	[string]$build
+	[string]$Build
 	[PowerUpFile[]]$Scripts
 	[string]$CreatedDate
+
+	#Hidden properties
+	[PowerUpPackage]$Parent
 	
 	#Constructors
 	PowerUpBuild ([string]$build) {
 		if (!$build) {
-			throw 'Build name cannot be empty';
+			$this.ThrowArgumentException('Build name cannot be empty');
 		}
 		$this.build = $build
 		$this.CreatedDate = (Get-Date).Datetime
@@ -117,7 +139,7 @@ class PowerUpBuild {
 
 	hidden PowerUpBuild ([psobject]$object) {
 		if (!$object.build) {
-			throw 'Build name cannot be empty';
+			$this.ThrowArgumentException('Build name cannot be empty');
 		}
 		$this.build = $object.build
 		$this.CreatedDate = $object.CreatedDate
@@ -132,7 +154,7 @@ class PowerUpBuild {
 	[void] NewScript ([string[]]$fileName) {
 		foreach ($p in $fileName) {
 			if ($currentFile = $this.scripts | Where-Object { $_.sourcePath -eq $p }) {
-				throw "Script $p already exists."
+				$this.ThrowArgumentException("Script $p already exists.");
 			}
 			else {
 				$packagePath = (($p -replace '\:', '\') -replace '\\\\', '\') -replace '^\.\\', ''
@@ -142,7 +164,7 @@ class PowerUpBuild {
 	}
 	[void] NewScript ([string]$fileName, [string]$relativePath) {
 		if ($currentFile = $this.scripts | Where-Object { $_.sourcePath -eq $fileName }) {
-			throw "Script $fileName already exists."
+			$this.ThrowArgumentException("Script $fileName already exists.")
 		}
 		else {
 			$packagePath = $fileName.Replace($relativePath, '').TrimStart('\').Replace('\:', '\').Replace('\\', '\') -replace '^\.\\', ''
@@ -152,10 +174,10 @@ class PowerUpBuild {
 	[void] AddScript ([PowerUpFile[]]$script) {
 		foreach ($s in $script) {
 			if ($this.scripts | Where-Object { $_.sourcePath -eq $s.sourcePath }) {
-				throw "External script $($s.sourcePath) already exists."
+				$this.ThrowArgumentException("External script $($s.sourcePath) already exists.")
 			}
 			elseif ($this.scripts | Where-Object { $_.packagePath -eq $s.packagePath }) {
-				throw "Script $($s.packagePath) already exists inside this build."
+				$this.ThrowArgumentException("Script $($s.packagePath) already exists inside this build.")
 			}
 			else {
 				$this.scripts += $script
@@ -167,7 +189,7 @@ class PowerUpBuild {
 	}
 }
 
-class PowerUpFile {
+class PowerUpFile : PowerUpClass {
 	#Public properties
 	[string]$sourcePath
 	[string]$PackagePath
@@ -178,10 +200,10 @@ class PowerUpFile {
 	#Constructors
 	PowerUpFile ([string]$sourcePath, [string]$packagePath) {
 		if (!(Test-Path $sourcePath)) {
-			throw "Path not found: $sourcePath"
+			$this.ThrowArgumentException("Path not found: $sourcePath")
 		}
 		if (!$packagePath) {
-			throw 'Path inside the package cannot be empty';
+			$this.ThrowArgumentException('Path inside the package cannot be empty')
 		}
 		$this.sourcePath = $sourcePath
 		$this.packagePath = $packagePath
@@ -190,7 +212,7 @@ class PowerUpFile {
 
 	hidden PowerUpFile ([psobject]$object) {
 		if (!$object.packagePath) {
-			throw 'Path inside the package cannot be empty';
+			$this.ThrowArgumentException('Path inside the package cannot be empty')
 		}
 		$this.sourcePath = $object.sourcePath
 		$this.packagePath = $object.packagePath

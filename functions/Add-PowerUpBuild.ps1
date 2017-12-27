@@ -69,7 +69,7 @@ function Add-PowerUpBuild {
 	begin {
 		$currentDate = Get-Date
 		if (!$Build) {
-			$Build = [string]$currentDate.Year + '.' + [string]$currentDate.Month + '.' + [string]$currentDate.Day + '.' + [string]$currentDate.Hour
+			$Build = Get-NewBuildNumber
 		}
 		if (!(Test-Path $Path)) {
 			throw "Package $Path not found. Aborting deployment."
