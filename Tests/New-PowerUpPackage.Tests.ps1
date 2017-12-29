@@ -21,14 +21,14 @@ Describe "$commandName tests" {
 			$result = New-PowerUpPackage -ScriptPath 'asduwheiruwnfelwefo\sdfpoijfdsf.sps' -ErrorVariable errorResult 2>$null
 		}
 		catch {}
-		$errorResult.Exception.Message[0] | Should BeLike 'The following path is not valid*'
+		$errorResult.Exception.Message -join ';' | Should BeLike '*The following path is not valid*'
 	}
 	It "returns error when config file does not exist" {
 		try {
 			$result = New-PowerUpPackage -ScriptPath '.' -Config 'asduwheiruwnfelwefo\sdfpoijfdsf.sps' -ErrorVariable errorResult 2>$null
 		}
 		catch {}
-		$errorResult.Exception.Message[0] | Should Be 'Configuration file does not exist'
+		$errorResult.Exception.Message -join ';' | Should BeLike '*Configuration file does not exist*'
 	}
 	It "should create a package file" {
 		$results = New-PowerUpPackage -ScriptPath '.\etc\query1.sql' -Name $packagePath

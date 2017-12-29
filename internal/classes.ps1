@@ -19,6 +19,17 @@
 	hidden [void] ThrowArgumentException ([string]$message, [object]$object) {
 		$this.ThrowException('ArgumentException', $message, $object, 'InvalidArgument')
 	}
+
+	hidden [string] RelativePathReplace ([string]$path, [string]$relativePath) {
+		return $this.PathReplace($path.Replace($relativePath, '').TrimStart('\'))
+	}
+
+	hidden  [string] PathReplace ([string]$path) {
+		return (($path -replace '\:', '\') -replace '\\\\', '\') -replace '^\.\\', ''
+	}
+
+
+
 }
 class PowerUpPackage : PowerUpClass {
 	#Public properties
@@ -78,10 +89,8 @@ class PowerUpPackage : PowerUpClass {
 			return $null
 		}
 		else {
-			
 			$newBuild = [PowerUpBuild]::new($build)
 			$this.builds += $newBuild
-			$newBuild.Parent = $this
 			return $newBuild
 		}
 	}
@@ -113,8 +122,47 @@ class PowerUpPackage : PowerUpClass {
 		}
 		else {
 			$this.builds += $build
-			$build.Parent = $this
 		}
+	}
+	[bool] ScriptExists([string]$fileName) {
+		if (!(Test-Path $fileName)) {
+			$this.ThrowArgumentException("Path not found: $fileName")
+		}
+		$hash = (Get-FileHash $fileName).Hash
+		foreach ($build in $this.builds) {
+			if ($build.HashExists($hash)) {
+				return $true
+			}
+		}
+		return $false
+	}
+	[bool] SourcePathExists([string]$fileName) {
+		if (!(Test-Path $fileName)) {
+			$this.ThrowArgumentException("Path not found: $fileName")
+		}
+		$path = (Resolve-Path $fileName).Path
+		foreach ($build in $this.builds) {
+			if ($build.SourcePathExists($path)) {
+				return $true
+			}
+		}
+		return $false
+	}
+	[bool] PackagePathExists([string]$fileName) {
+		foreach ($build in $this.builds) {
+			if ($build.PackagePathExists($fileName)) {
+				return $true
+			}
+		}
+		return $false
+	}
+	[bool] PackagePathExists([string]$fileName, [string]$relativePath) {
+		foreach ($build in $this.builds) {
+			if ($build.PackagePathExists($fileName, $relativePath)) {
+				return $true
+			}
+		}
+		return $false
 	}
 
 }
@@ -123,9 +171,6 @@ class PowerUpBuild : PowerUpClass {
 	[string]$Build
 	[PowerUpFile[]]$Scripts
 	[string]$CreatedDate
-
-	#Hidden properties
-	[PowerUpPackage]$Parent
 	
 	#Constructors
 	PowerUpBuild ([string]$build) {
@@ -157,8 +202,8 @@ class PowerUpBuild : PowerUpClass {
 				$this.ThrowArgumentException("Script $p already exists.");
 			}
 			else {
-				$packagePath = (($p -replace '\:', '\') -replace '\\\\', '\') -replace '^\.\\', ''
-				$this.scripts += New-Object PowerUpFile ($p, "$($this.build)\$packagePath")
+				$packagePath = $this.GetPackagePath($p)
+				$this.scripts += New-Object PowerUpFile ($p, $packagePath)
 			}
 		}
 	}
@@ -167,8 +212,8 @@ class PowerUpBuild : PowerUpClass {
 			$this.ThrowArgumentException("Script $fileName already exists.")
 		}
 		else {
-			$packagePath = $fileName.Replace($relativePath, '').TrimStart('\').Replace('\:', '\').Replace('\\', '\') -replace '^\.\\', ''
-			$this.scripts += New-Object PowerUpFile ($fileName, "$($this.build)\$packagePath")
+			$packagePath = $this.GetPackagePath($fileName, $relativePath)
+			$this.scripts += New-Object PowerUpFile ($fileName, $packagePath)
 		}
 	}
 	[void] AddScript ([PowerUpFile[]]$script) {
@@ -186,6 +231,59 @@ class PowerUpBuild : PowerUpClass {
 	}
 	[string] ToString() {
 		return "[Build $($this.build)]"
+	}
+	hidden [bool] HashExists([string]$hash) {
+		foreach ($script in $this.Scripts) {
+			if ($hash -eq $script.hash) {
+				return $true
+			}
+		}
+		return $false
+	}
+	[bool] ScriptExists([string]$fileName) {
+		if (!(Test-Path $fileName)) {
+			$this.ThrowArgumentException("Path not found: $fileName")
+		}
+		$hash = (Get-FileHash $fileName).Hash
+		return $this.HashExists($hash)
+	}
+	[bool] SourcePathExists([string]$fileName) {
+		if (!(Test-Path $fileName)) {
+			$this.ThrowArgumentException("Path not found: $fileName")
+		}
+		$path = (Resolve-Path $fileName).Path
+		foreach ($script in $this.Scripts) {
+			if ($path -eq $script.sourcePath) {
+				return $true
+			}
+		}
+		return $false
+	}
+	[bool] PackagePathExists([string]$fileName) {
+		$path = $this.GetPackagePath($fileName)
+		foreach ($script in $this.Scripts) {
+			if ($path -eq $script.packagePath) {
+				return $true
+			}
+		}
+		return $false
+	}
+	[bool] PackagePathExists([string]$fileName, [string]$relativePath) {
+		$path = $this.GetPackagePath($fileName, $relativePath)
+		foreach ($script in $this.Scripts) {
+			if ($path -eq $script.packagePath) {
+				return $true
+			}
+		}
+		return $false
+	}
+	[string] GetPackagePath([string]$fileName) {
+		$packagePath = $this.PathReplace($fileName)
+		return (Join-Path $this.build $packagePath)
+	}
+	[string] GetPackagePath([string]$fileName, [string]$relativePath) {
+		$packagePath = $this.RelativePathReplace($fileName,$relativePath)
+		return (Join-Path $this.build $packagePath)
 	}
 }
 
