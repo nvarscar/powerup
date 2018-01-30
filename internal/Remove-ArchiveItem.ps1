@@ -31,53 +31,42 @@ Function Remove-ArchiveItem {
 		# [switch]$Recurse
 	)
 	begin {
-		Function Remove-ArchiveItemRecurse {
-			Param(
-				[object]$Item,
-				[object]$MoveTo
-			)
-			[int]$flags = 0
-			$flags += 4     # no progress bar
-			$flags += 16    # overwrite all
-			$flags += 1024  # no UI in case of error
-			
-			if ($Item.IsFolder) {
-				foreach ($subItem in $Item.GetFolder.Items()) {
-					Remove-ArchiveItemRecurse $subItem $MoveTo
-				}
-			}
-			$MoveTo.MoveHere($Item, $flags)
-		}
-		$shell = New-Object -ComObject Shell.Application
+		$itemCollection = @()
 	}
 	process {
 		foreach ($currentItem in $Item) {
-			#Get parent folder inside the archive
-			$shellParent = $shell.NameSpace((Split-Path (Join-Path (Resolve-Path $Path) $currentItem) -Parent))
-
-			# get archive item
-			if ($shellItem = $shellParent.Items() | Where-Object Name -eq (Split-Path $currentItem -Leaf)) {
-				if ($pscmdlet.ShouldProcess($currentItem, "Remove archive item")) {
-					$workFolder = New-TempWorkspaceFolder
-					try {
-						Remove-ArchiveItemRecurse -Item $shellItem -MoveTo $shell.NameSpace($workFolder.FullName)
-					}
-					catch {
-						throw $_
-					}
-					finally {
-						if ($workFolder.Name -like 'PowerUpWorkspace*') {
-							Remove-Item $workFolder -Recurse -Force
-						}
-					}
-				}
-			}
-			else {
-				Write-Warning -Message "Item $currentItem was not found in $Path"
-			}
+			$itemCollection += $currentItem
 		}
 	}
 	end {
+		$workFolder = New-TempWorkspaceFolder
+		try {
+			#Extract package
+			Write-Verbose "Extracting archive $Path to $workFolder"
+			Expand-Archive -Path $Path -DestinationPath $workFolder
 
+			#Remove items
+			foreach ($currentItem in $itemCollection) {
+				$currentItemPath = Join-Path $workFolder $currentItem
+				If (Test-Path $currentItemPath) {
+					Remove-Item $currentItemPath -Recurse -Force
+				}
+				else {
+					Write-Warning -Message "Item $currentItem was not found in $Path"
+				}
+			}
+
+			#Re-compress archive
+			Write-Verbose "Repackaging original archive $Path"
+			Compress-Archive "$workFolder\*" -DestinationPath $Path -Force
+		}
+		catch {
+			throw $_
+		}
+		finally {
+			if ($workFolder.Name -like 'PowerUpWorkspace*') {
+				Remove-Item $workFolder -Recurse -Force
+			}
+		}
 	}
 }
