@@ -71,7 +71,7 @@ Function Expand-ArchiveItem {
 				$flags += 4     # no progress bar
 				$flags += 16    # overwrite all
 				$flags += 1024  # no UI in case of error
-				if ($Recurse) {
+				if (!$Recurse) {
 					$flags += 4096  # do not include subdirectories 
 				}
 
