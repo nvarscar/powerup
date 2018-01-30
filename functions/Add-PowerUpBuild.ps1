@@ -111,15 +111,8 @@ function Add-PowerUpBuild {
 		}
 		
 		#Load package object
-		$PackageFile = Join-Path $workFolder "PowerUp.package.json"
-		if (!(Test-Path $PackageFile)) {
-			throw "Package file $PackageFile not found. Aborting."
-		}
-		else {
-			$pFile = Get-Item $PackageFile
-		}
 		Write-Verbose "Loading package information from $pFile"
-		$package = [PowerUpPackage]::FromFile($pFile.FullName)
+		$package = [PowerUpPackage]::FromFile((Join-Path $workFolder "PowerUp.package.json"))
 		
 		$scriptsToAdd = @()
 		foreach ($childScript in $scriptCollection) { 
@@ -144,7 +137,7 @@ function Add-PowerUpBuild {
 		if (!$scriptsToAdd) {
 			throw "No scripts have been selected, aborting command."
 		}
-		
+
 		#Create new build object
 		$currentBuild = [PowerUpBuild]::new($Build)
 

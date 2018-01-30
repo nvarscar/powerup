@@ -130,4 +130,40 @@ Describe "$commandName tests" {
 			$results | Where-Object Path -eq 'PowerUp.package.json' | Should Not Be $null
 		}
 	}
+	Context "negative tests" {
+		BeforeAll {
+			$null = Copy-Item $packageName $packageNameTest
+		}
+		AfterAll {
+			$null = Remove-Item $packageNameTest
+		}
+		It "should fail build when there are no new files" {
+			try {
+				$result = Add-PowerUpBuild -Name $packageNameTest -ScriptPath $v1scripts -UniqueOnly -ErrorVariable errorResult 2>$null
+			}
+			catch {}
+			$errorResult.Exception.Message -join ';' | Should BeLike '*No scripts have been selected*'
+		}
+		It "should throw error when package data file does not exist" {
+			try {
+				$result = Add-PowerUpBuild -Name ".\etc\pkg_nopkgfile.zip" -ScriptPath $v2scripts -SkipValidation -ErrorVariable errorResult 2>$null
+			}
+			catch {}
+			$errorResult.Exception.Message -join ';' | Should BeLike '*Package file * not found*'
+		}
+		It "should throw error when package zip does not exist" {
+			try {
+				$result = Add-PowerUpBuild -Name ".\nonexistingpackage.zip" -ScriptPath $v1scripts -ErrorVariable errorResult 2>$null
+			}
+			catch {}
+			$errorResult.Exception.Message -join ';' | Should BeLike '*Package * not found. Aborting deployment*'
+		}
+		It "should throw error when path cannot be resolved" {
+			try {
+				$result = Add-PowerUpBuild -Name $packageNameTest -ScriptPath ".\nonexistingsourcefiles.sql" -ErrorVariable errorResult 2>$null
+			}
+			catch {}
+			$errorResult.Exception.Message -join ';' | Should BeLike '*The following path is not valid*'
+		}
+	}
 }

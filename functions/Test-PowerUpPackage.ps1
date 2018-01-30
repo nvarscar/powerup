@@ -1,5 +1,5 @@
 ﻿function Test-PowerUpPackage {
-<#
+	<#
 	.SYNOPSIS
 		Deploys a prepared PowerUp package
 	
@@ -63,7 +63,9 @@
 			$object.Name = $name
 			$object.Result = $result
 			$object
-		}
+		}		
+	}
+	process {
 		if (!(Test-Path $Path)) {
 			throw "Path not found: $Path"
 			return
@@ -82,16 +84,11 @@
 		}
 		else {
 			$workFolder = New-TempWorkspaceFolder
-		}
-		
-	}
-	process {
-		if (!$Unpacked) {
 			#Extract package
 			Write-Verbose "Extracting package $Path to $workFolder"
 			Expand-Archive -Path $Path -DestinationPath $workFolder
 		}
-		
+				
 		Write-Verbose "Starting validation"
 		$validationResults = @()
 		
@@ -113,14 +110,16 @@
 		$outObject.IsValid = $validationResults.Result | ForEach-Object -Begin { $r = $true } -Process { $r = $r -and $_ } -End { $r }
 		$outObject.ValidationTests = $validationResults
 		$outObject
-	}
-	end {
+
+		#Cleanup
 		if (!$Unpacked) {
 			if ($workFolder.Name -like 'PowerUpWorkspace*') {
 				Write-Verbose "Removing temporary folder $workFolder"
 				Remove-Item $workFolder -Recurse -Force
 			}
 		}
-		
+	}
+	end {
+	
 	}
 }

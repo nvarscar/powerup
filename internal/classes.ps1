@@ -75,6 +75,9 @@ class PowerUpPackage : PowerUpClass {
 		return [PowerUpPackage]::new($jsonString)
 	}
 	static [PowerUpPackage] FromFile ([string]$path) {
+		if (!(Test-Path $path)) {
+			throw "Package file $path not found. Aborting."
+		}
 		return [PowerUpPackage]::new((Get-Content $path -Raw -ErrorAction Stop))
 	}
 
