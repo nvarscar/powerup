@@ -121,12 +121,7 @@ function Add-PowerUpBuild {
 		Write-Verbose "Loading package information from $pFile"
 		$package = [PowerUpPackage]::FromFile($pFile.FullName)
 		
-		#Create new build object
-		$currentBuild = [PowerUpBuild]::new($Build)
-
-		Write-Verbose "Adding $currentBuild to the package object"
-		$package.AddBuild($currentBuild)
-
+		$scriptsToAdd = @()
 		foreach ($childScript in $scriptCollection) { 
 			if ($NewOnly) {
 				#Check if the script path was already added in one of the previous builds
@@ -142,9 +137,24 @@ function Add-PowerUpBuild {
 					continue
 				}
 			}
-			Write-Verbose "Adding file '$($childScript.FullName)' to $currentBuild"
-			$currentBuild.NewScript($childScript.FullName, $childScript.ReplacePath) 
+			$scriptsToAdd += $childScript
 		}	
+
+
+		if (!$scriptsToAdd) {
+			throw "No scripts have been selected, aborting command."
+		}
+		
+		#Create new build object
+		$currentBuild = [PowerUpBuild]::new($Build)
+
+		foreach ($buildScript in $scriptsToAdd) {
+			Write-Verbose "Adding file '$($buildScript.FullName)' to $currentBuild"
+			$currentBuild.NewScript($buildScript.FullName, $buildScript.ReplacePath) 
+		}
+
+		Write-Verbose "Adding $currentBuild to the package object"
+		$package.AddBuild($currentBuild)
 	
 		if ($pscmdlet.ShouldProcess($package, "Adding files to the package")) {
 			$scriptDir = Join-Path $workFolder $package.ScriptDirectory

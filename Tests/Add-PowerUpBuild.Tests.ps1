@@ -87,7 +87,7 @@ Describe "$commandName tests" {
 	Context "adding new files only based on uniqueness (hash)" {
 		BeforeAll {
 			$null = Copy-Item $packageName $packageNameTest
-			$null = Copy-Item $v2scripts "$workFolder\Test.sql"
+			$null = Copy-Item $v1scripts "$workFolder\Test.sql"
 		}
 		AfterAll {
 			$null = Remove-Item $packageNameTest

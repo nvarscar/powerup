@@ -1,4 +1,7 @@
 ﻿function Copy-FilesToBuildFolder {
+	<#
+	Copies all the files from the build to the destination folder inside the package script directory ([content]).
+	#>
 	[CmdletBinding(SupportsShouldProcess = $true)]
 	param
 	(
@@ -8,10 +11,15 @@
 		[string]$ScriptPath
 	)
 	
-<#
-	Copies all the files from the build to the destination folder inside the package script directory ([content]).
-#>
-	if ($pscmdlet.ShouldProcess($Build, "Processing $Build")) {
+	if ($pscmdlet.ShouldProcess($Build, "Creating $Build folder")) {
+		$buildFolder = Join-Path $ScriptPath $Build.build
+		if (-not (Test-Path $buildFolder)) {
+			Write-Verbose "Creating folder $buildFolder"
+			$null = New-Item -Path $buildFolder -ItemType Directory
+		}
+	}
+
+	if ($pscmdlet.ShouldProcess($Build, "Copying $Build scripts")) {
 		foreach ($script in $Build.scripts) {
 			$destination = Join-Path $ScriptPath $script.packagePath
 			$destFolder = Split-Path $destination -Parent
