@@ -127,6 +127,18 @@ class PowerUpPackage : PowerUpClass {
 			$this.builds += $build
 		}
 	}
+	
+	[void] RemoveBuild ([PowerUpBuild]$build) {
+		if ($this.builds | Where-Object { $_.build -eq $build.build }) {
+			$this.builds = $this.builds | Where-Object { $_.build -ne $build.build }
+		}
+		else {
+			$this.ThrowArgumentException("Build $build not found.", $build)
+		}
+	}
+	[void] RemoveBuild ([string]$build) {
+		$this.RemoveBuild($this.GetBuild($build))
+	}
 	[bool] ScriptExists([string]$fileName) {
 		if (!(Test-Path $fileName)) {
 			$this.ThrowArgumentException("Path not found: $fileName")
@@ -206,7 +218,8 @@ class PowerUpBuild : PowerUpClass {
 			}
 			else {
 				$packagePath = $this.GetPackagePath($p)
-				$this.scripts += New-Object PowerUpFile ($p, $packagePath)
+				$s = New-Object PowerUpFile ($p, $packagePath)
+				$this.scripts += $s
 			}
 		}
 	}
@@ -216,7 +229,8 @@ class PowerUpBuild : PowerUpClass {
 		}
 		else {
 			$packagePath = $this.GetPackagePath($fileName, $relativePath)
-			$this.scripts += New-Object PowerUpFile ($fileName, $packagePath)
+			$s = New-Object PowerUpFile ($fileName, $packagePath)
+			$this.scripts += $s
 		}
 	}
 	[void] AddScript ([PowerUpFile[]]$script) {
