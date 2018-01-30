@@ -156,7 +156,7 @@ Describe "$commandName tests" {
 				$result = Add-PowerUpBuild -Name ".\nonexistingpackage.zip" -ScriptPath $v1scripts -ErrorVariable errorResult 2>$null
 			}
 			catch {}
-			$errorResult.Exception.Message -join ';' | Should BeLike '*Package * not found. Aborting deployment*'
+			$errorResult.Exception.Message -join ';' | Should BeLike '*Package * not found. Aborting build*'
 		}
 		It "should throw error when path cannot be resolved" {
 			try {
