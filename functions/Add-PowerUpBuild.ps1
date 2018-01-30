@@ -74,7 +74,7 @@ function Add-PowerUpBuild {
 			$Build = Get-NewBuildNumber
 		}
 		if (!(Test-Path $Path)) {
-			throw "Package $Path not found. Aborting deployment."
+			throw "Package $Path not found. Aborting build."
 			return
 		}
 		else {
@@ -151,23 +151,21 @@ function Add-PowerUpBuild {
 			Write-Verbose "Adding $currentBuild to the package object"
 			$package.AddBuild($currentBuild)
 		
-			if ($pscmdlet.ShouldProcess($package, "Adding files to the package")) {
-				$scriptDir = Join-Path $workFolder $package.ScriptDirectory
-				if (!(Test-Path $scriptDir)) {
-					$null = New-Item $scriptDir -ItemType Directory
-				}
-				Copy-FilesToBuildFolder $currentBuild $scriptDir
-				
-				$packagePath = Join-Path $workFolder $package.PackageFile
-				Write-Verbose "Writing package file $packagePath"
-				$package.SaveToFile($packagePath, $true)
-				
-				Write-Verbose "Repackaging original package $Path"
-				Compress-Archive "$workFolder\*" -DestinationPath $Path -Force
-				
-				Get-Item $Path
-				
+			$scriptDir = Join-Path $workFolder $package.ScriptDirectory
+			if (!(Test-Path $scriptDir)) {
+				$null = New-Item $scriptDir -ItemType Directory
 			}
+			Copy-FilesToBuildFolder $currentBuild $scriptDir
+			
+			$packagePath = Join-Path $workFolder $package.PackageFile
+			Write-Verbose "Writing package file $packagePath"
+			$package.SaveToFile($packagePath, $true)
+				
+			if ($pscmdlet.ShouldProcess($pFile, "Repackaging original package")) {
+				Compress-Archive "$workFolder\*" -DestinationPath $pFile -Force
+			}
+			
+			Get-Item $Path
 		}
 		catch {
 			throw $_
