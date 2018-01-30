@@ -96,79 +96,87 @@ function Add-PowerUpBuild {
 		#Create a temp folder
 		$workFolder = New-TempWorkspaceFolder
 		
-		#Extract package
-		Write-Verbose "Extracting package $pFile to $workFolder"
-		Expand-Archive -Path $pFile -DestinationPath $workFolder -Force:$Force
-		
-		#Validate package
-		if (!$SkipValidation) {
-			$validation = Test-PowerUpPackage -Path $workFolder -Unpacked
-			if ($validation.IsValid -eq $false) {
-				$throwMessage = "The following package items have failed validation: "
-				$throwMessage += ($validation.ValidationTests | Where-Object { $_.Result -eq $false }).Item -join ", "
-				throw $throwMessage
-			}
-		}
-		
-		#Load package object
-		Write-Verbose "Loading package information from $pFile"
-		$package = [PowerUpPackage]::FromFile((Join-Path $workFolder "PowerUp.package.json"))
-		
-		$scriptsToAdd = @()
-		foreach ($childScript in $scriptCollection) { 
-			if ($NewOnly) {
-				#Check if the script path was already added in one of the previous builds
-				if ($package.SourcePathExists($childScript.FullName)) {
-					Write-Verbose "File $($childScript.FullName) was found among the package source files, skipping."
-					continue
+		#Ensure that temp workspace is always cleaned up
+		try {
+			#Extract package
+			Write-Verbose "Extracting package $pFile to $workFolder"
+			Expand-Archive -Path $pFile -DestinationPath $workFolder -Force:$Force
+			
+			#Validate package
+			if (!$SkipValidation) {
+				$validation = Test-PowerUpPackage -Path $workFolder -Unpacked
+				if ($validation.IsValid -eq $false) {
+					$throwMessage = "The following package items have failed validation: "
+					$throwMessage += ($validation.ValidationTests | Where-Object { $_.Result -eq $false }).Item -join ", "
+					throw $throwMessage
 				}
 			}
-			if ($UniqueOnly) {
-				#Check if the script hash was already added in one of the previous builds
-				if ($package.ScriptExists($childScript.FullName)) {
-					Write-Verbose "Hash of the file $($childScript.FullName) was found among the package scripts, skipping."
-					continue
+			
+			#Load package object
+			Write-Verbose "Loading package information from $pFile"
+			$package = [PowerUpPackage]::FromFile((Join-Path $workFolder "PowerUp.package.json"))
+			
+			$scriptsToAdd = @()
+			foreach ($childScript in $scriptCollection) { 
+				if ($NewOnly) {
+					#Check if the script path was already added in one of the previous builds
+					if ($package.SourcePathExists($childScript.FullName)) {
+						Write-Verbose "File $($childScript.FullName) was found among the package source files, skipping."
+						continue
+					}
 				}
+				if ($UniqueOnly) {
+					#Check if the script hash was already added in one of the previous builds
+					if ($package.ScriptExists($childScript.FullName)) {
+						Write-Verbose "Hash of the file $($childScript.FullName) was found among the package scripts, skipping."
+						continue
+					}
+				}
+				$scriptsToAdd += $childScript
+			}	
+
+
+			if (!$scriptsToAdd) {
+				throw "No scripts have been selected, aborting command."
 			}
-			$scriptsToAdd += $childScript
-		}	
 
+			#Create new build object
+			$currentBuild = [PowerUpBuild]::new($Build)
 
-		if (!$scriptsToAdd) {
-			throw "No scripts have been selected, aborting command."
-		}
-
-		#Create new build object
-		$currentBuild = [PowerUpBuild]::new($Build)
-
-		foreach ($buildScript in $scriptsToAdd) {
-			Write-Verbose "Adding file '$($buildScript.FullName)' to $currentBuild"
-			$currentBuild.NewScript($buildScript.FullName, $buildScript.ReplacePath) 
-		}
-
-		Write-Verbose "Adding $currentBuild to the package object"
-		$package.AddBuild($currentBuild)
-	
-		if ($pscmdlet.ShouldProcess($package, "Adding files to the package")) {
-			$scriptDir = Join-Path $workFolder $package.ScriptDirectory
-			if (!(Test-Path $scriptDir)) {
-				$null = New-Item $scriptDir -ItemType Directory
+			foreach ($buildScript in $scriptsToAdd) {
+				Write-Verbose "Adding file '$($buildScript.FullName)' to $currentBuild"
+				$currentBuild.NewScript($buildScript.FullName, $buildScript.ReplacePath) 
 			}
-			Copy-FilesToBuildFolder $currentBuild $scriptDir
-			
-			$packagePath = Join-Path $workFolder $package.PackageFile
-			Write-Verbose "Writing package file $packagePath"
-			$package.SaveToFile($packagePath, $true)
-			
-			Write-Verbose "Repackaging original package $Path"
-			Compress-Archive "$workFolder\*" -DestinationPath $Path -Force
-			
-			Get-Item $Path
-			
+
+			Write-Verbose "Adding $currentBuild to the package object"
+			$package.AddBuild($currentBuild)
+		
+			if ($pscmdlet.ShouldProcess($package, "Adding files to the package")) {
+				$scriptDir = Join-Path $workFolder $package.ScriptDirectory
+				if (!(Test-Path $scriptDir)) {
+					$null = New-Item $scriptDir -ItemType Directory
+				}
+				Copy-FilesToBuildFolder $currentBuild $scriptDir
+				
+				$packagePath = Join-Path $workFolder $package.PackageFile
+				Write-Verbose "Writing package file $packagePath"
+				$package.SaveToFile($packagePath, $true)
+				
+				Write-Verbose "Repackaging original package $Path"
+				Compress-Archive "$workFolder\*" -DestinationPath $Path -Force
+				
+				Get-Item $Path
+				
+			}
 		}
-		if ($workFolder.Name -like 'PowerUpWorkspace*') {
-			Write-Verbose "Removing temporary folder $workFolder"
-			Remove-Item $workFolder -Recurse -Force
+		catch {
+			throw $_
+		}
+		finally {
+			if ($workFolder.Name -like 'PowerUpWorkspace*') {
+				Write-Verbose "Removing temporary folder $workFolder"
+				Remove-Item $workFolder -Recurse -Force
+			}
 		}
 	}
 }

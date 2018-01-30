@@ -131,61 +131,68 @@ function New-PowerUpPackage {
 		if ($pscmdlet.ShouldProcess($package, "Generate a package file")) {
 			#Create temp folder
 			$workFolder = New-TempWorkspaceFolder
-			
-			#Copy package contents to the temp folder
-			Write-Verbose "Copying deployment file $($package.DeploySource)"
-			Copy-Item -Path $package.DeploySource -Destination (Join-Path $workFolder $package.DeployScript)
-			if ($package.PreDeploySource) {
-				Write-Verbose "Copying pre-deployment file $($package.PreDeploySource)"
-				Copy-Item -Path $package.PreDeploySource -Destination (Join-Path $workFolder $package.PreDeployScript)
-			}
-			if ($package.PostDeploySource) {
-				Write-Verbose "Copying post-deployment file $($package.PostDeploySource)"
-				Copy-Item -Path $package.PostDeploySource -Destination (Join-Path $workFolder $package.PostDeployScript)
-			}
-			#Write-Verbose "Copying deployment library $($package.DeploymentLibrary)"
-			#Copy-Item -Path $package.DeploymentLibrary -Destination $workFolder
-			$scriptDir = New-Item (Join-Path $workFolder $package.ScriptDirectory) -Type Directory
-			foreach ($b in $package.builds) {
-				Write-Verbose "Processing build $b"
-				foreach ($script in $b.scripts) {
-					$destination = Join-Path $scriptDir $script.packagePath
-					$destFolder = Split-Path $destination -Parent
-					if (-not (Test-Path $destFolder)) {
-						Write-Verbose "Creating folder $destFolder"
-						$null = New-Item -Path $destFolder -Type Directory
-					}
-					Write-Verbose "Copying file $($script.sourcePath)"
-					Copy-Item -Path $script.sourcePath -Destination $destination
-				}
-			}
-			
-			$configPath = Join-Path $workFolder $package.ConfigurationFile
-			Write-Verbose "Writing configuration file $configPath"
-			$config | ConvertTo-Json -Depth 2 | Out-File $configPath
-			
-			$packagePath = Join-Path $workFolder $package.PackageFile
-			Write-Verbose "Writing package file $packagePath"
-			$package.SaveToFile($packagePath)
-			
-			#Copy module into the archive
-			$moduleDir = New-Item (Join-Path $workFolder "Modules\PowerUp") -ItemType Directory
-			Write-Verbose "Copying module files into the package"
-			foreach ($file in (Get-ModuleFileList)) {
-				if (-not (Test-Path "$moduleDir\$($file.Directory)" -PathType Container)) {
-					$null = New-Item "$moduleDir\$($file.Directory)" -ItemType Directory
-				}
-				Copy-Item $file.FullName "$moduleDir\$($file.Path)" -Force -Recurse
-			}
 
-			Write-Verbose "Creating archive file $Name"
-			Compress-Archive "$workFolder\*" -DestinationPath $Name -Force:$Force
+			#Ensure that temporary workspace is removed
+			try {			
+				#Copy package contents to the temp folder
+				Write-Verbose "Copying deployment file $($package.DeploySource)"
+				Copy-Item -Path $package.DeploySource -Destination (Join-Path $workFolder $package.DeployScript)
+				if ($package.PreDeploySource) {
+					Write-Verbose "Copying pre-deployment file $($package.PreDeploySource)"
+					Copy-Item -Path $package.PreDeploySource -Destination (Join-Path $workFolder $package.PreDeployScript)
+				}
+				if ($package.PostDeploySource) {
+					Write-Verbose "Copying post-deployment file $($package.PostDeploySource)"
+					Copy-Item -Path $package.PostDeploySource -Destination (Join-Path $workFolder $package.PostDeployScript)
+				}
+				#Write-Verbose "Copying deployment library $($package.DeploymentLibrary)"
+				#Copy-Item -Path $package.DeploymentLibrary -Destination $workFolder
+				$scriptDir = New-Item (Join-Path $workFolder $package.ScriptDirectory) -Type Directory
+				foreach ($b in $package.builds) {
+					Write-Verbose "Processing build $b"
+					foreach ($script in $b.scripts) {
+						$destination = Join-Path $scriptDir $script.packagePath
+						$destFolder = Split-Path $destination -Parent
+						if (-not (Test-Path $destFolder)) {
+							Write-Verbose "Creating folder $destFolder"
+							$null = New-Item -Path $destFolder -Type Directory
+						}
+						Write-Verbose "Copying file $($script.sourcePath)"
+						Copy-Item -Path $script.sourcePath -Destination $destination
+					}
+				}
 			
-			Get-Item $Name
+				$configPath = Join-Path $workFolder $package.ConfigurationFile
+				Write-Verbose "Writing configuration file $configPath"
+				$config | ConvertTo-Json -Depth 2 | Out-File $configPath
 			
-			if ($workFolder.Name -like 'PowerUpWorkspace*') {
-				Write-Verbose "Removing temporary folder $workFolder"
-				Remove-Item $workFolder -Recurse -Force
+				$packagePath = Join-Path $workFolder $package.PackageFile
+				Write-Verbose "Writing package file $packagePath"
+				$package.SaveToFile($packagePath)
+			
+				#Copy module into the archive
+				$moduleDir = New-Item (Join-Path $workFolder "Modules\PowerUp") -ItemType Directory
+				Write-Verbose "Copying module files into the package"
+				foreach ($file in (Get-ModuleFileList)) {
+					if (-not (Test-Path "$moduleDir\$($file.Directory)" -PathType Container)) {
+						$null = New-Item "$moduleDir\$($file.Directory)" -ItemType Directory
+					}
+					Copy-Item $file.FullName "$moduleDir\$($file.Path)" -Force -Recurse
+				}
+
+				Write-Verbose "Creating archive file $Name"
+				Compress-Archive "$workFolder\*" -DestinationPath $Name -Force:$Force
+			
+				Get-Item $Name
+			}
+			catch {
+				throw $_
+			}
+			finally {
+				if ($workFolder.Name -like 'PowerUpWorkspace*') {
+					Write-Verbose "Removing temporary folder $workFolder"
+					Remove-Item $workFolder -Recurse -Force
+				}
 			}
 		}
 		

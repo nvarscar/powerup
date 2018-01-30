@@ -84,38 +84,47 @@
 		}
 		else {
 			$workFolder = New-TempWorkspaceFolder
-			#Extract package
-			Write-Verbose "Extracting package $Path to $workFolder"
-			Expand-Archive -Path $Path -DestinationPath $workFolder
 		}
-				
-		Write-Verbose "Starting validation"
-		$validationResults = @()
 		
-		$validationResults += Return-ValidationItem 'PackageFile' (Test-Path "$workFolder\PowerUp.package.json")
-		
-		$package = [PowerUpPackage]::FromFile("$workFolder\PowerUp.package.json")
-		$validationResults += Return-ValidationItem 'DeploymentScript' (Test-Path "$workFolder\$($package.DeployScript)")
-		$validationResults += Return-ValidationItem 'ConfigurationFile' (Test-Path "$workFolder\$($package.ConfigurationFile)")
-		
-		foreach ($build in $package.builds) {
-			$contentPath = "$workFolder\$($package.ScriptDirectory)"
-			$validationResults += Return-ValidationItem $build (Test-Path "$contentPath\$($build.build)" -PathType Container)
-			foreach ($script in $build.scripts) {
-				$validationResults += Return-ValidationItem $script ((Test-Path "$contentPath\$($script.packagePath)" -PathType Leaf) -and ((Get-FileHash "$contentPath\$($script.packagePath)").Hash -eq $script.hash))
+		#Ensure that temporary workspace is removed
+		try {					
+			if (!$Unpacked) {
+				#Extract package
+				Write-Verbose "Extracting package $Path to $workFolder"
+				Expand-Archive -Path $Path -DestinationPath $workFolder
 			}
+			Write-Verbose "Starting validation"
+			$validationResults = @()
+		
+			$validationResults += Return-ValidationItem 'PackageFile' (Test-Path "$workFolder\PowerUp.package.json")
+		
+			$package = [PowerUpPackage]::FromFile("$workFolder\PowerUp.package.json")
+			$validationResults += Return-ValidationItem 'DeploymentScript' (Test-Path "$workFolder\$($package.DeployScript)")
+			$validationResults += Return-ValidationItem 'ConfigurationFile' (Test-Path "$workFolder\$($package.ConfigurationFile)")
+		
+			foreach ($build in $package.builds) {
+				$contentPath = "$workFolder\$($package.ScriptDirectory)"
+				$validationResults += Return-ValidationItem $build (Test-Path "$contentPath\$($build.build)" -PathType Container)
+				foreach ($script in $build.scripts) {
+					$validationResults += Return-ValidationItem $script ((Test-Path "$contentPath\$($script.packagePath)" -PathType Leaf) -and ((Get-FileHash "$contentPath\$($script.packagePath)").Hash -eq $script.hash))
+				}
+			}
+			$outObject = @{ } | Select-Object Package, IsValid, ValidationTests
+			$outObject.Package = $Path
+			$outObject.IsValid = $validationResults.Result | ForEach-Object -Begin { $r = $true } -Process { $r = $r -and $_ } -End { $r }
+			$outObject.ValidationTests = $validationResults
+			$outObject
 		}
-		$outObject = @{ } | Select-Object Package, IsValid, ValidationTests
-		$outObject.Package = $Path
-		$outObject.IsValid = $validationResults.Result | ForEach-Object -Begin { $r = $true } -Process { $r = $r -and $_ } -End { $r }
-		$outObject.ValidationTests = $validationResults
-		$outObject
-
-		#Cleanup
-		if (!$Unpacked) {
-			if ($workFolder.Name -like 'PowerUpWorkspace*') {
-				Write-Verbose "Removing temporary folder $workFolder"
-				Remove-Item $workFolder -Recurse -Force
+		catch {
+			throw $_
+		}
+		finally {
+			#Cleanup
+			if (!$Unpacked) {
+				if ($workFolder.Name -like 'PowerUpWorkspace*') {
+					Write-Verbose "Removing temporary folder $workFolder"
+					Remove-Item $workFolder -Recurse -Force
+				}
 			}
 		}
 	}

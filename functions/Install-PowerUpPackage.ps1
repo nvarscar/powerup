@@ -98,6 +98,8 @@
 	)
 	
 	begin {
+	}
+	process {
 		if (!(Test-Path $Path)) {
 			throw "Package $Path not found. Aborting deployment."
 			return
@@ -118,54 +120,62 @@
 		else {
 			$workFolder = Get-Item -Path $WorkSpace
 		}
-	}
-	process {
-		#Extract package
-		Write-Verbose "Extracting package $pFile to $workFolder"
-		Expand-Archive -Path $pFile -DestinationPath $workFolder -Force:$Force
+
+		#Ensure that temporary workspace is removed
+		try {
+			#Extract package
+			Write-Verbose "Extracting package $pFile to $workFolder"
+			Expand-Archive -Path $pFile -DestinationPath $workFolder -Force:$Force
 		
-		#Validate package
-		if (!$SkipValidation) {
-			$validation = Test-PowerUpPackage -Path $workFolder -Unpacked
-			if ($validation.IsValid -eq $false) {
-				$throwMessage = "The following package items have failed validation: "
-				$throwMessage += ($validation.ValidationTests | Where-Object { $_.Result -eq $false }).Item -join ", "
-				throw $throwMessage
+			#Validate package
+			if (!$SkipValidation) {
+				$validation = Test-PowerUpPackage -Path $workFolder -Unpacked
+				if ($validation.IsValid -eq $false) {
+					$throwMessage = "The following package items have failed validation: "
+					$throwMessage += ($validation.ValidationTests | Where-Object { $_.Result -eq $false }).Item -join ", "
+					throw $throwMessage
+				}
+			}
+		
+			#Start deployment
+			$params = @{ PackageFile = "$workFolder\PowerUp.package.json" }
+			foreach ($key in ($PSBoundParameters.Keys | Where-Object {
+						$_ -in @(
+							'SqlInstance',
+							'Database',
+							'DeploymentMethod',
+							'ConnectionTimeout',
+							'ExecutionTimeout',						
+							'Encrypt',
+							'Credential',
+							'UserName',
+							'Password',
+							'SchemaVersionTable',
+							'Silent',
+							'OutputFile',
+							'Variables',
+							'Append'
+						)
+					})) {
+				$params += @{ $key = $PSBoundParameters[$key] }
+			}
+		
+			Write-Verbose "Initiating the deployment of the package $($params.PackageFile)"
+			Invoke-PowerUpDeployment @params
+		}
+		catch {
+			throw $_
+		}
+		finally {
+			if ($noWorkspace) {
+				if ($workFolder.Name -like 'PowerUpWorkspace*') {
+					Write-Verbose "Removing temporary folder $workFolder"
+					Remove-Item $workFolder -Recurse -Force
+				}
 			}
 		}
-		
-		#Start deployment
-		$params = @{ PackageFile = "$workFolder\PowerUp.package.json" }
-		foreach ($key in ($PSBoundParameters.Keys | Where-Object {
-					$_ -in @(
-						'SqlInstance',
-						'Database',
-						'DeploymentMethod',
-						'ConnectionTimeout',
-						'ExecutionTimeout',						
-						'Encrypt',
-						'Credential',
-						'UserName',
-						'Password',
-						'SchemaVersionTable',
-						'Silent',
-						'OutputFile',
-						'Variables',
-						'Append'
-					)
-				})) {
-			$params += @{ $key = $PSBoundParameters[$key] }
-		}
-		
-		Write-Verbose "Initiating the deployment of the package $($params.PackageFile)"
-		Invoke-PowerUpDeployment @params
 	}
 	end {
-		if ($noWorkspace) {
-			if ($workFolder.Name -like 'PowerUpWorkspace*') {
-				Write-Verbose "Removing temporary folder $workFolder"
-				Remove-Item $workFolder -Recurse -Force
-			}
-		}
+		
 	}
 }
