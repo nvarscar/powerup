@@ -31,7 +31,7 @@ Describe "$commandName tests" {
 			$null = Remove-Item $packageNameTest
 		}
 		It "should remove build from existing package" {
-			{ Remove-PowerUpBuild -Name $packageNameTest -Build 2.0 } | Should Not Throw
+			{ Remove-PowerUpBuild -Name $packageNameTest -Build 1.0 } | Should Not Throw
 			Test-Path $packageNameTest | Should Be $true
 		}
 		$results = Get-ArchiveItems $packageNameTest
@@ -85,7 +85,7 @@ Describe "$commandName tests" {
 			$null = Remove-Item $packageNameTest
 		}
 		It "should remove build from existing package" {
-			{ Remove-PowerUpBuild -Name $packageNameTest -Build 1.0,2.0  } | Should Not Throw
+			{ Remove-PowerUpBuild -Name $packageNameTest -Build "1.0","2.0"  } | Should Not Throw
 			Test-Path $packageNameTest | Should Be $true
 		}
 		$results = Get-ArchiveItems $packageNameTest
