@@ -67,7 +67,8 @@
 		'Install-PowerUpPackage',
 		'Invoke-PowerUpDeployment',
 		'New-PowerUpPackage',
-		'Test-PowerUpPackage'
+		'Test-PowerUpPackage',
+		'Remove-PowerUpBuild'
 	)
 	
 	# Cmdlets to export from this module
