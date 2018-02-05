@@ -137,12 +137,12 @@ Describe "$commandName tests" {
 		AfterAll {
 			$null = Remove-Item $packageNameTest
 		}
-		It "should fail build when there are no new files" {
+		It "should show warning when there are no new files" {
 			try {
-				$result = Add-PowerUpBuild -Name $packageNameTest -ScriptPath $v1scripts -UniqueOnly -ErrorVariable errorResult 2>$null
+				$result = Add-PowerUpBuild -Name $packageNameTest -ScriptPath $v1scripts -UniqueOnly -WarningVariable warningResult 3>$null
 			}
 			catch {}
-			$errorResult.Exception.Message -join ';' | Should BeLike '*No scripts have been selected*'
+			$warningResult.Message -join ';' | Should BeLike '*No scripts have been selected, the original file is unchanged.*'
 		}
 		It "should throw error when package data file does not exist" {
 			try {

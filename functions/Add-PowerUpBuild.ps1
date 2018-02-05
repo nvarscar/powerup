@@ -136,36 +136,38 @@ function Add-PowerUpBuild {
 			}	
 
 
-			if (!$scriptsToAdd) {
-				throw "No scripts have been selected, aborting command."
-			}
+			if ($scriptsToAdd) {
 
-			#Create new build object
-			$currentBuild = [PowerUpBuild]::new($Build)
+				#Create new build object
+				$currentBuild = [PowerUpBuild]::new($Build)
 
-			foreach ($buildScript in $scriptsToAdd) {
-				Write-Verbose "Adding file '$($buildScript.FullName)' to $currentBuild"
-				$currentBuild.NewScript($buildScript.FullName, $buildScript.ReplacePath) 
-			}
+				foreach ($buildScript in $scriptsToAdd) {
+					Write-Verbose "Adding file '$($buildScript.FullName)' to $currentBuild"
+					$currentBuild.NewScript($buildScript.FullName, $buildScript.ReplacePath) 
+				}
 
-			Write-Verbose "Adding $currentBuild to the package object"
-			$package.AddBuild($currentBuild)
+				Write-Verbose "Adding $currentBuild to the package object"
+				$package.AddBuild($currentBuild)
 		
-			$scriptDir = Join-Path $workFolder $package.ScriptDirectory
-			if (!(Test-Path $scriptDir)) {
-				$null = New-Item $scriptDir -ItemType Directory
-			}
-			Copy-FilesToBuildFolder $currentBuild $scriptDir
+				$scriptDir = Join-Path $workFolder $package.ScriptDirectory
+				if (!(Test-Path $scriptDir)) {
+					$null = New-Item $scriptDir -ItemType Directory
+				}
+				Copy-FilesToBuildFolder $currentBuild $scriptDir
 			
-			$packagePath = Join-Path $workFolder $package.PackageFile
-			Write-Verbose "Writing package file $packagePath"
-			$package.SaveToFile($packagePath, $true)
+				$packagePath = Join-Path $workFolder $package.PackageFile
+				Write-Verbose "Writing package file $packagePath"
+				$package.SaveToFile($packagePath, $true)
 				
-			if ($pscmdlet.ShouldProcess($pFile, "Repackaging original package")) {
-				Compress-Archive "$workFolder\*" -DestinationPath $pFile -Force
+				if ($pscmdlet.ShouldProcess($pFile, "Repackaging original package")) {
+					Compress-Archive "$workFolder\*" -DestinationPath $pFile -Force
+				}
+			}
+			else {
+				Write-Warning "No scripts have been selected, the original file is unchanged."
 			}
 			
-			Get-Item $Path
+			Get-Item $pFile
 		}
 		catch {
 			throw $_
