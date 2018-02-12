@@ -13,5 +13,6 @@ Function Get-NewBuildNumber {
 	
 	#>
 	Param ()
-	[string]$currentDate.Year + '.' + [string]$currentDate.Month + '.' + [string]$currentDate.Day + '.' + [string]$currentDate.Hour + [string]$currentDate.Minute + [string]$currentDate.Second
+	$currentDate = Get-Date
+	[string]$currentDate.Year + '.' + ([string]$currentDate.Month).PadLeft(2, '0') + '.' + ([string]$currentDate.Day).PadLeft(2, '0') + '.' + ([string]$currentDate.Hour).PadLeft(2, '0') + ([string]$currentDate.Minute).PadLeft(2, '0') + ([string]$currentDate.Second).PadLeft(2, '0')
 }
