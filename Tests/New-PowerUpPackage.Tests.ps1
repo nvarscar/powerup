@@ -4,6 +4,7 @@ $sut = (Split-Path -Leaf $MyInvocation.MyCommand.Path) -replace '\.Tests\.', '.'
 
 . '..\internal\Get-ArchiveItems.ps1'
 . '..\internal\New-TempWorkspaceFolder.ps1'
+. '..\internal\Expand-ArchiveItem.ps1'
 
 $workFolder = New-TempWorkspaceFolder
 $packagePath = "$workFolder\PowerUpTest.zip"
@@ -49,5 +50,22 @@ Describe "$commandName tests" {
 		$results = Get-ArchiveItems $packagePath
 		$results | Where-Object Path -eq 'PowerUp.config.json' | Should Not Be $null
 		$results | Where-Object Path -eq 'PowerUp.package.json' | Should Not Be $null
+	}
+	It "should be able to apply config file" {
+		$results = New-PowerUpPackage -ScriptPath '.\etc\query1.sql' -Name $packagePath -ConfigurationFile "$here\etc\full_config.json" -Force
+		$null = Expand-ArchiveItem -Path $packagePath -DestinationPath $workFolder -Item 'PowerUp.config.json'
+		$config = Get-Content "$workFolder\PowerUp.config.json" | ConvertFrom-Json
+		$config.ApplicationName | Should Be "MyTestApp"
+		$config.SqlInstance | Should Be "TestServer"
+		$config.Database | Should Be "MyTestDB"
+		$config.DeploymentMethod | Should Be "SingleTransaction"
+		$config.ConnectionTimeout | Should Be 40
+		$config.Encrypt | Should Be $null
+		$config.Credential | Should Be $null
+		$config.Username | Should Be "TestUser"
+		$config.Password | Should Be "TestPassword"
+		$config.SchemaVersionTable | Should Be "test.Table"
+		$config.Silent | Should Be $true
+		$config.Variables | Should Be $null
 	}
 }

@@ -55,15 +55,14 @@ function New-PowerUpPackage {
 		SupportsShouldProcess = $true)]
 	param
 	(
-		[Parameter(Mandatory = $true,
-			ValueFromPipeline = $true,
-			Position = 2)]
-		[object[]]$ScriptPath,
 		[Parameter(Mandatory = $false,
 			Position = 1)]
 		[Alias('FileName', 'Path', 'Package')]
 		[string]$Name = (Split-Path (Get-Location) -Leaf),
-		[Parameter(ParameterSetName = 'Default')]
+		[Parameter(Mandatory = $true,
+			ValueFromPipeline = $true,
+			Position = 2)]
+		[object[]]$ScriptPath,
 		[string]$Build,
 		[Parameter(ParameterSetName = 'Default')]
 		[string]$ApplicationName = 'PowerUp',
@@ -113,7 +112,13 @@ function New-PowerUpPackage {
 		$package = [PowerUpPackage]::new()
 		
 		#Create new build
-		$currentBuild = $package.NewBuild($config.Build)
+		if ($Build) {
+			$buildNumber = $Build
+		}
+		else {
+			$buildNumber = Get-NewBuildNumber
+		}
+		$currentBuild = $package.NewBuild($buildNumber)
 		Write-Verbose "Current build $($currentBuild.build)"
 		
 		#Create scripts array
