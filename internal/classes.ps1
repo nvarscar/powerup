@@ -306,30 +306,30 @@ class PowerUpBuild : PowerUpClass {
 
 class PowerUpFile : PowerUpClass {
 	#Public properties
-	[string]$sourcePath
+	[string]$SourcePath
 	[string]$PackagePath
 
 	#Hidden properties
 	hidden [string]$Hash
 	
 	#Constructors
-	PowerUpFile ([string]$sourcePath, [string]$packagePath) {
-		if (!(Test-Path $sourcePath)) {
-			$this.ThrowArgumentException("Path not found: $sourcePath")
+	PowerUpFile ([string]$SourcePath, [string]$packagePath) {
+		if (!(Test-Path $SourcePath)) {
+			$this.ThrowArgumentException("Path not found: $SourcePath")
 		}
 		if (!$packagePath) {
 			$this.ThrowArgumentException('Path inside the package cannot be empty')
 		}
-		$this.sourcePath = $sourcePath
+		$this.SourcePath = $SourcePath
 		$this.packagePath = $packagePath
-		$this.Hash = (Get-FileHash $sourcePath).Hash
+		$this.Hash = (Get-FileHash $SourcePath).Hash
 	}
 
 	hidden PowerUpFile ([psobject]$object) {
 		if (!$object.packagePath) {
 			$this.ThrowArgumentException('Path inside the package cannot be empty')
 		}
-		$this.sourcePath = $object.sourcePath
+		$this.SourcePath = $object.SourcePath
 		$this.packagePath = $object.packagePath
 		$this.Hash = $object.hash
 	}
