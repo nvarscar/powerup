@@ -129,7 +129,7 @@ function New-PowerUpPackage {
 			if (!(Test-Path $scriptItem)) {
 				throw "The following path is not valid: $ScriptPath"
 			}
-			Get-ChildScriptItem $scriptItem | ForEach-Object { $currentBuild.NewScript($_.FullName, $_.ReplacePath) }
+			Get-ChildScriptItem $scriptItem | ForEach-Object { $currentBuild.NewScript($_.FullName, $_.Depth) }
 		}
 	}
 	end {

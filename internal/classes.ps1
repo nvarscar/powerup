@@ -20,15 +20,15 @@
 		$this.ThrowException('ArgumentException', $message, $object, 'InvalidArgument')
 	}
 
-	hidden [string] RelativePathReplace ([string]$path, [string]$relativePath) {
-		return $this.PathReplace($path.Replace($relativePath, '').TrimStart('\'))
+	hidden [string] SplitRelativePath ([string]$Path, [int]$Depth) {
+		$returnPath = Split-Path -Path $Path -Leaf
+		$parent = Split-Path -Path $Path -Parent
+		while ($Depth-- -gt 0) {
+			$returnPath = Join-Path -Path (Split-Path -Path $parent -Leaf) -ChildPath $returnPath
+			$parent = Split-Path -Path $parent -Parent
+		}
+		return $returnPath
 	}
-
-	hidden  [string] PathReplace ([string]$path) {
-		return (($path -replace '\:', '\') -replace '\\\\', '\') -replace '^\.\\', ''
-	}
-
-
 
 }
 class PowerUpPackage : PowerUpClass {
@@ -295,11 +295,10 @@ class PowerUpBuild : PowerUpClass {
 		return $false
 	}
 	[string] GetPackagePath([string]$fileName) {
-		$packagePath = $this.PathReplace($fileName)
-		return (Join-Path $this.build $packagePath)
+		return $this.GetPackagePath($fileName, 0)
 	}
-	[string] GetPackagePath([string]$fileName, [string]$relativePath) {
-		$packagePath = $this.RelativePathReplace($fileName,$relativePath)
+	[string] GetPackagePath([string]$fileName, [int]$Depth) {
+		$packagePath = $this.SplitRelativePath($fileName,$Depth)
 		return (Join-Path $this.build $packagePath)
 	}
 }
