@@ -68,4 +68,18 @@ Describe "$commandName tests" {
 		$config.Silent | Should Be $true
 		$config.Variables | Should Be $null
 	}
+	It "should accept wildcard input" {
+		$results = New-PowerUpPackage -ScriptPath "$here\etc\install-tests\*" -Build 'abracadabra' -Name $packagePath -Force
+		$results | Should Not Be $null
+		$results.Name | Should Be (Split-Path $packagePath -Leaf)
+		Test-Path $packagePath | Should Be $true
+		$results = Get-ArchiveItems $packagePath
+		$results | Where-Object Path -eq 'content\abracadabra\Cleanup.sql' | Should Not Be $null
+		$results | Where-Object Path -eq 'content\abracadabra\success\1.sql' | Should Not Be $null
+		$results | Where-Object Path -eq 'content\abracadabra\success\2.sql' | Should Not Be $null
+		$results | Where-Object Path -eq 'content\abracadabra\success\3.sql' | Should Not Be $null
+		$results | Where-Object Path -eq 'content\abracadabra\transactional-failure\1.sql' | Should Not Be $null
+		$results | Where-Object Path -eq 'content\abracadabra\transactional-failure\2.sql' | Should Not Be $null
+		$results | Where-Object Path -eq 'content\abracadabra\verification\select.sql' | Should Not Be $null
+	}
 }

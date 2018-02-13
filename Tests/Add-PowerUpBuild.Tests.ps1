@@ -72,8 +72,8 @@ Describe "$commandName tests" {
 			$results | Where-Object Path -eq 'content\1.0\2.sql' | Should Be $null
 		}
 		It "build 2.0 should only contain scripts from 2.0" {
-			$results | Where-Object Path -eq 'content\2.0\2.sql' | Should Not Be $null
-			$results | Where-Object Path -eq 'content\2.0\1.sql' | Should Be $null
+			$results | Where-Object Path -eq "content\2.0\$(Split-Path $scriptFolder -Leaf)\2.sql" | Should Not Be $null
+			$results | Where-Object Path -eq "content\2.0\$(Split-Path $scriptFolder -Leaf)\1.sql" | Should Be $null
 		}
 		It "should contain module files" {
 			$results | Where-Object Path -eq 'Modules\PowerUp\PowerUp.psd1' | Should Not Be $null
@@ -112,14 +112,14 @@ Describe "$commandName tests" {
 			$results | Where-Object Path -eq 'content\1.0\2.sql' | Should Be $null
 		}
 		It "build 2.0 should only contain scripts from 2.0" {
-			$results | Where-Object Path -eq 'content\2.0\2.sql' | Should Not Be $null
-			$results | Where-Object Path -eq 'content\2.0\1.sql' | Should Be $null
+			$results | Where-Object Path -eq "content\2.0\$(Split-Path $scriptFolder -Leaf)\2.sql" | Should Not Be $null
+			$results | Where-Object Path -eq "content\2.0\$(Split-Path $scriptFolder -Leaf)\1.sql" | Should Be $null
 			$results | Where-Object Path -eq 'content\2.0\Test.sql' | Should Be $null
 		}
 		It "build 3.0 should only contain scripts from 3.0" {
 			$results | Where-Object Path -eq 'content\3.0\Test.sql' | Should Not Be $null
-			$results | Where-Object Path -eq 'content\3.0\2.sql' | Should Be $null
-			$results | Where-Object Path -eq 'content\3.0\1.sql' | Should Be $null
+			$results | Where-Object Path -eq "content\3.0\$(Split-Path $scriptFolder -Leaf)\2.sql" | Should Be $null
+			$results | Where-Object Path -eq "content\3.0\$(Split-Path $scriptFolder -Leaf)\1.sql" | Should Be $null
 		}
 		It "should contain module files" {
 			$results | Where-Object Path -eq 'Modules\PowerUp\PowerUp.psd1' | Should Not Be $null

@@ -27,7 +27,7 @@
 				Write-Verbose "Creating folder $destFolder"
 				$null = New-Item -Path $destFolder -ItemType Directory
 			}
-			Write-Verbose "Copying file $($script.sourcePath)"
+			Write-Verbose "Copying file $($script.sourcePath) to $destination"
 			Copy-Item -Path $script.sourcePath -Destination $destination
 		}
 	}

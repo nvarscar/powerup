@@ -14,7 +14,8 @@
 			}
 		}
 	}
-	foreach ($currentItem in (Get-Item $Path)) {
-		Get-ChildItemDepth $currentItem
+	$items = Get-Item $Path
+	foreach ($currentItem in $items) {
+		Get-ChildItemDepth -Item $currentItem -Depth ([int]$currentItem.PSIsContainer)
 	}
 }

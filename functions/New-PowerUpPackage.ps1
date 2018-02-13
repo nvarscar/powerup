@@ -150,22 +150,10 @@ function New-PowerUpPackage {
 					Write-Verbose "Copying post-deployment file $($package.PostDeploySource)"
 					Copy-Item -Path $package.PostDeploySource -Destination (Join-Path $workFolder $package.PostDeployScript)
 				}
-				#Write-Verbose "Copying deployment library $($package.DeploymentLibrary)"
-				#Copy-Item -Path $package.DeploymentLibrary -Destination $workFolder
+
+				#Copy scripts
 				$scriptDir = New-Item (Join-Path $workFolder $package.ScriptDirectory) -Type Directory
-				foreach ($b in $package.builds) {
-					Write-Verbose "Processing build $b"
-					foreach ($script in $b.scripts) {
-						$destination = Join-Path $scriptDir $script.packagePath
-						$destFolder = Split-Path $destination -Parent
-						if (-not (Test-Path $destFolder)) {
-							Write-Verbose "Creating folder $destFolder"
-							$null = New-Item -Path $destFolder -Type Directory
-						}
-						Write-Verbose "Copying file $($script.sourcePath)"
-						Copy-Item -Path $script.sourcePath -Destination $destination
-					}
-				}
+				Copy-FilesToBuildFolder $currentBuild $scriptDir
 			
 				$configPath = Join-Path $workFolder $package.ConfigurationFile
 				Write-Verbose "Writing configuration file $configPath"
