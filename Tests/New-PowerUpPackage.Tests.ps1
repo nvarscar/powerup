@@ -8,6 +8,7 @@ $sut = (Split-Path -Leaf $MyInvocation.MyCommand.Path) -replace '\.Tests\.', '.'
 
 $workFolder = New-TempWorkspaceFolder
 $packagePath = "$workFolder\PowerUpTest.zip"
+$scriptFolder = '.\etc\install-tests\success'
 
 Describe "$commandName tests" {	
 	
@@ -16,20 +17,6 @@ Describe "$commandName tests" {
 	}
 	AfterAll {
 		if ($workFolder.Name -like 'PowerUpWorkspace*') { Remove-Item $workFolder -Recurse }
-	}
-	It "returns error when path does not exist" {
-		try {
-			$result = New-PowerUpPackage -ScriptPath 'asduwheiruwnfelwefo\sdfpoijfdsf.sps' -ErrorVariable errorResult 2>$null
-		}
-		catch {}
-		$errorResult.Exception.Message -join ';' | Should BeLike '*The following path is not valid*'
-	}
-	It "returns error when config file does not exist" {
-		try {
-			$result = New-PowerUpPackage -ScriptPath '.' -Config 'asduwheiruwnfelwefo\sdfpoijfdsf.sps' -ErrorVariable errorResult 2>$null
-		}
-		catch {}
-		$errorResult.Exception.Message -join ';' | Should BeLike '*Configuration file does not exist*'
 	}
 	It "should create a package file" {
 		$results = New-PowerUpPackage -ScriptPath '.\etc\query1.sql' -Name $packagePath
@@ -81,5 +68,30 @@ Describe "$commandName tests" {
 		$results | Where-Object Path -eq 'content\abracadabra\transactional-failure\1.sql' | Should Not Be $null
 		$results | Where-Object Path -eq 'content\abracadabra\transactional-failure\2.sql' | Should Not Be $null
 		$results | Where-Object Path -eq 'content\abracadabra\verification\select.sql' | Should Not Be $null
+	}
+	Context "Negative tests" {
+		It "should throw error when scripts with the same relative path is being added" {
+			try {
+				$result = New-PowerUpPackage -Name $packageNameTest -ScriptPath "$scriptFolder\*", "$scriptFolder\..\transactional-failure\*" 2>$null
+			}
+			catch {
+				$errorResult = $_
+			}
+			$errorResult.Exception.Message -join ';' | Should BeLike '*already exists inside this build*'
+		}
+		It "returns error when path does not exist" {
+			try {
+				$result = New-PowerUpPackage -ScriptPath 'asduwheiruwnfelwefo\sdfpoijfdsf.sps' -ErrorVariable errorResult 2>$null
+			}
+			catch {}
+			$errorResult.Exception.Message -join ';' | Should BeLike '*The following path is not valid*'
+		}
+		It "returns error when config file does not exist" {
+			try {
+				$result = New-PowerUpPackage -ScriptPath '.' -Config 'asduwheiruwnfelwefo\sdfpoijfdsf.sps' -ErrorVariable errorResult 2>$null
+			}
+			catch {}
+			$errorResult.Exception.Message -join ';' | Should BeLike '*Configuration file does not exist*'
+		}
 	}
 }
