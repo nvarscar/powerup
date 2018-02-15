@@ -19,10 +19,12 @@ Describe "$commandName tests" {
 	Context "tests packed packages" {
 		It "returns error when path does not exist" {
 			try {
-				$result = Test-PowerUpPackage -Path 'asduwheiruwnfelwefo\sdfpoijfdsf.sps' -ErrorVariable errorResult 2>$null
+				$result = Test-PowerUpPackage -Path 'asduwheiruwnfelwefo\sdfpoijfdsf.sps'
 			}
-			catch { }
-			$errorResult.Exception.Message[0] | Should BeLike 'Path not found:*'
+			catch {
+				$errorResult = $_
+			}
+			$errorResult.Exception.Message -join ';' | Should BeLike '*Path not found:*'
 		}
 		It "should test a valid package file" {
 			$result = Test-PowerUpPackage -Path '.\etc\pkg_valid.zip'
@@ -43,10 +45,12 @@ Describe "$commandName tests" {
 	Context "tests unpacked packages" {
 		It "returns error when path is not a container" {
 			try {
-				$result = Test-PowerUpPackage -Path '.\etc\pkg_valid.zip' -Unpacked -ErrorVariable errorResult 2>$null
+				$result = Test-PowerUpPackage -Path '.\etc\pkg_valid.zip' -Unpacked
 			}
-			catch { }
-			$errorResult.Exception.Message[0] | Should BeLike 'Path is not a container*'
+			catch {
+				$errorResult = $_
+			}
+			$errorResult.Exception.Message -join ';' | Should BeLike '*Path is not a container*'
 		}
 		It "should test a folder with unpacked package" {
 			$result = Test-PowerUpPackage -Path $tempPath -Unpacked

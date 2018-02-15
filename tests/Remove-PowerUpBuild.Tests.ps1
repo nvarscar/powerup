@@ -113,23 +113,24 @@ Describe "$commandName tests" {
 		}
 		It "should throw error when package data file does not exist" {
 			try {
-				$result = Remove-PowerUpBuild -Name ".\etc\pkg_nopkgfile.zip" -Build 2.0 -SkipValidation -ErrorVariable errorResult 2>$null
+				$result = Remove-PowerUpBuild -Name ".\etc\pkg_nopkgfile.zip" -Build 2.0 -SkipValidation
 			}
-			catch {}
+			catch {
+				$errorResult = $_
+			}
 			$errorResult.Exception.Message -join ';' | Should BeLike '*Package file * not found*'
 		}
 		It "should throw error when package zip does not exist" {
 			try {
-				$result = Remove-PowerUpBuild -Name ".\nonexistingpackage.zip" -Build 2.0 -ErrorVariable errorResult 2>$null
+				$result = Remove-PowerUpBuild -Name ".\nonexistingpackage.zip" -Build 2.0
 			}
-			catch {}
+			catch {
+				$errorResult = $_
+			}
 			$errorResult.Exception.Message -join ';' | Should BeLike '*Package * not found. Aborting build*'
 		}
 		It "should output warning when build does not exist" {
-			try {
-				$result = Remove-PowerUpBuild -Name $packageNameTest -Build 3.0 -WarningVariable errorResult 3>$null
-			}
-			catch {}
+			$result = Remove-PowerUpBuild -Name $packageNameTest -Build 3.0 -WarningVariable errorResult 3>$null
 			$errorResult.Message -join ';' | Should BeLike '*not found in the package*'
 		}
 	}
