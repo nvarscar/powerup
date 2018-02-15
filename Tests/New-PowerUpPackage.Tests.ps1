@@ -72,7 +72,7 @@ Describe "$commandName tests" {
 	Context "Negative tests" {
 		It "should throw error when scripts with the same relative path is being added" {
 			try {
-				$result = New-PowerUpPackage -Name $packageNameTest -ScriptPath "$scriptFolder\*", "$scriptFolder\..\transactional-failure\*" 2>$null
+				$result = New-PowerUpPackage -Name $packageNameTest -ScriptPath "$scriptFolder\*", "$scriptFolder\..\transactional-failure\*"
 			}
 			catch {
 				$errorResult = $_
@@ -81,16 +81,20 @@ Describe "$commandName tests" {
 		}
 		It "returns error when path does not exist" {
 			try {
-				$result = New-PowerUpPackage -ScriptPath 'asduwheiruwnfelwefo\sdfpoijfdsf.sps' -ErrorVariable errorResult 2>$null
+				$result = New-PowerUpPackage -ScriptPath 'asduwheiruwnfelwefo\sdfpoijfdsf.sps'
 			}
-			catch {}
+			catch {
+				$errorResult = $_
+			}
 			$errorResult.Exception.Message -join ';' | Should BeLike '*The following path is not valid*'
 		}
 		It "returns error when config file does not exist" {
 			try {
-				$result = New-PowerUpPackage -ScriptPath '.' -Config 'asduwheiruwnfelwefo\sdfpoijfdsf.sps' -ErrorVariable errorResult 2>$null
+				$result = New-PowerUpPackage -ScriptPath '.' -Config 'asduwheiruwnfelwefo\sdfpoijfdsf.sps'
 			}
-			catch {}
+			catch {
+				$errorResult = $_
+			}
 			$errorResult.Exception.Message -join ';' | Should BeLike '*Configuration file does not exist*'
 		}
 	}

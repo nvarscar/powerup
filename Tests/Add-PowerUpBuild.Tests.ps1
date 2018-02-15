@@ -138,36 +138,39 @@ Describe "$commandName tests" {
 			$null = Remove-Item $packageNameTest
 		}
 		It "should show warning when there are no new files" {
-			try {
-				$result = Add-PowerUpBuild -Name $packageNameTest -ScriptPath $v1scripts -UniqueOnly -WarningVariable warningResult 3>$null
-			}
-			catch {}
+			$result = Add-PowerUpBuild -Name $packageNameTest -ScriptPath $v1scripts -UniqueOnly -WarningVariable warningResult 3>$null
 			$warningResult.Message -join ';' | Should BeLike '*No scripts have been selected, the original file is unchanged.*'
 		}
 		It "should throw error when package data file does not exist" {
 			try {
-				$result = Add-PowerUpBuild -Name ".\etc\pkg_nopkgfile.zip" -ScriptPath $v2scripts -SkipValidation -ErrorVariable errorResult 2>$null
+				$result = Add-PowerUpBuild -Name ".\etc\pkg_nopkgfile.zip" -ScriptPath $v2scripts -SkipValidation
 			}
-			catch {}
+			catch {
+				$errorResult = $_
+			}
 			$errorResult.Exception.Message -join ';' | Should BeLike '*Package file * not found*'
 		}
 		It "should throw error when package zip does not exist" {
 			try {
-				$result = Add-PowerUpBuild -Name ".\nonexistingpackage.zip" -ScriptPath $v1scripts -ErrorVariable errorResult 2>$null
+				$result = Add-PowerUpBuild -Name ".\nonexistingpackage.zip" -ScriptPath $v1scripts
 			}
-			catch {}
+			catch {
+				$errorResult = $_
+			}
 			$errorResult.Exception.Message -join ';' | Should BeLike '*Package * not found. Aborting build*'
 		}
 		It "should throw error when path cannot be resolved" {
 			try {
-				$result = Add-PowerUpBuild -Name $packageNameTest -ScriptPath ".\nonexistingsourcefiles.sql" -ErrorVariable errorResult 2>$null
+				$result = Add-PowerUpBuild -Name $packageNameTest -ScriptPath ".\nonexistingsourcefiles.sql"
 			}
-			catch {}
+			catch {
+				$errorResult = $_
+			}
 			$errorResult.Exception.Message -join ';' | Should BeLike '*The following path is not valid*'
 		}
 		It "should throw error when scripts with the same relative path is being added" {
 			try {
-				$result = Add-PowerUpBuild -Name $packageNameTest -ScriptPath "$scriptFolder\*", "$scriptFolder\..\transactional-failure\*" 2>$null
+				$result = Add-PowerUpBuild -Name $packageNameTest -ScriptPath "$scriptFolder\*", "$scriptFolder\..\transactional-failure\*"
 			}
 			catch {
 				$errorResult = $_
