@@ -8,6 +8,7 @@ $sut = (Split-Path -Leaf $MyInvocation.MyCommand.Path) -replace '\.Tests\.', '.'
 . '..\internal\New-TempWorkspaceFolder.ps1'
 
 $workFolder = New-TempWorkspaceFolder
+$unpackedFolder = New-TempWorkspaceFolder
 
 $scriptFolder = '.\etc\install-tests\success'
 $v1scripts = Join-Path $scriptFolder '1.sql'
@@ -21,6 +22,7 @@ Describe "$commandName tests" {
 	}
 	AfterAll {
 		if ($workFolder.Name -like 'PowerUpWorkspace*') { Remove-Item $workFolder -Recurse }
+		if ($unpackedFolder.Name -like 'PowerUpWorkspace*') { Remove-Item $unpackedFolder -Recurse }
 	}
 	Context "adding version 2.0 to existing package" {
 		BeforeAll {
@@ -128,6 +130,28 @@ Describe "$commandName tests" {
 		It "should contain config files" {
 			$results | Where-Object Path -eq 'PowerUp.config.json' | Should Not Be $null
 			$results | Where-Object Path -eq 'PowerUp.package.json' | Should Not Be $null
+		}
+	}
+	Context "unpacked package tests" {
+		BeforeAll {
+			Expand-Archive '.\etc\pkg_valid.zip' $unpackedFolder
+		}
+		It "Should add a build to unpacked folder" {
+			$results = Add-PowerUpBuild -ScriptPath "$scriptFolder\*" -Name $unpackedFolder -Unpacked -Build 2.0
+			$results | Should Not Be $null
+			$results.Name | Should Be (Split-Path $unpackedFolder -Leaf)
+			Test-Path "$unpackedFolder\content\2.0" | Should Be $true
+			Get-ChildItem "$scriptFolder" | ForEach-Object {
+				Test-Path "$unpackedFolder\content\2.0\$($_.Name)" | Should Be $true
+			}
+		}
+		It "should contain module files" {
+			Test-Path "$unpackedFolder\Modules\PowerUp\PowerUp.psd1" | Should Be $true
+			Test-Path "$unpackedFolder\Modules\PowerUp\bin\DbUp.dll" | Should Be $true
+		}
+		It "should contain config files" {
+			Test-Path "$unpackedFolder\PowerUp.config.json" | Should Be $true
+			Test-Path "$unpackedFolder\PowerUp.package.json" | Should Be $true
 		}
 	}
 	Context "negative tests" {
