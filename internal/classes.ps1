@@ -13,7 +13,7 @@
 			"[$($this.gettype().Name)]",
 			$errorCategory,
 			$object)
-		$PSCmdlet.ThrowTerminatingError($errorMessageObject)
+		throw $errorMessageObject
 	}
 
 	hidden [void] ThrowArgumentException ([object]$object, [string]$message) {
