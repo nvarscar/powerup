@@ -118,18 +118,12 @@ function New-PowerUpPackage {
 		else {
 			$buildNumber = Get-NewBuildNumber
 		}
-		$currentBuild = $package.NewBuild($buildNumber)
-		Write-Verbose "Current build $($currentBuild.build)"
-		
-		#Create scripts array
-		$scripts = @()
 	}
 	process {
 		foreach ($scriptItem in $ScriptPath) {
 			if (!(Test-Path $scriptItem)) {
-				throw "The following path is not valid: $ScriptPath"
+				throw "The following path is not valid: $scriptItem"
 			}
-			Get-ChildScriptItem $scriptItem | ForEach-Object { $currentBuild.NewScript($_.FullName, $_.Depth) }
 		}
 	}
 	end {
@@ -151,10 +145,7 @@ function New-PowerUpPackage {
 					Copy-Item -Path $package.PostDeploySource -Destination (Join-Path $workFolder $package.PostDeployScript)
 				}
 
-				#Copy scripts
-				$scriptDir = New-Item (Join-Path $workFolder $package.ScriptDirectory) -Type Directory
-				Copy-FilesToBuildFolder $currentBuild $scriptDir
-			
+				#Write files into the folder
 				$configPath = Join-Path $workFolder $package.ConfigurationFile
 				Write-Verbose "Writing configuration file $configPath"
 				$config | ConvertTo-Json -Depth 2 | Out-File $configPath
@@ -162,7 +153,7 @@ function New-PowerUpPackage {
 				$packagePath = Join-Path $workFolder $package.PackageFile
 				Write-Verbose "Writing package file $packagePath"
 				$package.SaveToFile($packagePath)
-			
+
 				#Copy module into the archive
 				$moduleDir = New-Item (Join-Path $workFolder "Modules\PowerUp") -ItemType Directory
 				Write-Verbose "Copying module files into the package"
@@ -173,6 +164,10 @@ function New-PowerUpPackage {
 					Copy-Item $file.FullName "$moduleDir\$($file.Path)" -Force -Recurse
 				}
 
+				#Create a new build
+				$null = Add-PowerUpBuild -Path $workFolder -Build $buildNumber -ScriptPath $ScriptPath -Unpacked -SkipValidation
+
+				#Compress the files
 				Write-Verbose "Creating archive file $Name"
 				Compress-Archive "$workFolder\*" -DestinationPath $Name -Force:$Force
 			
