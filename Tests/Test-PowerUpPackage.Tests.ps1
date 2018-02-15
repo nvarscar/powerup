@@ -3,18 +3,16 @@ $here = Split-Path -Parent $MyInvocation.MyCommand.Path
 $sut = (Split-Path -Leaf $MyInvocation.MyCommand.Path) -replace '\.Tests\.', '.'
 
 . '..\internal\Get-ArchiveItems.ps1'
+. '..\internal\New-TempWorkspaceFolder.ps1'
 
-$tempFolder = "PowerUpTestWorkspace" + [string](Get-Random(99999))
-$tempPath = [System.IO.Path]::GetTempPath()
-$tempPath = Join-Path $tempPath $tempFolder
+$workFolder = New-TempWorkspaceFolder
 
 Describe "$commandName tests" {
 	BeforeAll {
-		$workFolder = New-Item $tempPath -ItemType Directory
 		Expand-Archive '.\etc\pkg_valid.zip' $workFolder
 	}
 	AfterAll {
-		Remove-Item $tempPath -Recurse -Force
+		if ($workFolder.Name -like 'PowerUpWorkspace*') { Remove-Item $workFolder -Recurse }
 	}
 	Context "tests packed packages" {
 		It "returns error when path does not exist" {
@@ -53,16 +51,16 @@ Describe "$commandName tests" {
 			$errorResult.Exception.Message -join ';' | Should BeLike '*Path is not a container*'
 		}
 		It "should test a folder with unpacked package" {
-			$result = Test-PowerUpPackage -Path $tempPath -Unpacked
-			$result.Package | Should Be $tempPath
+			$result = Test-PowerUpPackage -Path $workFolder -Unpacked
+			$result.Package | Should Be $workFolder.FullName
 			$result.IsValid | Should Be true
 		}
 		It "folder should remain after tests" {
-			Test-Path $tempPath | Should Be $true
+			Test-Path $workFolder | Should Be $true
 		}
 		It "should test an unpacked package file" {
-			$result = Test-PowerUpPackage -Path "$tempPath\PowerUp.package.json" -Unpacked
-			$result.Package | Should Be "$tempPath\PowerUp.package.json"
+			$result = Test-PowerUpPackage -Path "$workFolder\PowerUp.package.json" -Unpacked
+			$result.Package | Should Be "$workFolder\PowerUp.package.json"
 			$result.IsValid | Should Be true
 		}
 	}
