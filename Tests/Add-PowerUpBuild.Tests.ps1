@@ -165,5 +165,14 @@ Describe "$commandName tests" {
 			catch {}
 			$errorResult.Exception.Message -join ';' | Should BeLike '*The following path is not valid*'
 		}
+		It "should throw error when scripts with the same relative path is being added" {
+			try {
+				$result = Add-PowerUpBuild -Name $packageNameTest -ScriptPath "$scriptFolder\*", "$scriptFolder\..\transactional-failure\*" 2>$null
+			}
+			catch {
+				$errorResult = $_
+			}
+			$errorResult.Exception.Message -join ';' | Should BeLike '*already exists inside this build*'
+		}
 	}
 }
