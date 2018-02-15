@@ -65,7 +65,9 @@ function Add-PowerUpBuild {
 		[string]$Build,
 		[switch]$SkipValidation,
 		[switch]$NewOnly,
-		[switch]$UniqueOnly
+		[switch]$UniqueOnly,
+		[Parameter(DontShow)]
+		[switch]$Unpacked
 	)
 	
 	begin {
@@ -94,14 +96,21 @@ function Add-PowerUpBuild {
 	}
 	end {
 		#Create a temp folder
-		$workFolder = New-TempWorkspaceFolder
+		if ($Unpacked) {
+			$workFolder = $pFile
+		}
+		else {
+			$workFolder = New-TempWorkspaceFolder
+		}
 		
 		#Ensure that temp workspace is always cleaned up
 		try {
-			#Extract package
-			Write-Verbose "Extracting package $pFile to $workFolder"
-			Expand-Archive -Path $pFile -DestinationPath $workFolder -Force:$Force
-			
+			if (!$Unpacked) {
+				#Extract package
+				Write-Verbose "Extracting package $pFile to $workFolder"
+				Expand-Archive -Path $pFile -DestinationPath $workFolder -Force:$Force
+			}
+
 			#Validate package
 			if (!$SkipValidation) {
 				$validation = Test-PowerUpPackage -Path $workFolder -Unpacked
@@ -153,14 +162,20 @@ function Add-PowerUpBuild {
 				if (!(Test-Path $scriptDir)) {
 					$null = New-Item $scriptDir -ItemType Directory
 				}
-				Copy-FilesToBuildFolder $currentBuild $scriptDir
+
+				if ($pscmdlet.ShouldProcess($pFile, "Copying build files")) {
+					Copy-FilesToBuildFolder $currentBuild $scriptDir
+				}
 			
 				$packagePath = Join-Path $workFolder $package.PackageFile
-				Write-Verbose "Writing package file $packagePath"
-				$package.SaveToFile($packagePath, $true)
+				if ($pscmdlet.ShouldProcess($pFile, "Writing package file $packagePath")) {
+					$package.SaveToFile($packagePath, $true)
+				}
 				
-				if ($pscmdlet.ShouldProcess($pFile, "Repackaging original package")) {
-					Compress-Archive "$workFolder\*" -DestinationPath $pFile -Force
+				if (!$Unpacked) {
+					if ($pscmdlet.ShouldProcess($pFile, "Repackaging original package")) {
+						Compress-Archive "$workFolder\*" -DestinationPath $pFile -Force
+					}
 				}
 			}
 			else {
@@ -173,7 +188,7 @@ function Add-PowerUpBuild {
 			throw $_
 		}
 		finally {
-			if ($workFolder.Name -like 'PowerUpWorkspace*') {
+			if (!$Unpacked -and $workFolder.Name -like 'PowerUpWorkspace*') {
 				Write-Verbose "Removing temporary folder $workFolder"
 				Remove-Item $workFolder -Recurse -Force
 			}
