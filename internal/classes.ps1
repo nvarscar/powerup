@@ -16,7 +16,7 @@
 		$PSCmdlet.ThrowTerminatingError($errorMessageObject)
 	}
 
-	hidden [void] ThrowArgumentException ([string]$message, [object]$object) {
+	hidden [void] ThrowArgumentException ([object]$object, [string]$message) {
 		$this.ThrowException('ArgumentException', $message, $object, 'InvalidArgument')
 	}
 
@@ -84,11 +84,11 @@ class PowerUpPackage : PowerUpClass {
 	#Methods
 	[PowerUpBuild] NewBuild ([string]$build) {
 		if (!$build) {
-			$this.ThrowArgumentException('Build name is not specified.', $build)
+			$this.ThrowArgumentException($this, 'Build name is not specified.')
 			return $null
 		}
 		if ($currentBuild = $this.builds | Where-Object { $_.build -eq $build }) {
-			$this.ThrowArgumentException("Build $build already exists.", $build)
+			$this.ThrowArgumentException($this, "Build $build already exists.")
 			return $null
 		}
 		else {
@@ -115,13 +115,13 @@ class PowerUpPackage : PowerUpClass {
 			return $currentBuild
 		}
 		else {
-			$this.ThrowArgumentException('Build not found.', $build)
+			$this.ThrowArgumentException($this, 'Build not found.')
 			return $null
 		}
 	}
 	[void] AddBuild ([PowerUpBuild]$build) {
 		if ($currentBuild = $this.builds | Where-Object { $_.build -eq $build.build }) {
-			$this.ThrowArgumentException("Build $build already exists.", $build)
+			$this.ThrowArgumentException($this, "Build $build already exists.")
 		}
 		else {
 			$this.builds += $build
@@ -133,7 +133,7 @@ class PowerUpPackage : PowerUpClass {
 			$this.builds = $this.builds | Where-Object { $_.build -ne $build.build }
 		}
 		else {
-			$this.ThrowArgumentException("Build $build not found.", $build)
+			$this.ThrowArgumentException($this, "Build $build not found.")
 		}
 	}
 	[void] RemoveBuild ([string]$build) {
@@ -141,7 +141,7 @@ class PowerUpPackage : PowerUpClass {
 	}
 	[bool] ScriptExists([string]$fileName) {
 		if (!(Test-Path $fileName)) {
-			$this.ThrowArgumentException("Path not found: $fileName")
+			$this.ThrowArgumentException($this, "Path not found: $fileName")
 		}
 		$hash = (Get-FileHash $fileName).Hash
 		foreach ($build in $this.builds) {
@@ -153,7 +153,7 @@ class PowerUpPackage : PowerUpClass {
 	}
 	[bool] SourcePathExists([string]$fileName) {
 		if (!(Test-Path $fileName)) {
-			$this.ThrowArgumentException("Path not found: $fileName")
+			$this.ThrowArgumentException($this, "Path not found: $fileName")
 		}
 		$path = (Resolve-Path $fileName).Path
 		foreach ($build in $this.builds) {
@@ -163,17 +163,17 @@ class PowerUpPackage : PowerUpClass {
 		}
 		return $false
 	}
-	[bool] PackagePathExists([string]$fileName) {
+	[bool] PackagePathExists([string]$PackagePath) {
 		foreach ($build in $this.builds) {
-			if ($build.PackagePathExists($fileName)) {
+			if ($build.PackagePathExists($PackagePath)) {
 				return $true
 			}
 		}
 		return $false
 	}
-	[bool] PackagePathExists([string]$fileName, [string]$relativePath) {
+	[bool] PackagePathExists([string]$fileName, [int]$Depth) {
 		foreach ($build in $this.builds) {
-			if ($build.PackagePathExists($fileName, $relativePath)) {
+			if ($build.PackagePathExists($fileName, $Depth)) {
 				return $true
 			}
 		}
@@ -190,7 +190,7 @@ class PowerUpBuild : PowerUpClass {
 	#Constructors
 	PowerUpBuild ([string]$build) {
 		if (!$build) {
-			$this.ThrowArgumentException('Build name cannot be empty');
+			$this.ThrowArgumentException($this, 'Build name cannot be empty');
 		}
 		$this.build = $build
 		$this.CreatedDate = (Get-Date).Datetime
@@ -199,47 +199,44 @@ class PowerUpBuild : PowerUpClass {
 
 	hidden PowerUpBuild ([psobject]$object) {
 		if (!$object.build) {
-			$this.ThrowArgumentException('Build name cannot be empty');
+			$this.ThrowArgumentException($this, 'Build name cannot be empty');
 		}
 		$this.build = $object.build
 		$this.CreatedDate = $object.CreatedDate
 		foreach ($script in $object.scripts) {
 			$newScript = [PowerUpFile]::AddPackageFile($script)
-			$this.AddScript($newScript)
+			$this.AddScript($newScript, $true)
 		}
 		#$this.deployOrder = $parent.GetLastBuildDeployOrder() + 10
 	}
 
 	#Methods 
-	[void] NewScript ([string[]]$fileName) {
-		foreach ($p in $fileName) {
-			if ($currentFile = $this.scripts | Where-Object { $_.sourcePath -eq $p }) {
-				$this.ThrowArgumentException("Script $p already exists.");
+	[void] NewScript ([object[]]$FileObject) {
+		foreach ($p in $FileObject) {
+			if ($p.Depth) {
+				$depth = $p.Depth
 			}
 			else {
-				$packagePath = $this.GetPackagePath($p)
-				$s = New-Object PowerUpFile ($p, $packagePath)
-				$this.scripts += $s
+				$depth = 0
 			}
+			$s = New-Object PowerUpFile ($p.FullName, $this.GetPackagePath($p.FullName, $depth))
+			$this.AddScript($s)
 		}
 	}
-	[void] NewScript ([string]$fileName, [string]$relativePath) {
-		if ($currentFile = $this.scripts | Where-Object { $_.sourcePath -eq $fileName }) {
-			$this.ThrowArgumentException("Script $fileName already exists.")
-		}
-		else {
-			$packagePath = $this.GetPackagePath($fileName, $relativePath)
-			$s = New-Object PowerUpFile ($fileName, $packagePath)
-			$this.scripts += $s
-		}
+	[void] NewScript ([string]$FileName, [int]$Depth) {
+		$s = New-Object PowerUpFile ($FileName, $this.GetPackagePath($FileName, $Depth))
+		$this.AddScript($s)
 	}
 	[void] AddScript ([PowerUpFile[]]$script) {
+		$this.AddScript($script, $false)
+	}
+	[void] AddScript ([PowerUpFile[]]$script, [bool]$SkipSourceCheck) {
 		foreach ($s in $script) {
-			if ($this.scripts | Where-Object { $_.sourcePath -eq $s.sourcePath }) {
-				$this.ThrowArgumentException("External script $($s.sourcePath) already exists.")
+			if (!$SkipSourceCheck -and $this.SourcePathExists($s.sourcePath)) {
+				$this.ThrowArgumentException($this, "External script $($s.sourcePath) already exists.")
 			}
-			elseif ($this.scripts | Where-Object { $_.packagePath -eq $s.packagePath }) {
-				$this.ThrowArgumentException("Script $($s.packagePath) already exists inside this build.")
+			elseif ($this.PackagePathExists($s.packagePath)) {
+				$this.ThrowArgumentException($this, "Script $($s.packagePath) already exists inside this build.")
 			}
 			else {
 				$this.scripts += $script
@@ -259,14 +256,14 @@ class PowerUpBuild : PowerUpClass {
 	}
 	[bool] ScriptExists([string]$fileName) {
 		if (!(Test-Path $fileName)) {
-			$this.ThrowArgumentException("Path not found: $fileName")
+			$this.ThrowArgumentException($this, "Path not found: $fileName")
 		}
 		$hash = (Get-FileHash $fileName).Hash
 		return $this.HashExists($hash)
 	}
 	[bool] SourcePathExists([string]$fileName) {
 		if (!(Test-Path $fileName)) {
-			$this.ThrowArgumentException("Path not found: $fileName")
+			$this.ThrowArgumentException($this, "Path not found: $fileName")
 		}
 		$path = (Resolve-Path $fileName).Path
 		foreach ($script in $this.Scripts) {
@@ -276,17 +273,16 @@ class PowerUpBuild : PowerUpClass {
 		}
 		return $false
 	}
-	[bool] PackagePathExists([string]$fileName) {
-		$path = $this.GetPackagePath($fileName)
+	[bool] PackagePathExists([string]$PackagePath) {
 		foreach ($script in $this.Scripts) {
-			if ($path -eq $script.packagePath) {
+			if ($PackagePath -eq $script.packagePath) {
 				return $true
 			}
 		}
 		return $false
 	}
-	[bool] PackagePathExists([string]$fileName, [string]$relativePath) {
-		$path = $this.GetPackagePath($fileName, $relativePath)
+	[bool] PackagePathExists([string]$fileName, [int]$Depth) {
+		$path = $this.GetPackagePath($fileName, $Depth)
 		foreach ($script in $this.Scripts) {
 			if ($path -eq $script.packagePath) {
 				return $true
@@ -314,10 +310,10 @@ class PowerUpFile : PowerUpClass {
 	#Constructors
 	PowerUpFile ([string]$SourcePath, [string]$packagePath) {
 		if (!(Test-Path $SourcePath)) {
-			$this.ThrowArgumentException("Path not found: $SourcePath")
+			$this.ThrowArgumentException($this, "Path not found: $SourcePath")
 		}
 		if (!$packagePath) {
-			$this.ThrowArgumentException('Path inside the package cannot be empty')
+			$this.ThrowArgumentException($this, 'Path inside the package cannot be empty')
 		}
 		$this.SourcePath = $SourcePath
 		$this.packagePath = $packagePath
@@ -326,7 +322,7 @@ class PowerUpFile : PowerUpClass {
 
 	hidden PowerUpFile ([psobject]$object) {
 		if (!$object.packagePath) {
-			$this.ThrowArgumentException('Path inside the package cannot be empty')
+			$this.ThrowArgumentException($this, 'Path inside the package cannot be empty')
 		}
 		$this.SourcePath = $object.SourcePath
 		$this.packagePath = $object.packagePath
