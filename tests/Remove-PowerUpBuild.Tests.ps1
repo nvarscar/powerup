@@ -5,6 +5,7 @@ $sut = (Split-Path -Leaf $MyInvocation.MyCommand.Path) -replace '\.Tests\.', '.'
 . '.\constants.ps1'
 
 . '..\internal\Get-ArchiveItems.ps1'
+. '..\internal\Remove-ArchiveItem.ps1'
 . '..\internal\New-TempWorkspaceFolder.ps1'
 
 $workFolder = New-TempWorkspaceFolder
@@ -14,6 +15,7 @@ $v1scripts = Join-Path $scriptFolder '1.sql'
 $v2scripts = Join-Path $scriptFolder '2.sql'
 $packageName = Join-Path $workFolder 'TempDeployment.zip'
 $packageNameTest = "$packageName.test.zip"
+$packageNoPkgFile = Join-Path $workFolder "pkg_nopkgfile.zip"
 
 Describe "$commandName tests" {
 	BeforeAll {
@@ -107,13 +109,15 @@ Describe "$commandName tests" {
 	Context "negative tests" {
 		BeforeAll {
 			$null = Copy-Item $packageName $packageNameTest
+			$null = New-PowerUpPackage -Name $packageNoPkgFile -Build 1.0 -ScriptPath $scriptFolder
+			$null = Remove-ArchiveItem -Path $packageNoPkgFile -Item 'PowerUp.package.json'
 		}
 		AfterAll {
 			$null = Remove-Item $packageNameTest
 		}
 		It "should throw error when package data file does not exist" {
 			try {
-				$result = Remove-PowerUpBuild -Name ".\etc\pkg_nopkgfile.zip" -Build 2.0 -SkipValidation
+				$result = Remove-PowerUpBuild -Name $packageNoPkgFile -Build 2.0 -SkipValidation
 			}
 			catch {
 				$errorResult = $_

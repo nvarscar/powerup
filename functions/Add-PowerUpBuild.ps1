@@ -49,19 +49,17 @@ function Add-PowerUpBuild {
 	.NOTES
 		Additional information about the function.
 #>
-	[CmdletBinding(DefaultParameterSetName = 'Default',
-		SupportsShouldProcess = $true)]
+	[CmdletBinding(SupportsShouldProcess = $true)]
 	param
 	(
 		[Parameter(Mandatory = $true,
 			ValueFromPipeline = $true,
 			Position = 1)]
-		[object[]]$ScriptPath,
-		[Parameter(Mandatory = $false,
-			Position = 2)]
 		[Alias('FileName', 'Name', 'Package')]
 		[string]$Path,
-		[Parameter(ParameterSetName = 'Default')]
+		[Parameter(Mandatory = $true,
+			Position = 2)]
+		[object[]]$ScriptPath,
 		[string]$Build,
 		[switch]$SkipValidation,
 		[switch]$NewOnly,
@@ -75,23 +73,22 @@ function Add-PowerUpBuild {
 		if (!$Build) {
 			$Build = Get-NewBuildNumber
 		}
-		if (!(Test-Path $Path)) {
-			throw "Package $Path not found. Aborting build."
-			return
-		}
-		else {
-			$pFile = Get-Item $Path
-		}
-		
 		$scriptCollection = @()
-	}
-	process {
 		foreach ($scriptItem in $ScriptPath) {
 			if (!(Test-Path $scriptItem)) {
 				throw "The following path is not valid: $ScriptPath"
 			}
 			Write-Verbose "Processing path $scriptItem"
 			$scriptCollection += Get-ChildScriptItem $scriptItem
+		}
+	}
+	process {
+		if ($Path -and (Test-Path $Path)) {
+			$pFile = Get-Item $Path
+		}
+		else {
+			throw "Package $Path not found. Aborting build."
+			return
 		}
 	}
 	end {
@@ -178,18 +175,30 @@ function Add-PowerUpBuild {
 						Copy-ModuleFiles -Path $workFolder
 					}
 				}
+
+				#Storing package details in a variable
+				$packageInfo = Get-PowerUpPackage -Path $workFolder -Unpacked
 				
 				if (!$Unpacked) {
 					if ($pscmdlet.ShouldProcess($pFile, "Repackaging original package")) {
 						Compress-Archive "$workFolder\*" -DestinationPath $pFile -Force
 					}
 				}
+
+				#Preparing output object
+				$outputObject = [PowerUpPackageFile]::new((Get-Item $pFile))
+				$outputObject.Config = $packageInfo.Config
+				$outputObject.Version = $packageInfo.Version
+				$outputObject.ModuleVersion = $packageInfo.ModuleVersion
+				$outputObject.Builds = $packageInfo.Builds	
+
 			}
 			else {
 				Write-Warning "No scripts have been selected, the original file is unchanged."
+				$outputObject = Get-PowerUpPackage -Path $pFile
 			}
-			
-			Get-Item $pFile
+
+			$outputObject
 		}
 		catch {
 			throw $_

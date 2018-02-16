@@ -1,9 +1,10 @@
 ﻿$commandName = $MyInvocation.MyCommand.Name.Replace(".Tests.ps1", "")
-$here = Split-Path -Parent $MyInvocation.MyCommand.Path
+
+$here = if ($PSScriptRoot) { $PSScriptRoot } else {	(Get-Item . ).FullName }
 $sut = (Split-Path -Leaf $MyInvocation.MyCommand.Path) -replace '\.Tests\.', '.'
 
-. '..\internal\Get-ArchiveItems.ps1'
-. '..\internal\New-TempWorkspaceFolder.ps1'
+. "$here\..\internal\Get-ArchiveItems.ps1"
+. "$here\..\internal\New-TempWorkspaceFolder.ps1"
 
 $workFolder = New-TempWorkspaceFolder
 $unpackedFolder = Join-Path $workFolder "Unpacked"

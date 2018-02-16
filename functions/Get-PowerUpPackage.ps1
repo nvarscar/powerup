@@ -41,14 +41,7 @@ Function Get-PowerUpPackage {
 			}
 
 			#Create output object and set values for default fields
-			$packageInfo = $pFile
-
-			if (!$Unpacked) {
-				Add-Member -InputObject $packageInfo -MemberType AliasProperty -Name Size -Value Length
-			}
-			Add-Member -InputObject $packageInfo -MemberType AliasProperty -Name Path -Value FullName
-			
-
+			$packageInfo = [PowerUpPackageFile]::new($pFile)
 
 			try {
 				if (!$Unpacked) {
@@ -60,15 +53,19 @@ Function Get-PowerUpPackage {
 				#Load package object
 				Write-Verbose "Loading package information from $pFile"
 				$package = [PowerUpPackage]::FromFile((Join-Path $workFolder "PowerUp.package.json"))
-				$moduleManifest = 'Modules\PowerUp\PowerUp.psd1'
+				$modulePath = 'Modules\PowerUp'
 
 				if (!$Unpacked) {
 					#Extract config and module files
 					Write-Verbose "Extracting config file $($package.ConfigurationFile) from the archive $pFile to $workFolder"
 					Expand-ArchiveItem -Path $pFile -DestinationPath $workFolder -Item $package.ConfigurationFile
 
-					Write-Verbose "Extracting module manifest from the archive $pFile to $workFolder"
-					Expand-ArchiveItem -Path $pFile -DestinationPath $workFolder -Item $moduleManifest
+					Write-Verbose "Extracting module core files from the archive $pFile to $workFolder"
+					$coreFiles = @()
+					foreach ($moduleFile in (Get-ModuleFileList | Where-Object Type -eq 'Core')) {
+						$coreFiles += Join-Path $modulePath $moduleFile.Name
+					}
+					Expand-ArchiveItem -Path $pFile -DestinationPath $workFolder -Item $coreFiles
 				}
 
 				#Load configuration 
@@ -76,12 +73,12 @@ Function Get-PowerUpPackage {
 				if (!$package.ConfigurationFile -or !(Test-Path $configPath)) {
 					throw "Configuration file cannot be found. The package is corrupted."
 				}
-				$config = Get-PowerUpConfig $configPath
-				Add-Member -InputObject $packageInfo -MemberType NoteProperty -Name Config -Value $config
 
-				Add-Member -InputObject $packageInfo -MemberType NoteProperty -Name Version -Value $package.GetVersion()
-				Add-Member -InputObject $packageInfo -MemberType NoteProperty -Name ModuleVersion -Value (Test-ModuleManifest (Join-Path $workFolder $moduleManifest)).Version
-				
+				$packageInfo.Config = (Get-PowerUpConfig $configPath)
+				$packageInfo.Version = $package.GetVersion()
+				$moduleManifest = Join-Path (Join-Path $workFolder $modulePath) 'PowerUp.psd1'
+				$packageInfo.ModuleVersion = (Test-ModuleManifest $moduleManifest).Version
+
 				#Generate build and script objects
 				$builds = @()
 				foreach ($currentBuild in $package.builds) {
@@ -99,7 +96,7 @@ Function Get-PowerUpPackage {
 						$builds += $buildInfo
 					}
 				}
-				Add-Member -InputObject $packageInfo -MemberType NoteProperty -Name Builds -Value $builds
+				$packageInfo.Builds = $builds
 
 				$packageInfo
 			}

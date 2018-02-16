@@ -4,9 +4,12 @@ $sut = (Split-Path -Leaf $MyInvocation.MyCommand.Path) -replace '\.Tests\.', '.'
 
 . '..\internal\Get-ArchiveItems.ps1'
 . '..\internal\New-TempWorkspaceFolder.ps1'
+. '..\internal\Remove-ArchiveItem.ps1'
+. '..\internal\Add-ArchiveItem.ps1'
 
 $workFolder = New-TempWorkspaceFolder
 $pkgTest = Join-Path $workFolder 'TestPkg.zip'
+$packageInvalid = Join-Path $workFolder 'TestInvalidPkg.zip'
 $scriptFolder = Join-Path $here 'etc\install-tests\success'
 
 Describe "$commandName tests" {
@@ -16,9 +19,13 @@ Describe "$commandName tests" {
 	Context "tests packed packages" {
 		BeforeAll {
 			$null = New-PowerUpPackage -Name $pkgTest -Build 1.0 -ScriptPath $scriptFolder
+			$null = New-PowerUpPackage -Name $packageInvalid -Build 1.0 -ScriptPath $scriptFolder\*
+			$null = Remove-ArchiveItem -Path $packageInvalid -Item 'content\1.0\1.sql'
+			$null = Add-ArchiveItem -Path $packageInvalid -Item "$scriptFolder\..\transactional-failure\2.sql" -InnerFolder 'content\1.0'
 		}
 		AfterAll {
 			Remove-Item -Path $pkgTest -Force
+			Remove-Item -Path $packageInvalid -Force
 		}
 		It "returns error when path does not exist" {
 			try {
@@ -40,10 +47,11 @@ Describe "$commandName tests" {
 			}
 		}
 		It "should test an invalid package file" {
-			$result = Test-PowerUpPackage -Path '.\etc\pkg_notvalid.zip'
+			$result = Test-PowerUpPackage -Path $packageInvalid
 			$result.IsValid | Should Be $false
-			($result.ValidationTests | Where-Object Name -EQ '1.0\0_Cleanup.sql').Result | Should Be $false
-			($result.ValidationTests | Where-Object Name -EQ '1.0\Scrip1-Create Table.sql').Result | Should Be $false
+			($result.ValidationTests | Where-Object Name -eq '1.0\1.sql').Result | Should Be $false
+			($result.ValidationTests | Where-Object Name -eq '1.0\2.sql').Result | Should Be $false
+			($result.ValidationTests | Where-Object Name -eq '1.0\3.sql').Result | Should Be $true
 			
 		}
 	}
@@ -57,7 +65,7 @@ Describe "$commandName tests" {
 		}
 		It "returns error when path is not a container" {
 			try {
-				$result = Test-PowerUpPackage -Path '.\etc\pkg_valid.zip' -Unpacked
+				$result = Test-PowerUpPackage -Path '.\etc\empty_config.json' -Unpacked
 			}
 			catch {
 				$errorResult = $_

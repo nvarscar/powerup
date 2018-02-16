@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Configuration>
+<ViewDefinitions>
+<View>
+  <Name>PowerUpPackageFile</Name>
+  <ViewSelectedBy>
+    <TypeName>PowerUpPackageFile</TypeName>
+  </ViewSelectedBy>
+  <TableControl>
+    <TableHeaders>
+      <TableColumnHeader>
+        <Width>20</Width>
+      </TableColumnHeader>
+      <TableColumnHeader>
+        <Width>20</Width>
+      </TableColumnHeader>
+      <TableColumnHeader>
+        <Width>10</Width>
+      </TableColumnHeader>
+      <TableColumnHeader>
+        <Width>24</Width>
+      </TableColumnHeader>
+      <TableColumnHeader>
+        <Width>13</Width>
+      </TableColumnHeader>
+    </TableHeaders>
+    <TableRowEntries>
+      <TableRowEntry>
+        <TableColumnItems>
+          <TableColumnItem>
+            <PropertyName>Name</PropertyName>
+          </TableColumnItem>
+          <TableColumnItem>
+            <PropertyName>Version</PropertyName>
+          </TableColumnItem>
+          <TableColumnItem>
+            <PropertyName>Size</PropertyName>
+          </TableColumnItem>
+          <TableColumnItem>
+            <PropertyName>LastWriteTime</PropertyName>
+          </TableColumnItem>
+          <TableColumnItem>
+            <PropertyName>ModuleVersion</PropertyName>
+          </TableColumnItem>
+        </TableColumnItems>
+      </TableRowEntry>
+    </TableRowEntries>
+  </TableControl>
+</View>
+</ViewDefinitions>
+</Configuration>

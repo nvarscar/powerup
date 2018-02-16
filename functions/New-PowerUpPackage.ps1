@@ -57,8 +57,8 @@ function New-PowerUpPackage {
 	(
 		[Parameter(Mandatory = $false,
 			Position = 1)]
-		[Alias('FileName', 'Path', 'Package')]
-		[string]$Name = (Split-Path (Get-Location) -Leaf),
+		[Alias('FileName', 'Name', 'Package')]
+		[string]$Path = (Split-Path (Get-Location) -Leaf),
 		[Parameter(Mandatory = $true,
 			ValueFromPipeline = $true,
 			Position = 2)]
@@ -86,9 +86,9 @@ function New-PowerUpPackage {
 	)
 	
 	begin {
-		#Set package extension
-		if ($Name.EndsWith('.zip') -eq $false) {
-			$Name = "$Name.zip"
+		#Set package extension if there is none
+		if ($Path.IndexOf('.') -eq -1) {
+			$Path = "$Path.zip"
 		}
 		
 		#Check configuration parameter if specified
@@ -160,11 +160,20 @@ function New-PowerUpPackage {
 				#Create a new build
 				$null = Add-PowerUpBuild -Path $workFolder -Build $buildNumber -ScriptPath $ScriptPath -Unpacked -SkipValidation
 
+				#Storing package details in a variable
+				$packageInfo = Get-PowerUpPackage -Path $workFolder -Unpacked
+
 				#Compress the files
-				Write-Verbose "Creating archive file $Name"
-				Compress-Archive "$workFolder\*" -DestinationPath $Name -Force:$Force
+				Write-Verbose "Creating archive file $Path"
+				Compress-Archive "$workFolder\*" -DestinationPath $Path -Force:$Force
 			
-				Get-Item $Name
+				#Preparing output object
+				$outputObject = [PowerUpPackageFile]::new((Get-Item $Path))
+				$outputObject.Config = $packageInfo.Config
+				$outputObject.Version = $packageInfo.Version
+				$outputObject.ModuleVersion = $packageInfo.ModuleVersion
+				$outputObject.Builds = $packageInfo.Builds	
+				$outputObject
 			}
 			catch {
 				throw $_
