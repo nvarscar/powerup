@@ -93,6 +93,8 @@
 				Write-Verbose "Extracting package $Path to $workFolder"
 				Expand-Archive -Path $Path -DestinationPath $workFolder
 			}
+
+			$moduleManifest = "$workFolder\Modules\PowerUp\PowerUp.psd1"
 			Write-Verbose "Starting validation"
 			$validationResults = @()
 		
@@ -101,6 +103,7 @@
 			$package = [PowerUpPackage]::FromFile("$workFolder\PowerUp.package.json")
 			$validationResults += Return-ValidationItem 'DeploymentScript' (Test-Path "$workFolder\$($package.DeployScript)")
 			$validationResults += Return-ValidationItem 'ConfigurationFile' (Test-Path "$workFolder\$($package.ConfigurationFile)")
+			$validationResults += Return-ValidationItem 'ModuleManifest' (Test-Path $moduleManifest)
 		
 			foreach ($build in $package.builds) {
 				$contentPath = "$workFolder\$($package.ScriptDirectory)"
@@ -109,8 +112,14 @@
 					$validationResults += Return-ValidationItem $script ((Test-Path "$contentPath\$($script.packagePath)" -PathType Leaf) -and ((Get-FileHash "$contentPath\$($script.packagePath)").Hash -eq $script.hash))
 				}
 			}
-			$outObject = @{ } | Select-Object Package, IsValid, ValidationTests
+			
+			
+			$outObject = @{ } | Select-Object Package, ModuleVersion, PackageVersion, IsValid, ValidationTests
+			if ($validationResults | Where-Object Name -eq 'ModuleManifest' | Select-Object -ExpandProperty Result) {
+				$outObject.ModuleVersion = (Test-ModuleManifest -Path $moduleManifest).Version
+			}
 			$outObject.Package = $Path
+			$outObject.PackageVersion = $package.GetVersion()
 			$outObject.IsValid = $validationResults.Result | ForEach-Object -Begin { $r = $true } -Process { $r = $r -and $_ } -End { $r }
 			$outObject.ValidationTests = $validationResults
 			$outObject

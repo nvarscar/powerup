@@ -6,15 +6,20 @@ $sut = (Split-Path -Leaf $MyInvocation.MyCommand.Path) -replace '\.Tests\.', '.'
 . '..\internal\New-TempWorkspaceFolder.ps1'
 
 $workFolder = New-TempWorkspaceFolder
+$pkgTest = Join-Path $workFolder 'TestPkg.zip'
+$scriptFolder = Join-Path $here 'etc\install-tests\success'
 
 Describe "$commandName tests" {
-	BeforeAll {
-		Expand-Archive '.\etc\pkg_valid.zip' $workFolder
-	}
 	AfterAll {
 		if ($workFolder.Name -like 'PowerUpWorkspace*') { Remove-Item $workFolder -Recurse }
 	}
 	Context "tests packed packages" {
+		BeforeAll {
+			$null = New-PowerUpPackage -Name $pkgTest -Build 1.0 -ScriptPath $scriptFolder
+		}
+		AfterAll {
+			Remove-Item -Path $pkgTest -Force
+		}
 		It "returns error when path does not exist" {
 			try {
 				$result = Test-PowerUpPackage -Path 'asduwheiruwnfelwefo\sdfpoijfdsf.sps'
@@ -25,8 +30,10 @@ Describe "$commandName tests" {
 			$errorResult.Exception.Message -join ';' | Should BeLike '*Path not found:*'
 		}
 		It "should test a valid package file" {
-			$result = Test-PowerUpPackage -Path '.\etc\pkg_valid.zip'
-			$result.Package | Should Be '.\etc\pkg_valid.zip'
+			$result = Test-PowerUpPackage -Path $pkgTest
+			$result.Package | Should Be $pkgTest
+			$result.ModuleVersion.ToString() | Should Be (Get-Module PowerUp).Version.ToString()
+			$result.PackageVersion | Should Be 1.0
 			$result.IsValid | Should Be $true
 			foreach ($r in $result.ValidationTests.Result) {
 				$r | Should Be $true
@@ -41,6 +48,13 @@ Describe "$commandName tests" {
 		}
 	}
 	Context "tests unpacked packages" {
+		BeforeAll {
+			$null = New-PowerUpPackage -Name $pkgTest -Build 1.0 -ScriptPath $scriptFolder
+			Expand-Archive $pkgTest $workFolder
+		}
+		AfterAll {
+			Remove-Item -Path (Join-Path $workFolder *) -Force -Recurse
+		}
 		It "returns error when path is not a container" {
 			try {
 				$result = Test-PowerUpPackage -Path '.\etc\pkg_valid.zip' -Unpacked
@@ -53,6 +67,8 @@ Describe "$commandName tests" {
 		It "should test a folder with unpacked package" {
 			$result = Test-PowerUpPackage -Path $workFolder -Unpacked
 			$result.Package | Should Be $workFolder.FullName
+			$result.ModuleVersion.ToString() | Should Be (Get-Module PowerUp).Version.ToString()
+			$result.PackageVersion | Should Be 1.0
 			$result.IsValid | Should Be true
 		}
 		It "folder should remain after tests" {
@@ -61,6 +77,8 @@ Describe "$commandName tests" {
 		It "should test an unpacked package file" {
 			$result = Test-PowerUpPackage -Path "$workFolder\PowerUp.package.json" -Unpacked
 			$result.Package | Should Be "$workFolder\PowerUp.package.json"
+			$result.ModuleVersion.ToString() | Should Be (Get-Module PowerUp).Version.ToString()
+			$result.PackageVersion | Should Be 1.0
 			$result.IsValid | Should Be true
 		}
 	}

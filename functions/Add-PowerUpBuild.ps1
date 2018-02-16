@@ -119,6 +119,7 @@ function Add-PowerUpBuild {
 					$throwMessage += ($validation.ValidationTests | Where-Object { $_.Result -eq $false }).Item -join ", "
 					throw $throwMessage
 				}
+				$moduleVersion = $validation.ModuleVersion.ToString()
 			}
 			
 			#Load package object
@@ -170,6 +171,12 @@ function Add-PowerUpBuild {
 				$packagePath = Join-Path $workFolder $package.PackageFile
 				if ($pscmdlet.ShouldProcess($pFile, "Writing package file $packagePath")) {
 					$package.SaveToFile($packagePath, $true)
+				}
+
+				if ($moduleVersion -and (Test-ModuleManifest -Path "$workfolder\Modules\PowerUp\PowerUp.psd1").Version.Tostring() -ne $moduleVersion) {
+					if ($pscmdlet.ShouldProcess($pFile, "Updating inner module version to $moduleVersion")) {
+						Copy-ModuleFiles -Path $workFolder
+					}
 				}
 				
 				if (!$Unpacked) {

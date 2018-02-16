@@ -155,14 +155,7 @@ function New-PowerUpPackage {
 				$package.SaveToFile($packagePath)
 
 				#Copy module into the archive
-				$moduleDir = New-Item (Join-Path $workFolder "Modules\PowerUp") -ItemType Directory
-				Write-Verbose "Copying module files into the package"
-				foreach ($file in (Get-ModuleFileList)) {
-					if (-not (Test-Path "$moduleDir\$($file.Directory)" -PathType Container)) {
-						$null = New-Item "$moduleDir\$($file.Directory)" -ItemType Directory
-					}
-					Copy-Item $file.FullName "$moduleDir\$($file.Path)" -Force -Recurse
-				}
+				Copy-ModuleFiles -Path (Join-Path $workFolder "Modules\PowerUp")
 
 				#Create a new build
 				$null = Add-PowerUpBuild -Path $workFolder -Build $buildNumber -ScriptPath $ScriptPath -Unpacked -SkipValidation

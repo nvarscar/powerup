@@ -101,6 +101,9 @@ class PowerUpPackage : PowerUpClass {
 	[array] EnumBuilds () {
 		return $this.builds.build
 	}
+	[string] GetVersion () {
+		return $this.Builds[-1].Build
+	}
 	<#
 	[int]GetLastBuildDeployOrder() {
 		if ($this.builds) {

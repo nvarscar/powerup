@@ -1,7 +1,7 @@
 ﻿@{
 	
 	# Script module or binary module file associated with this manifest
-	ModuleToProcess = 'PowerUp.psm1'
+	RootModule = 'PowerUp.psm1'
 	
 	# Version number of this module.
 	ModuleVersion = '0.0.1.0'
@@ -16,7 +16,7 @@
 	CompanyName = ''
 	
 	# Copyright statement for this module
-	Copyright = '(c) 2017. All rights reserved.'
+	Copyright = 'Kirill Kravtsov (@nvarscar) 2018. All rights reserved.'
 	
 	# Description of the functionality provided by this module
 	Description = 'Deploying SQL code by building, modifying, verifying and deploying packages'
