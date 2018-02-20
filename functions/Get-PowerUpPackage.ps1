@@ -74,7 +74,7 @@ Function Get-PowerUpPackage {
 					throw "Configuration file cannot be found. The package is corrupted."
 				}
 
-				$packageInfo.Config = (Get-PowerUpConfig $configPath)
+				$packageInfo.Config = [PowerUpConfig]::FromFile($configPath)
 				$packageInfo.Version = $package.GetVersion()
 				$moduleManifest = Join-Path (Join-Path $workFolder $modulePath) 'PowerUp.psd1'
 				$packageInfo.ModuleVersion = (Test-ModuleManifest $moduleManifest).Version

@@ -105,7 +105,7 @@ function Add-PowerUpBuild {
 			if (!$Unpacked) {
 				#Extract package
 				Write-Verbose "Extracting package $pFile to $workFolder"
-				Expand-Archive -Path $pFile -DestinationPath $workFolder -Force:$Force
+				Expand-Archive -Path $pFile -DestinationPath $workFolder
 			}
 
 			#Validate package

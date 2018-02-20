@@ -92,14 +92,14 @@ function New-PowerUpPackage {
 		}
 		
 		#Check configuration parameter if specified
-		if ($ConfigurationFile -and (Test-Path $ConfigurationFile) -eq $false) {
-			throw 'Configuration file does not exist'
-			return
+		if ($ConfigurationFile) {
+			Write-Verbose "Loading config $ConfigurationFile"
+			$config = [PowerUpConfig]::FromFile($ConfigurationFile)
 		}
-		#Generate a config object
-		Write-Verbose "Loading config $ConfigurationFile"
-		$config = Get-PowerUpConfig $ConfigurationFile
-		
+		else {
+			$config = [PowerUpConfig]::new()
+		}
+			
 		#Apply overrides if any
 		foreach ($key in ($PSBoundParameters.Keys | Where-Object { $_ -ne 'Variables' })) {
 			if ($key -in $config.psobject.Properties.Name) {

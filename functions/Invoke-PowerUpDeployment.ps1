@@ -48,7 +48,7 @@
 	if (!$package.ConfigurationFile -or !(Test-Path $configPath)) {
 		throw "Configuration file cannot be found. The package is corrupted."
 	}
-	$config = Get-PowerUpConfig $configPath
+	$config = [PowerUpConfig]::FromFile($configPath)
 	
 	#Join variables from config and parameters
 	$runtimeVariables = @{ }

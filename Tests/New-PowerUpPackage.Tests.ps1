@@ -95,7 +95,7 @@ Describe "$commandName tests" {
 			catch {
 				$errorResult = $_
 			}
-			$errorResult.Exception.Message -join ';' | Should BeLike '*Configuration file does not exist*'
+			$errorResult.Exception.Message -join ';' | Should BeLike '*Config file * not found. Aborting.*'
 		}
 	}
 }

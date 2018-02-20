@@ -69,7 +69,8 @@
 		'New-PowerUpPackage',
 		'Test-PowerUpPackage',
 		'Remove-PowerUpBuild',
-		'Get-PowerUpPackage'
+		'Get-PowerUpPackage',
+		'Update-PowerUpConfig'
 	)
 	
 	# Cmdlets to export from this module

@@ -484,3 +484,97 @@ class PowerUpPackageFile {
 		return $this.FullName
 	}
 }
+
+class PowerUpConfig : PowerUpClass {
+	#Properties
+	[string]$ApplicationName
+	[string]$SqlInstance
+	[string]$Database
+	[string]$DeploymentMethod
+	[System.Nullable[int]]$ConnectionTimeout
+	[System.Nullable[int]]$ExecutionTimeout
+	[System.Nullable[bool]]$Encrypt
+	[pscredential]$Credential
+	[string]$Username
+	[string]$Password
+	[string]$SchemaVersionTable
+	[System.Nullable[bool]]$Silent
+	[psobject]$Variables
+
+	#Constructors
+	PowerUpConfig () {
+		$this.ApplicationName = [NullString]::Value
+		$this.SqlInstance = [NullString]::Value
+		$this.Database = [NullString]::Value
+		$this.DeploymentMethod = [NullString]::Value
+		$this.Username = [NullString]::Value
+		$this.Password = [NullString]::Value
+		$this.SchemaVersionTable = [NullString]::Value
+	}
+	PowerUpConfig ([string]$jsonString) {
+		$this.ApplicationName = [NullString]::Value
+		$this.SqlInstance = [NullString]::Value
+		$this.Database = [NullString]::Value
+		$this.DeploymentMethod = [NullString]::Value
+		$this.Username = [NullString]::Value
+		$this.Password = [NullString]::Value
+		$this.SchemaVersionTable = [NullString]::Value
+
+		$jsonConfig = $jsonString | ConvertFrom-Json -ErrorAction Stop
+		
+		foreach ($property in $jsonConfig.psobject.properties.Name) {
+			if ($property -in [PowerUpConfig]::EnumProperties()) {
+				if ($jsonConfig.$property -ne $null) {
+					$this.$property = $jsonConfig.$property
+				}
+			}
+			else {
+				$this.ThrowArgumentException($this, "$property is not a valid configuration item")
+			}
+		}
+	}
+	#Methods 
+	[hashtable] AsHashtable () {
+		$ht = @{}
+		foreach ($property in $this.psobject.Properties.Name) {
+			$ht += @{ $property = $this.$property }
+		}
+		return $ht
+	}
+
+	[void] SetValue ([string]$Property, [object]$Value) {
+		if ([PowerUpConfig]::EnumProperties() -notcontains $Property) {
+			$this.ThrowArgumentException($this, "$Property is not a valid configuration item")
+		}
+		if ($Value -eq $null -and $Property -in @('ApplicationName', 'SqlInstance', 'Database', 'DeploymentMethod', 'Username', 'Password', 'SchemaVersionTable')) {
+			$this.$Property = [NullString]::Value
+		}
+		else {
+			$this.$Property = $Value
+		}
+	}
+
+	#Static Methods
+	static [PowerUpConfig] FromJsonString ([string]$jsonString) {
+		return [PowerUpConfig]::new($jsonString)
+	}
+	static [PowerUpConfig] FromFile ([string]$path) {
+		if (!(Test-Path $path)) {
+			throw "Config file $path not found. Aborting."
+		}
+		return [PowerUpConfig]::FromJsonString((Get-Content $path -Raw -ErrorAction Stop))
+	}
+
+	static [string] GetPackageFileName () {
+		return 'PowerUp.package.json'
+	}
+
+	static [string[]] EnumProperties () {
+		return @('ApplicationName', 'SqlInstance', 'Database', 'DeploymentMethod',
+			'ConnectionTimeout', 'ExecutionTimeout', 'Encrypt', 'Credential', 'Username',
+			'Password', 'SchemaVersionTable', 'Silent', 'Variables'
+		)
+	}
+
+
+}
