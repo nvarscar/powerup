@@ -13,7 +13,7 @@
 		Additional information about the function.
 #>
 	
-	[CmdletBinding()]
+	[CmdletBinding(SupportsShouldProcess = $true)]
 	Param (
 		[string]$PackageFile = ".\PowerUp.package.json",
 		[string]$SqlInstance,
@@ -173,7 +173,9 @@
 	$dbUp = [StandardExtensions]::WithExecutionTimeout($dbUp, [timespan]::FromSeconds($config.ExecutionTimeout))
 
 	#Build and Upgrade
-	$build = $dbUp.Build()
-	$upgradeResult = $build.PerformUpgrade() 
-	$upgradeResult
+	if ($PSCmdlet.ShouldProcess($package, "Deploying the package")) {
+		$build = $dbUp.Build()
+		$upgradeResult = $build.PerformUpgrade() 
+		$upgradeResult
+	}
 }

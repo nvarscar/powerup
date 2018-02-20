@@ -67,7 +67,7 @@
 		Additional information about the function.
 #>
 	
-	[CmdletBinding()]
+	[CmdletBinding(SupportsShouldProcess = $true)]
 	param
 	(
 		[Parameter(Mandatory = $true,
@@ -94,7 +94,9 @@
 		[switch]$Force,
 		[switch]$SkipValidation,
 		[string]$OutputFile,
-		[switch]$Append
+		[switch]$Append,
+		[Alias('Config')]
+		[string]$ConfigurationFile
 	)
 	
 	begin {
@@ -111,11 +113,20 @@
 		#Create workspace folder
 		if (!$Workspace) {
 			$noWorkspace = $true
-			$workFolder = New-TempWorkspaceFolder
+			if ($PSCmdlet.ShouldProcess("Creating temporary folder")) {
+				$workFolder = New-TempWorkspaceFolder
+			}
+			else {
+				$workFolder = "NonexistingPath"
+			}
 		}
 		elseif (!(Test-Path $WorkSpace -PathType Container)) {
-			Write-Verbose "Creating workspace folder: $WorkSpace"
-			$workFolder = New-Item -Path $WorkSpace -ItemType Directory -ErrorAction Stop
+			if ($PSCmdlet.ShouldProcess("Creating workspace folder $WorkSpace")) {
+				$workFolder = New-Item -Path $WorkSpace -ItemType Directory -ErrorAction Stop
+			}
+			else {
+				$workFolder = "NonexistingPath123456743452345"
+			}
 		}
 		else {
 			$workFolder = Get-Item -Path $WorkSpace
@@ -124,21 +135,42 @@
 		#Ensure that temporary workspace is removed
 		try {
 			#Extract package
-			Write-Verbose "Extracting package $pFile to $workFolder"
-			Expand-Archive -Path $pFile -DestinationPath $workFolder -Force:$Force
+			if ($PSCmdlet.ShouldProcess($pFile, "Extracting package to $workFolder")) {
+				Expand-Archive -Path $pFile -DestinationPath $workFolder -Force:$Force
+			}
 		
 			#Validate package
 			if (!$SkipValidation) {
-				$validation = Test-PowerUpPackage -Path $workFolder -Unpacked
-				if ($validation.IsValid -eq $false) {
-					$throwMessage = "The following package items have failed validation: "
-					$throwMessage += ($validation.ValidationTests | Where-Object { $_.Result -eq $false }).Item -join ", "
-					throw $throwMessage
+				if ($PSCmdlet.ShouldProcess($pFile, "Validating package in $workFolder")) {
+					$validation = Test-PowerUpPackage -Path $workFolder -Unpacked
+					if ($validation.IsValid -eq $false) {
+						$throwMessage = "The following package items have failed validation: "
+						$throwMessage += ($validation.ValidationTests | Where-Object { $_.Result -eq $false }).Item -join ", "
+						throw $throwMessage
+					}
+				}
+			}
+
+			#Reading the package
+			$packageFileName = Join-Path $workFolder ([PowerUpConfig]::GetPackageFileName())
+			if ($PSCmdlet.ShouldProcess($packageFileName, "Reading package file")) {
+				$package = [PowerUpPackage]::FromFile($packageFileName)
+			}
+
+			#Overwrite config file if specified
+			if ($PSCmdlet.ParameterSetName -eq 'Config') {
+				if (Test-Path $ConfigurationFile) {
+					if ($PSCmdlet.ShouldProcess($ConfigurationFile, "Overwriting config file in $workFolder")) {
+						$null = Copy-Item (Get-Item $ConfigurationFile) (Join-Path $workFolder $package.ConfigurationFile)
+					}
+				}
+				else {
+					throw "Configuration file $ConfigurationFile not found. Aborting installation."
 				}
 			}
 		
 			#Start deployment
-			$params = @{ PackageFile = "$workFolder\PowerUp.package.json" }
+			$params = @{ PackageFile = $packageFileName }
 			foreach ($key in ($PSBoundParameters.Keys | Where-Object {
 						$_ -in @(
 							'SqlInstance',
@@ -160,8 +192,9 @@
 				$params += @{ $key = $PSBoundParameters[$key] }
 			}
 		
-			Write-Verbose "Initiating the deployment of the package $($params.PackageFile)"
-			Invoke-PowerUpDeployment @params
+			if ($PSCmdlet.ShouldProcess($params.PackageFile, "Initiating the deployment of the package")) {
+				Invoke-PowerUpDeployment @params
+			}
 		}
 		catch {
 			throw $_
@@ -169,8 +202,9 @@
 		finally {
 			if ($noWorkspace) {
 				if ($workFolder.Name -like 'PowerUpWorkspace*') {
-					Write-Verbose "Removing temporary folder $workFolder"
-					Remove-Item $workFolder -Recurse -Force
+					if ($PSCmdlet.ShouldProcess($workFolder, "Removing temporary folder")) {
+						Remove-Item $workFolder -Recurse -Force
+					}
 				}
 			}
 		}

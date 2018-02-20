@@ -9,7 +9,6 @@ $sut = (Split-Path -Leaf $MyInvocation.MyCommand.Path) -replace '\.Tests\.', '.'
 . '.\etc\Invoke-SqlCmd2.ps1'
 
 $workFolder = New-TempWorkspaceFolder
-
 $logTable = 'testdeploymenthistory'
 $cleanupScript = '.\etc\install-tests\Cleanup.sql'
 $tranFailScripts = '.\etc\install-tests\transactional-failure'
@@ -40,11 +39,11 @@ Describe "$commandName tests" {
 			$results.Error.Message | Should Be "There is already an object named 'a' in the database."
 			#Verifying objects
 			$results = Invoke-SqlCmd2 -ServerInstance $script:instance1 -Database $script:database1 -InputFile $verificationScript
-			$results.name | Where-Object { $_ -eq $logTable } | Should Be $null
-			$results.name | Where-Object { $_ -eq 'a' } | Should Be $null
-			$results.name | Where-Object { $_ -eq 'b' } | Should Be $null
-			$results.name | Where-Object { $_ -eq 'c' } | Should Be $null
-			$results.name | Where-Object { $_ -eq 'd' } | Should Be $null
+			$logTable | Should Not BeIn $results.name
+			'a' | Should Not BeIn $results.name
+			'b' | Should Not BeIn $results.name
+			'c' | Should Not BeIn $results.name
+			'd' | Should Not BeIn $results.name
 		}
 		
 	}
@@ -56,11 +55,11 @@ Describe "$commandName tests" {
 			$results.Error.Message | Should Be "There is already an object named 'a' in the database."
 			#Verifying objects
 			$results = Invoke-SqlCmd2 -ServerInstance $script:instance1 -Database $script:database1 -InputFile $verificationScript
-			$results.name | Where-Object { $_ -eq $logTable } | Should Not Be $null
-			$results.name | Where-Object { $_ -eq 'a' } | Should Not Be $null
-			$results.name | Where-Object { $_ -eq 'b' } | Should Be $null
-			$results.name | Where-Object { $_ -eq 'c' } | Should Be $null
-			$results.name | Where-Object { $_ -eq 'd' } | Should Be $null
+			$logTable | Should BeIn $results.name
+			'a' | Should BeIn $results.name
+			'b' | Should Not BeIn $results.name
+			'c' | Should Not BeIn $results.name
+			'd' | Should Not BeIn $results.name
 		}
 	}
 	Context "testing regular deployment" {
@@ -76,6 +75,13 @@ Describe "$commandName tests" {
 			$results.Scripts.Name | Should Be ((Get-Item $v1scripts).Name | ForEach-Object {'1.0\' + $_})
 			$output = Get-Content "$workFolder\log.txt" | Select-Object -Skip 1
 			$output | Should Be (Get-Content '.\etc\log1.txt')
+			#Verifying objects
+			$results = Invoke-SqlCmd2 -ServerInstance $script:instance1 -Database $script:database1 -InputFile $verificationScript
+			$logTable | Should BeIn $results.name
+			'a' | Should BeIn $results.name
+			'b' | Should BeIn $results.name
+			'c' | Should Not BeIn $results.name
+			'd' | Should Not BeIn $results.name
 		}
 		It "should deploy version 2.0" {
 			$results = Install-PowerUpPackage "$workFolder\pv2.zip" -SqlInstance $script:instance1 -Database $script:database1 -SchemaVersionTable $logTable -OutputFile "$workFolder\log.txt" -Silent
@@ -83,6 +89,13 @@ Describe "$commandName tests" {
 			$results.Scripts.Name | Should Be ((Get-Item $v2scripts).Name | ForEach-Object { '2.0\' + $_ })
 			$output = Get-Content "$workFolder\log.txt" | Select-Object -Skip 1
 			$output | Should Be (Get-Content '.\etc\log2.txt')
+			#Verifying objects
+			$results = Invoke-SqlCmd2 -ServerInstance $script:instance1 -Database $script:database1 -InputFile $verificationScript
+			$logTable | Should BeIn $results.name
+			'a' | Should BeIn $results.name
+			'b' | Should BeIn $results.name
+			'c' | Should BeIn $results.name
+			'd' | Should BeIn $results.name
 		}
 	}
 	Context "testing timeouts" {
@@ -116,6 +129,27 @@ Describe "$commandName tests" {
 			$output = Get-Content "$workFolder\log.txt" -Raw
 			$output | Should Not BeLike '*Execution Timeout Expired*'
 			$output | Should BeLike '*Successful!*'
+		}
+	}
+	Context  "$commandName whatif tests" {
+		BeforeAll {
+			$null = New-PowerUpPackage -ScriptPath $v1scripts -Name "pv1.zip" -Build 1.0
+			$null = Invoke-SqlCmd2 -ServerInstance $script:instance1 -Database $script:database1 -InputFile $cleanupScript
+		}
+		AfterAll {
+			$null = Invoke-SqlCmd2 -ServerInstance $script:instance1 -Database $script:database1 -InputFile $cleanupScript
+			Remove-Item "pv1.zip"
+		}
+		It "should deploy nothing" {
+			$results = Install-PowerUpPackage "pv1.zip" -SqlInstance $script:instance1 -Database $script:database1 -SchemaVersionTable $logTable -Silent -WhatIf
+			$results | Should BeNullOrEmpty
+			#Verifying objects
+			$results = Invoke-SqlCmd2 -ServerInstance $script:instance1 -Database $script:database1 -InputFile $verificationScript
+			$logTable | Should Not BeIn $results.name
+			'a' | Should Not BeIn $results.name
+			'b' | Should Not BeIn $results.name
+			'c' | Should Not BeIn $results.name
+			'd' | Should Not BeIn $results.name
 		}
 	}
 }
