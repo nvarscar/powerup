@@ -91,15 +91,9 @@ function New-PowerUpPackage {
 			$Path = "$Path.zip"
 		}
 		
-		#Check configuration parameter if specified
-		if ($ConfigurationFile) {
-			Write-Verbose "Loading config $ConfigurationFile"
-			$config = [PowerUpConfig]::FromFile($ConfigurationFile)
-		}
-		else {
-			$config = [PowerUpConfig]::new()
-		}
-			
+		#Get configuration object if specified
+		$config = Get-PowerUpConfig -Path $ConfigurationFile
+
 		#Apply overrides if any
 		foreach ($key in ($PSBoundParameters.Keys | Where-Object { $_ -ne 'Variables' })) {
 			if ($key -in $config.psobject.Properties.Name) {
@@ -148,7 +142,7 @@ function New-PowerUpPackage {
 				#Write files into the folder
 				$configPath = Join-Path $workFolder $package.ConfigurationFile
 				Write-Verbose "Writing configuration file $configPath"
-				$config | ConvertTo-Json -Depth 2 | Out-File $configPath
+				$config.SaveToFile($configPath)
 			
 				$packagePath = Join-Path $workFolder $package.PackageFile
 				Write-Verbose "Writing package file $packagePath"
