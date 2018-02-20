@@ -1,16 +1,16 @@
 ﻿$commandName = $MyInvocation.MyCommand.Name.Replace(".Tests.ps1", "")
-$here = Split-Path -Parent $MyInvocation.MyCommand.Path
+$here = if ($PSScriptRoot) { $PSScriptRoot } else {	(Get-Item . ).FullName }
 $sut = (Split-Path -Leaf $MyInvocation.MyCommand.Path) -replace '\.Tests\.', '.'
 
-. '..\internal\Get-ArchiveItems.ps1'
-. '..\internal\New-TempWorkspaceFolder.ps1'
-. '..\internal\Remove-ArchiveItem.ps1'
-. '..\internal\Add-ArchiveItem.ps1'
+. "$here\..\internal\Get-ArchiveItems.ps1"
+. "$here\..\internal\New-TempWorkspaceFolder.ps1"
+. "$here\..\internal\Remove-ArchiveItem.ps1"
+. "$here\..\internal\Add-ArchiveItem.ps1"
 
 $workFolder = New-TempWorkspaceFolder
-$pkgTest = Join-Path $workFolder 'TestPkg.zip'
-$packageInvalid = Join-Path $workFolder 'TestInvalidPkg.zip'
-$scriptFolder = Join-Path $here 'etc\install-tests\success'
+$pkgTest = Join-Path $workFolder "TestPkg.zip"
+$packageInvalid = Join-Path $workFolder "TestInvalidPkg.zip"
+$scriptFolder = Join-Path $here "etc\install-tests\success"
 
 Describe "$commandName tests" {
 	AfterAll {
@@ -65,7 +65,7 @@ Describe "$commandName tests" {
 		}
 		It "returns error when path is not a container" {
 			try {
-				$result = Test-PowerUpPackage -Path '.\etc\empty_config.json' -Unpacked
+				$result = Test-PowerUpPackage -Path "$here\etc\empty_config.json" -Unpacked
 			}
 			catch {
 				$errorResult = $_

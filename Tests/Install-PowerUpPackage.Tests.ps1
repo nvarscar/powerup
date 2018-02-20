@@ -1,23 +1,23 @@
 ﻿$commandName = $MyInvocation.MyCommand.Name.Replace(".Tests.ps1", "")
-$here = Split-Path -Parent $MyInvocation.MyCommand.Path
+$here = if ($PSScriptRoot) { $PSScriptRoot } else {	(Get-Item . ).FullName }
 $sut = (Split-Path -Leaf $MyInvocation.MyCommand.Path) -replace '\.Tests\.', '.'
 
-. '.\constants.ps1'
+. "$here\constants.ps1"
 
-. '..\internal\Get-ArchiveItems.ps1'
-. '..\internal\New-TempWorkspaceFolder.ps1'
-. '.\etc\Invoke-SqlCmd2.ps1'
+. "$here\..\internal\Get-ArchiveItems.ps1"
+. "$here\..\internal\New-TempWorkspaceFolder.ps1"
+. "$here\etc\Invoke-SqlCmd2.ps1"
 
 $workFolder = New-TempWorkspaceFolder
-$logTable = 'testdeploymenthistory'
-$cleanupScript = '.\etc\install-tests\Cleanup.sql'
-$tranFailScripts = '.\etc\install-tests\transactional-failure'
-$v1scripts = '.\etc\install-tests\success\1.sql'
-$v2scripts = '.\etc\install-tests\success\2.sql'
-$verificationScript = '.\etc\install-tests\verification\select.sql'
-$packageName = Join-Path $workFolder 'TempDeployment.zip'
-$cleanupPackageName = '.\etc\TempCleanup.zip'
-$outFile = '.\etc\outLog.txt'
+$logTable = "testdeploymenthistory"
+$cleanupScript = "$here\etc\install-tests\Cleanup.sql"
+$tranFailScripts = "$here\etc\install-tests\transactional-failure"
+$v1scripts = "$here\etc\install-tests\success\1.sql"
+$v2scripts = "$here\etc\install-tests\success\2.sql"
+$verificationScript = "$here\etc\install-tests\verification\select.sql"
+$packageName = Join-Path $workFolder "TempDeployment.zip"
+$cleanupPackageName = "$here\etc\TempCleanup.zip"
+$outFile = "$here\etc\outLog.txt"
 
 
 Describe "$commandName tests" {
@@ -74,7 +74,7 @@ Describe "$commandName tests" {
 			$results.Successful | Should Be $true
 			$results.Scripts.Name | Should Be ((Get-Item $v1scripts).Name | ForEach-Object {'1.0\' + $_})
 			$output = Get-Content "$workFolder\log.txt" | Select-Object -Skip 1
-			$output | Should Be (Get-Content '.\etc\log1.txt')
+			$output | Should Be (Get-Content "$here\etc\log1.txt")
 			#Verifying objects
 			$results = Invoke-SqlCmd2 -ServerInstance $script:instance1 -Database $script:database1 -InputFile $verificationScript
 			$logTable | Should BeIn $results.name
@@ -88,7 +88,7 @@ Describe "$commandName tests" {
 			$results.Successful | Should Be $true
 			$results.Scripts.Name | Should Be ((Get-Item $v2scripts).Name | ForEach-Object { '2.0\' + $_ })
 			$output = Get-Content "$workFolder\log.txt" | Select-Object -Skip 1
-			$output | Should Be (Get-Content '.\etc\log2.txt')
+			$output | Should Be (Get-Content "$here\etc\log2.txt")
 			#Verifying objects
 			$results = Invoke-SqlCmd2 -ServerInstance $script:instance1 -Database $script:database1 -InputFile $verificationScript
 			$logTable | Should BeIn $results.name

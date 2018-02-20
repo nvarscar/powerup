@@ -1,14 +1,14 @@
 ﻿$commandName = $MyInvocation.MyCommand.Name.Replace(".Tests.ps1", "")
-$here = Split-Path -Parent $MyInvocation.MyCommand.Path
+$here = if ($PSScriptRoot) { $PSScriptRoot } else {	(Get-Item . ).FullName }
 $sut = (Split-Path -Leaf $MyInvocation.MyCommand.Path) -replace '\.Tests\.', '.'
 
-. '..\internal\Get-ArchiveItems.ps1'
-. '..\internal\New-TempWorkspaceFolder.ps1'
-. '..\internal\Expand-ArchiveItem.ps1'
+. "$here\..\internal\Get-ArchiveItems.ps1"
+. "$here\..\internal\New-TempWorkspaceFolder.ps1"
+. "$here\..\internal\Expand-ArchiveItem.ps1"
 
 $workFolder = New-TempWorkspaceFolder
 $packagePath = "$workFolder\PowerUpTest.zip"
-$scriptFolder = '.\etc\install-tests\success'
+$scriptFolder = "$here\etc\install-tests\success"
 
 Describe "$commandName tests" {	
 	
@@ -19,7 +19,7 @@ Describe "$commandName tests" {
 		if ($workFolder.Name -like 'PowerUpWorkspace*') { Remove-Item $workFolder -Recurse }
 	}
 	It "should create a package file" {
-		$results = New-PowerUpPackage -ScriptPath '.\etc\query1.sql' -Name $packagePath
+		$results = New-PowerUpPackage -ScriptPath "$here\etc\query1.sql" -Name $packagePath
 		$results | Should Not Be $null
 		$results.Name | Should Be (Split-Path $packagePath -Leaf)
 		Test-Path $packagePath | Should Be $true
@@ -39,7 +39,7 @@ Describe "$commandName tests" {
 		$results | Where-Object Path -eq 'PowerUp.package.json' | Should Not Be $null
 	}
 	It "should be able to apply config file" {
-		$results = New-PowerUpPackage -ScriptPath '.\etc\query1.sql' -Name $packagePath -ConfigurationFile "$here\etc\full_config.json" -Force
+		$results = New-PowerUpPackage -ScriptPath "$here\etc\query1.sql" -Name $packagePath -ConfigurationFile "$here\etc\full_config.json" -Force
 		$null = Expand-ArchiveItem -Path $packagePath -DestinationPath $workFolder -Item 'PowerUp.config.json'
 		$config = Get-Content "$workFolder\PowerUp.config.json" | ConvertFrom-Json
 		$config.ApplicationName | Should Be "MyTestApp"
@@ -90,7 +90,7 @@ Describe "$commandName tests" {
 		}
 		It "returns error when config file does not exist" {
 			try {
-				$result = New-PowerUpPackage -ScriptPath '.' -Config 'asduwheiruwnfelwefo\sdfpoijfdsf.sps'
+				$result = New-PowerUpPackage -ScriptPath "$here\etc\query1.sql" -Config 'asduwheiruwnfelwefo\sdfpoijfdsf.sps'
 			}
 			catch {
 				$errorResult = $_
