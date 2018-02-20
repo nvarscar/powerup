@@ -8,6 +8,6 @@ elseif (Test-Path "$PSScriptRoot\constants.local.ps1") {
 	. "$PSScriptRoot\constants.local.ps1"
 }
 else {
-	$script:instance1 = "localhost\sql2016"
+	$script:instance1 = "localhost\SQL2017"
 	$script:database1 = "tempdb"
 }
