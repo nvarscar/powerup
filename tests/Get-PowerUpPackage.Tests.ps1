@@ -109,7 +109,7 @@ Describe "$commandName tests" {
 			$result.Path | Should Be $unpackedFolder
 			$result.CreationTime | Should Not Be $null
 			$result.Version | Should Be '3.0'
-			$result.ModuleVersion.ToString() | Should Be (Get-Module PowerUp).Version.ToString()
+			$result.ModuleVersion | Should Be (Get-Module PowerUp).Version
 
 		}
 		It "should return package config" {

@@ -39,7 +39,7 @@ Describe "$commandName tests" {
 		It "should test a valid package file" {
 			$result = Test-PowerUpPackage -Path $pkgTest
 			$result.Package | Should Be $pkgTest
-			$result.ModuleVersion.ToString() | Should Be (Get-Module PowerUp).Version.ToString()
+			$result.ModuleVersion | Should Be (Get-Module PowerUp).Version
 			$result.PackageVersion | Should Be 1.0
 			$result.IsValid | Should Be $true
 			foreach ($r in $result.ValidationTests.Result) {
@@ -75,7 +75,7 @@ Describe "$commandName tests" {
 		It "should test a folder with unpacked package" {
 			$result = Test-PowerUpPackage -Path $workFolder -Unpacked
 			$result.Package | Should Be $workFolder.FullName
-			$result.ModuleVersion.ToString() | Should Be (Get-Module PowerUp).Version.ToString()
+			$result.ModuleVersion| Should Be (Get-Module PowerUp).Version
 			$result.PackageVersion | Should Be 1.0
 			$result.IsValid | Should Be true
 		}
@@ -85,7 +85,7 @@ Describe "$commandName tests" {
 		It "should test an unpacked package file" {
 			$result = Test-PowerUpPackage -Path "$workFolder\PowerUp.package.json" -Unpacked
 			$result.Package | Should Be "$workFolder\PowerUp.package.json"
-			$result.ModuleVersion.ToString() | Should Be (Get-Module PowerUp).Version.ToString()
+			$result.ModuleVersion | Should Be (Get-Module PowerUp).Version
 			$result.PackageVersion | Should Be 1.0
 			$result.IsValid | Should Be true
 		}
