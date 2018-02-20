@@ -45,9 +45,11 @@ Set-Location $ModuleBase
 #removes previously imported module, if any
 Remove-Module powerup -ErrorAction Ignore
 #imports the psm1 to be able to use internal functions in tests
-Import-Module "$ModuleBase\powerup.psm1"
+#Import-Module "$ModuleBase\powerup.psm1"
 #imports the module making sure DLL is loaded ok
 Import-Module "$ModuleBase\powerup.psd1"
+# Welcome message
+Write-Host -ForegroundColor DarkGreen "Building PowerUp version $(Get-Module PowerUp).Version.ToString() on PS $($PSVersionTable.PsVersion.ToString())"
 
 
 function Get-CoverageIndications($Path, $ModuleBase) {

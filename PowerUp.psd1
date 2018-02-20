@@ -4,7 +4,7 @@
 	RootModule = 'PowerUp.psm1'
 	
 	# Version number of this module.
-	ModuleVersion = '0.0.1.0'
+	ModuleVersion = '0.1.0.0'
 	
 	# ID used to uniquely identify this module
 	GUID = '16dff216-533a-4fa3-9b2e-4408dbe15e63'

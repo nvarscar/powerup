@@ -68,7 +68,7 @@ Describe "$commandName tests" {
 			$results.Name | Should Be (Split-Path $packageNameTest -Leaf)
 			$results.Config | Should Not Be $null
 			$results.Version | Should Be '2.0'
-			$results.ModuleVersion | Should Be (Get-Module PowerUp).Version.ToString()
+			$results.ModuleVersion | Should Be (Get-Module PowerUp).Version
 			$results.Builds | Where-Object Build -eq '1.0' | Should Not Be $null
 			$results.Builds | Where-Object Build -eq '2.0' | Should Not Be $null
 			$results.Path | Should Be $packageNameTest
@@ -108,7 +108,7 @@ Describe "$commandName tests" {
 			$results.Name | Should Be (Split-Path $packageNameTest -Leaf)
 			$results.Config | Should Not Be $null
 			$results.Version | Should Be '2.0'
-			$results.ModuleVersion | Should Be (Get-Module PowerUp).Version.ToString()
+			$results.ModuleVersion | Should Be (Get-Module PowerUp).Version
 			$results.Builds | Where-Object Build -eq '1.0' | Should Not Be $null
 			$results.Builds | Where-Object Build -eq '2.0' | Should Not Be $null
 			$results.Path | Should Be $packageNameTest
@@ -122,7 +122,7 @@ Describe "$commandName tests" {
 			$results.Name | Should Be (Split-Path $packageNameTest -Leaf)
 			$results.Config | Should Not Be $null
 			$results.Version | Should Be '3.0'
-			$results.ModuleVersion | Should Be (Get-Module PowerUp).Version.ToString()
+			$results.ModuleVersion | Should Be (Get-Module PowerUp).Version
 			$results.Builds | Where-Object Build -eq '1.0' | Should Not Be $null
 			$results.Builds | Where-Object Build -eq '2.0' | Should Not Be $null
 			$results.Builds | Where-Object Build -eq '3.0' | Should Not Be $null
@@ -169,7 +169,7 @@ Describe "$commandName tests" {
 			$results.Name | Should Be (Split-Path $unpackedFolder -Leaf)
 			$results.Config | Should Not Be $null
 			$results.Version | Should Be '2.0'
-			$results.ModuleVersion | Should Be (Get-Module PowerUp).Version.ToString()
+			$results.ModuleVersion | Should Be (Get-Module PowerUp).Version
 			$results.Builds | Where-Object Build -eq '1.0' | Should Not Be $null
 			$results.Builds | Where-Object Build -eq '2.0' | Should Not Be $null
 			$results.Path | Should Be $unpackedFolder.FullName
