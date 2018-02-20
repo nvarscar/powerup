@@ -14,10 +14,12 @@ environment:
     #   services:
     #     - mssql2017
     - scenario: ALL
-      main_instance: localhost\SQL2017
-      services:
-        - mssql2017
+      # main_instance: localhost\SQL2017
 
+#Configure services
+services:
+  - mssql2017
+  
 # Set alternative clone folder
 clone_folder: c:\github\powerup
 
