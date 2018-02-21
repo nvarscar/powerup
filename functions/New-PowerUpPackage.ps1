@@ -78,7 +78,12 @@ function New-PowerUpPackage {
 		
 		#Combine Variables and Configuration into a single object
 		$configTable = $Configuration
-		if ($Variables) { $configTable += @{ Variables = $Variables } }
+		if ($Variables) { 
+			if ($configTable) {
+				$configTable.Remove('Variables')
+			}
+			$configTable += @{ Variables = $Variables } 
+		}
 		
 		#Get configuration object according to current config options
 		$config = Get-PowerUpConfig -Path $ConfigurationFile -Configuration $configTable
