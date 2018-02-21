@@ -1,13 +1,15 @@
 Function Get-PowerUpPackage {
 	<#
 	.SYNOPSIS
-	Shows information about the package
+	Shows information about the existin PowerUp package
 	
 	.DESCRIPTION
-	Reads package header and configuration files and returns an object with corresponding properties.
+	Reads PowerUp package header and configuration files and returns an object with corresponding properties.
 	
 	.PARAMETER Path
-	PowerUp package path
+	Path to the PowerUp package
+
+	Aliases: Name, FileName, Package
 	
 	.PARAMETER Build
 	If you only want details about a specific builds inside the package
