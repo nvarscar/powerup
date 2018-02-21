@@ -36,18 +36,18 @@ Describe "$commandName tests" {
 		}
 		$results = Get-ArchiveItems $packageNameTest
 		It "build 1.0 should not exist" {
-			$results | Where-Object Path -eq 'content\1.0' | Should Be $null
+			'content\1.0' | Should Not BeIn $results.Path
 		}
 		It "build 2.0 should contain scripts from 2.0" {
-			$results | Where-Object Path -eq 'content\2.0\2.sql' | Should Not Be $null
+			'content\2.0\2.sql' | Should BeIn $results.Path
 		}
 		It "should contain module files" {
-			$results | Where-Object Path -eq 'Modules\PowerUp\PowerUp.psd1' | Should Not Be $null
-			$results | Where-Object Path -eq 'Modules\PowerUp\bin\DbUp.dll' | Should Not Be $null
+			'Modules\PowerUp\PowerUp.psd1' | Should BeIn $results.Path
+			'Modules\PowerUp\bin\DbUp.dll' | Should BeIn $results.Path
 		}
 		It "should contain config files" {
-			$results | Where-Object Path -eq 'PowerUp.config.json' | Should Not Be $null
-			$results | Where-Object Path -eq 'PowerUp.package.json' | Should Not Be $null
+			'PowerUp.config.json' | Should BeIn $results.Path
+			'PowerUp.package.json' | Should BeIn $results.Path
 		}
 	}
 	Context "removing version 2.0 from existing package" {
@@ -63,18 +63,18 @@ Describe "$commandName tests" {
 		}
 		$results = Get-ArchiveItems $packageNameTest
 		It "build 1.0 should contain scripts from 1.0" {
-			$results | Where-Object Path -eq 'content\1.0\1.sql' | Should Not Be $null
+			'content\1.0\1.sql' | Should BeIn $results.Path
 		}
 		It "build 2.0 should not exist" {
-			$results | Where-Object Path -eq 'content\2.0' | Should Be $null
+			'content\2.0' | Should Not BeIn $results.Path
 		}
 		It "should contain module files" {
-			$results | Where-Object Path -eq 'Modules\PowerUp\PowerUp.psd1' | Should Not Be $null
-			$results | Where-Object Path -eq 'Modules\PowerUp\bin\DbUp.dll' | Should Not Be $null
+			'Modules\PowerUp\PowerUp.psd1' | Should BeIn $results.Path
+			'Modules\PowerUp\bin\DbUp.dll' | Should BeIn $results.Path
 		}
 		It "should contain config files" {
-			$results | Where-Object Path -eq 'PowerUp.config.json' | Should Not Be $null
-			$results | Where-Object Path -eq 'PowerUp.package.json' | Should Not Be $null
+			'PowerUp.config.json' | Should BeIn $results.Path
+			'PowerUp.package.json' | Should BeIn $results.Path
 		}
 	}
 	Context "removing all versions from existing package" {
@@ -85,23 +85,50 @@ Describe "$commandName tests" {
 			$null = Remove-Item $packageNameTest
 		}
 		It "should remove build from existing package" {
-			{ Remove-PowerUpBuild -Name $packageNameTest -Build "1.0","2.0"  } | Should Not Throw
+			{ Remove-PowerUpBuild -Name $packageNameTest -Build "1.0", "2.0"  } | Should Not Throw
 			Test-Path $packageNameTest | Should Be $true
 		}
 		$results = Get-ArchiveItems $packageNameTest
 		It "build 1.0 should not exist" {
-			$results | Where-Object Path -eq 'content\1.0' | Should Be $null
+			'content\1.0' | Should Not BeIn $results.Path
 		}
 		It "build 2.0 should not exist" {
-			$results | Where-Object Path -eq 'content\2.0' | Should Be $null
+			'content\2.0' | Should Not BeIn $results.Path
 		}
 		It "should contain module files" {
-			$results | Where-Object Path -eq 'Modules\PowerUp\PowerUp.psd1' | Should Not Be $null
-			$results | Where-Object Path -eq 'Modules\PowerUp\bin\DbUp.dll' | Should Not Be $null
+			'Modules\PowerUp\PowerUp.psd1' | Should BeIn $results.Path
+			'Modules\PowerUp\bin\DbUp.dll' | Should BeIn $results.Path
 		}
 		It "should contain config files" {
-			$results | Where-Object Path -eq 'PowerUp.config.json' | Should Not Be $null
-			$results | Where-Object Path -eq 'PowerUp.package.json' | Should Not Be $null
+			'PowerUp.config.json' | Should BeIn $results.Path
+			'PowerUp.package.json' | Should BeIn $results.Path
+		}
+	}
+	Context "removing version 2.0 from existing package using pipeline" {
+		BeforeAll {
+			$null = Copy-Item $packageName $packageNameTest
+		}
+		AfterAll {
+			$null = Remove-Item $packageNameTest
+		}
+		It "should remove build from existing package" {
+			{ '2.0' | Remove-PowerUpBuild -Path $packageNameTest } | Should Not Throw
+			Test-Path $packageNameTest | Should Be $true
+		}
+		$results = Get-ArchiveItems $packageNameTest
+		It "build 1.0 should contain scripts from 1.0" {
+			'content\1.0\1.sql' | Should BeIn $results.Path
+		}
+		It "build 2.0 should not exist" {
+			'content\2.0' | Should Not BeIn $results.Path
+		}
+		It "should contain module files" {
+			'Modules\PowerUp\PowerUp.psd1' | Should BeIn $results.Path
+			'Modules\PowerUp\bin\DbUp.dll' | Should BeIn $results.Path
+		}
+		It "should contain config files" {
+			'PowerUp.config.json' | Should BeIn $results.Path
+			'PowerUp.package.json' | Should BeIn $results.Path
 		}
 	}
 	Context "negative tests" {
