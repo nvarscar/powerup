@@ -22,21 +22,23 @@ Describe "$commandName tests" {
 		$results = New-PowerUpPackage -ScriptPath "$here\etc\query1.sql" -Name $packagePath
 		$results | Should Not Be $null
 		$results.Name | Should Be (Split-Path $packagePath -Leaf)
+		$results.FullName | Should Be (Get-Item $packagePath).FullName
+		$results.ModuleVersion | Should Be (Get-Module PowerUp).Version
 		Test-Path $packagePath | Should Be $true
 	}
 	It "should contain query files" {
 		$results = Get-ArchiveItems $packagePath
-		$results | Where-Object Name -eq 'query1.sql' | Should Not Be $null
+		'query1.sql' | Should BeIn $results.Name
 	}
 	It "should contain module files" {
 		$results = Get-ArchiveItems $packagePath
-		$results | Where-Object Path -eq 'Modules\PowerUp\PowerUp.psd1' | Should Not Be $null
-		$results | Where-Object Path -eq 'Modules\PowerUp\bin\DbUp.dll' | Should Not Be $null
+		'Modules\PowerUp\PowerUp.psd1' | Should BeIn $results.Path
+		'Modules\PowerUp\bin\DbUp.dll' | Should BeIn $results.Path
 	}
 	It "should contain config files" {
 		$results = Get-ArchiveItems $packagePath
-		$results | Where-Object Path -eq 'PowerUp.config.json' | Should Not Be $null
-		$results | Where-Object Path -eq 'PowerUp.package.json' | Should Not Be $null
+		'PowerUp.config.json' | Should BeIn $results.Path
+		'PowerUp.package.json' | Should BeIn $results.Path
 	}
 	It "should be able to apply config file" {
 		$results = New-PowerUpPackage -ScriptPath "$here\etc\query1.sql" -Name $packagePath -ConfigurationFile "$here\etc\full_config.json" -Force
@@ -59,15 +61,61 @@ Describe "$commandName tests" {
 		$results = New-PowerUpPackage -ScriptPath "$here\etc\install-tests\*" -Build 'abracadabra' -Name $packagePath -Force
 		$results | Should Not Be $null
 		$results.Name | Should Be (Split-Path $packagePath -Leaf)
+		$results.FullName | Should Be (Get-Item $packagePath).FullName
+		$results.ModuleVersion | Should Be (Get-Module PowerUp).Version
+		$results.Version | Should Be 'abracadabra'
 		Test-Path $packagePath | Should Be $true
 		$results = Get-ArchiveItems $packagePath
-		$results | Where-Object Path -eq 'content\abracadabra\Cleanup.sql' | Should Not Be $null
-		$results | Where-Object Path -eq 'content\abracadabra\success\1.sql' | Should Not Be $null
-		$results | Where-Object Path -eq 'content\abracadabra\success\2.sql' | Should Not Be $null
-		$results | Where-Object Path -eq 'content\abracadabra\success\3.sql' | Should Not Be $null
-		$results | Where-Object Path -eq 'content\abracadabra\transactional-failure\1.sql' | Should Not Be $null
-		$results | Where-Object Path -eq 'content\abracadabra\transactional-failure\2.sql' | Should Not Be $null
-		$results | Where-Object Path -eq 'content\abracadabra\verification\select.sql' | Should Not Be $null
+		'content\abracadabra\Cleanup.sql' | Should BeIn $results.Path
+		'content\abracadabra\success\1.sql' | Should BeIn $results.Path
+		'content\abracadabra\success\2.sql' | Should BeIn $results.Path
+		'content\abracadabra\success\3.sql' | Should BeIn $results.Path
+		'content\abracadabra\transactional-failure\1.sql' | Should BeIn $results.Path
+		'content\abracadabra\transactional-failure\2.sql' | Should BeIn $results.Path
+		'content\abracadabra\verification\select.sql' | Should BeIn $results.Path
+	}
+	It "should accept Get-Item <files> pipeline input" {
+		$results = Get-Item "$scriptFolder\*" | New-PowerUpPackage -Build 'abracadabra' -Name $packagePath -Force
+		$results | Should Not Be $null
+		$results.Name | Should Be (Split-Path $packagePath -Leaf)
+		$results.FullName | Should Be (Get-Item $packagePath).FullName
+		$results.ModuleVersion | Should Be (Get-Module PowerUp).Version
+		$results.Version | Should Be 'abracadabra'
+		Test-Path $packagePath | Should Be $true
+		$results = Get-ArchiveItems $packagePath
+		'content\abracadabra\1.sql' | Should BeIn $results.Path
+		'content\abracadabra\2.sql' | Should BeIn $results.Path
+		'content\abracadabra\3.sql' | Should BeIn $results.Path
+	}
+	It "should accept Get-Item <files and folders> pipeline input" {
+		$results = Get-Item "$here\etc\install-tests\*" | New-PowerUpPackage -Build 'abracadabra' -Name $packagePath -Force
+		$results | Should Not Be $null
+		$results.Name | Should Be (Split-Path $packagePath -Leaf)
+		$results.FullName | Should Be (Get-Item $packagePath).FullName
+		$results.ModuleVersion | Should Be (Get-Module PowerUp).Version
+		$results.Version | Should Be 'abracadabra'
+		Test-Path $packagePath | Should Be $true
+		$results = Get-ArchiveItems $packagePath
+		'content\abracadabra\Cleanup.sql' | Should BeIn $results.Path
+		'content\abracadabra\success\1.sql' | Should BeIn $results.Path
+		'content\abracadabra\success\2.sql' | Should BeIn $results.Path
+		'content\abracadabra\success\3.sql' | Should BeIn $results.Path
+		'content\abracadabra\transactional-failure\1.sql' | Should BeIn $results.Path
+		'content\abracadabra\transactional-failure\2.sql' | Should BeIn $results.Path
+		'content\abracadabra\verification\select.sql' | Should BeIn $results.Path
+	}
+	It "should accept Get-ChildItem pipeline input" {
+		$results = Get-ChildItem "$scriptFolder" -File -Recurse | New-PowerUpPackage -Build 'abracadabra' -Name $packagePath -Force
+		$results | Should Not Be $null
+		$results.Name | Should Be (Split-Path $packagePath -Leaf)
+		$results.FullName | Should Be (Get-Item $packagePath).FullName
+		$results.ModuleVersion | Should Be (Get-Module PowerUp).Version
+		$results.Version | Should Be 'abracadabra'
+		Test-Path $packagePath | Should Be $true
+		$results = Get-ArchiveItems $packagePath
+		'content\abracadabra\1.sql' | Should BeIn $results.Path
+		'content\abracadabra\2.sql' | Should BeIn $results.Path
+		'content\abracadabra\3.sql' | Should BeIn $results.Path
 	}
 	Context "Negative tests" {
 		It "should throw error when scripts with the same relative path is being added" {
