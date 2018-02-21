@@ -112,13 +112,11 @@ function New-PowerUpPackage {
 		else {
 			$buildNumber = Get-NewBuildNumber
 		}
+		
+		$scriptCollection = @()
 	}
 	process {
-		foreach ($scriptItem in $ScriptPath) {
-			if (!(Test-Path $scriptItem)) {
-				throw "The following path is not valid: $scriptItem"
-			}
-		}
+		$scriptCollection += $ScriptPath
 	}
 	end {
 		if ($pscmdlet.ShouldProcess($package, "Generate a package file")) {
@@ -152,7 +150,7 @@ function New-PowerUpPackage {
 				Copy-ModuleFiles -Path (Join-Path $workFolder "Modules\PowerUp")
 
 				#Create a new build
-				$null = Add-PowerUpBuild -Path $workFolder -Build $buildNumber -ScriptPath $ScriptPath -Unpacked -SkipValidation
+				$null = Add-PowerUpBuild -Path $workFolder -Build $buildNumber -ScriptPath $scriptCollection -Unpacked -SkipValidation
 
 				#Storing package details in a variable
 				$packageInfo = Get-PowerUpPackage -Path $workFolder -Unpacked

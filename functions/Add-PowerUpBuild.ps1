@@ -53,11 +53,11 @@ function Add-PowerUpBuild {
 	param
 	(
 		[Parameter(Mandatory = $true,
-			ValueFromPipeline = $true,
 			Position = 1)]
 		[Alias('FileName', 'Name', 'Package')]
 		[string]$Path,
 		[Parameter(Mandatory = $true,
+			ValueFromPipeline = $true,
 			Position = 2)]
 		[object[]]$ScriptPath,
 		[string]$Build,
@@ -74,21 +74,29 @@ function Add-PowerUpBuild {
 			$Build = Get-NewBuildNumber
 		}
 		$scriptCollection = @()
-		foreach ($scriptItem in $ScriptPath) {
-			if (!(Test-Path $scriptItem)) {
-				throw "The following path is not valid: $ScriptPath"
-			}
-			Write-Verbose "Processing path $scriptItem"
-			$scriptCollection += Get-ChildScriptItem $scriptItem
-		}
-	}
-	process {
 		if ($Path -and (Test-Path $Path)) {
 			$pFile = Get-Item $Path
 		}
 		else {
 			throw "Package $Path not found. Aborting build."
 			return
+		}
+	}
+	process {
+		foreach ($scriptItem in $ScriptPath) {
+			if ($scriptItem.GetType() -in @([System.IO.FileSystemInfo], [System.IO.FileInfo])) {
+				Write-Verbose "Item $scriptItem ($($scriptItem.GetType())) is a File object"
+				$stringPath = $scriptItem.FullName
+			}
+			else {
+				Write-Verbose "Item $scriptItem ($($scriptItem.GetType())) will be treated as a string"
+				$stringPath = [string]$scriptItem
+			}
+			if (!(Test-Path $stringPath)) {
+				throw "The following path is not valid: $stringPath"
+			}
+			Write-Verbose "Processing path $stringPath"
+			$scriptCollection += Get-ChildScriptItem $stringPath
 		}
 	}
 	end {
@@ -170,7 +178,7 @@ function Add-PowerUpBuild {
 					$package.SaveToFile($packagePath, $true)
 				}
 
-				if ($moduleVersion -and (Test-ModuleManifest -Path "$workfolder\Modules\PowerUp\PowerUp.psd1").Version.CompareTo($moduleVersion) -lt 0)  {
+				if ($moduleVersion -and (Test-ModuleManifest -Path "$workfolder\Modules\PowerUp\PowerUp.psd1").Version.CompareTo($moduleVersion) -lt 0) {
 					if ($pscmdlet.ShouldProcess($pFile, "Updating inner module version to $moduleVersion")) {
 						Copy-ModuleFiles -Path $workFolder
 					}
