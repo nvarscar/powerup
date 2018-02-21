@@ -53,7 +53,7 @@
 			Position = 2 )]
 		[Parameter(ParameterSetName = 'Hashtable')]
 		[Parameter(ParameterSetName = 'File')]
-		[hashtable]$Variables,
+		[AllowNull()][hashtable]$Variables,
 		[switch]$Unpacked
 	)
 	begin {
@@ -119,9 +119,10 @@
 				if ($pscmdlet.ShouldProcess($configTempFile, "Saving the config file")) {
 					$configObject.SaveToFile($configTempFile, $true)
 				}
-
-				if ($pscmdlet.ShouldProcess($pFile, "Updating package with a new config file")) {
-					$null = Add-ArchiveItem -Path $pFile -Item $configTempFile
+				if (!$Unpacked) {
+					if ($pscmdlet.ShouldProcess($pFile, "Updating package with a new config file")) {
+						$null = Add-ArchiveItem -Path $pFile -Item $configTempFile
+					}
 				}
 			}
 			catch {
