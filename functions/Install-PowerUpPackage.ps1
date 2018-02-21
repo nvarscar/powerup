@@ -96,7 +96,8 @@
 		[string]$OutputFile,
 		[switch]$Append,
 		[Alias('Config')]
-		[string]$ConfigurationFile
+		[string]$ConfigurationFile,
+		[hashtable]$Configuration
 	)
 	
 	begin {
@@ -158,16 +159,12 @@
 			}
 
 			#Overwrite config file if specified
-			if ($PSCmdlet.ParameterSetName -eq 'Config') {
-				if (Test-Path $ConfigurationFile) {
-					if ($PSCmdlet.ShouldProcess($ConfigurationFile, "Overwriting config file in $workFolder")) {
-						$null = Copy-Item (Get-Item $ConfigurationFile) (Join-Path $workFolder $package.ConfigurationFile)
-					}
-				}
-				else {
-					throw "Configuration file $ConfigurationFile not found. Aborting installation."
-				}
+			if ($ConfigurationFile) {
+				Update-PowerUpConfig -Path $workFolder -ConfigurationFile $ConfigurationFile -Variables $Variables -Unpacked
 			}
+			if ($Configuration) {
+				Update-PowerUpConfig -Path $workFolder -Configuration $Configuration -Variables $Variables -Unpacked
+			} 
 		
 			#Start deployment
 			$params = @{ PackageFile = $packageFileName }
@@ -191,7 +188,7 @@
 					})) {
 				$params += @{ $key = $PSBoundParameters[$key] }
 			}
-		
+			Write-Verbose "Preparing to start the deployment with custom parameters: $($params.Keys -join ', ')"
 			if ($PSCmdlet.ShouldProcess($params.PackageFile, "Initiating the deployment of the package")) {
 				Invoke-PowerUpDeployment @params
 			}

@@ -145,7 +145,7 @@
 	}
 	
 	# Enable logging using PowerUpConsoleLog class implementing a logging Interface
-	$dbUp = [StandardExtensions]::LogTo($dbUp, [PowerUpLog]::new($Silent, $OutputFile, $Append))
+	$dbUp = [StandardExtensions]::LogTo($dbUp, [PowerUpLog]::new($config.Silent, $OutputFile, $Append))
 	$dbUp = [StandardExtensions]::LogScriptOutput($dbUp)
 	
 	# Configure schema versioning

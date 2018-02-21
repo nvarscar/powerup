@@ -102,7 +102,7 @@ Describe "$commandName tests" {
 		BeforeAll {
 			$file = "$workFolder\delay.sql"
 			"WAITFOR DELAY '00:00:03'; PRINT ('Successful!')" | Out-File $file
-			$null = New-PowerUpPackage -ScriptPath $file -Name "$workFolder\delay" -Build 1.0 -Force -ExecutionTimeout 2
+			$null = New-PowerUpPackage -ScriptPath $file -Name "$workFolder\delay" -Build 1.0 -Force -Configuration @{ ExecutionTimeout = 2 }
 		}
 		BeforeEach {
 			$null = Invoke-SqlCmd2 -ServerInstance $script:instance1 -Database $script:database1 -InputFile $cleanupScript
@@ -150,6 +150,61 @@ Describe "$commandName tests" {
 			'b' | Should Not BeIn $results.name
 			'c' | Should Not BeIn $results.name
 			'd' | Should Not BeIn $results.name
+		}
+	}
+	Context "testing regular deployment with configuration overrides" {
+		BeforeAll {
+			$p1 = New-PowerUpPackage -ScriptPath $v1scripts -Name "$workFolder\pv1" -Build 1.0 -Force -ConfigurationFile "$here\etc\full_config.json"
+			$p2 = New-PowerUpPackage -ScriptPath $v2scripts -Name "$workFolder\pv2" -Build 2.0 -Force -Configuration @{
+				SqlInstance = 'nonexistingServer'
+				Database    = 'nonexistingDB'
+				SchemaVersionTable = 'nonexistingSchema.nonexistinTable'	
+				DeploymentMethod = "SingleTransaction"
+			}
+			$outputFile = "$workFolder\log.txt"
+			$null = Invoke-SqlCmd2 -ServerInstance $script:instance1 -Database $script:database1 -InputFile $cleanupScript
+		}
+		It "should deploy version 1.0 using -ConfigurationFile override" {
+			$configFile = "$workFolder\config.custom.json"
+			@{
+				SqlInstance = $script:instance1 
+				Database    = $script:database1 
+				SchemaVersionTable = $logTable
+				Silent             = $true
+				DeploymentMethod = 'NoTransaction'
+			} | ConvertTo-Json -Depth 2 | Out-File $configFile -Force
+			$results = Install-PowerUpPackage "$workFolder\pv1.zip" -ConfigurationFile $configFile -OutputFile "$workFolder\log.txt"
+			$results.Successful | Should Be $true
+			$results.Scripts.Name | Should Be ((Get-Item $v1scripts).Name | ForEach-Object {'1.0\' + $_})
+			$output = Get-Content "$workFolder\log.txt" | Select-Object -Skip 1
+			$output | Should Be (Get-Content "$here\etc\log1.txt")
+			#Verifying objects
+			$results = Invoke-SqlCmd2 -ServerInstance $script:instance1 -Database $script:database1 -InputFile $verificationScript
+			$logTable | Should BeIn $results.name
+			'a' | Should BeIn $results.name
+			'b' | Should BeIn $results.name
+			'c' | Should Not BeIn $results.name
+			'd' | Should Not BeIn $results.name
+		}
+		It "should deploy version 2.0 using -Configuration override" {
+			$results = Install-PowerUpPackage "$workFolder\pv2.zip" -Configuration @{
+				SqlInstance = $script:instance1 
+				Database    = $script:database1 
+				SchemaVersionTable = $logTable
+				Silent = $true
+				DeploymentMethod   = 'NoTransaction'
+			} -OutputFile "$workFolder\log.txt"
+			$results.Successful | Should Be $true
+			$results.Scripts.Name | Should Be ((Get-Item $v2scripts).Name | ForEach-Object { '2.0\' + $_ })
+			$output = Get-Content "$workFolder\log.txt" | Select-Object -Skip 1
+			$output | Should Be (Get-Content "$here\etc\log2.txt")
+			#Verifying objects
+			$results = Invoke-SqlCmd2 -ServerInstance $script:instance1 -Database $script:database1 -InputFile $verificationScript
+			$logTable | Should BeIn $results.name
+			'a' | Should BeIn $results.name
+			'b' | Should BeIn $results.name
+			'c' | Should BeIn $results.name
+			'd' | Should BeIn $results.name
 		}
 	}
 }
