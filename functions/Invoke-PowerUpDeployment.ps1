@@ -70,7 +70,13 @@
 	.PARAMETER Append
 		Append output to the -OutputFile instead of overwriting it.
 
-	.EXAMPLE
+	.PARAMETER Confirm
+        Prompts to confirm certain actions
+
+    .PARAMETER WhatIf
+        Shows what would happen if the command would execute, but does not actually perform the command
+
+    .EXAMPLE
 		# Start the deployment of the extracted package from the current folder
 		Invoke-PowerUpDeployment
 	

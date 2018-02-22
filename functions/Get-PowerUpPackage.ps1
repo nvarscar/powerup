@@ -13,8 +13,18 @@ Function Get-PowerUpPackage {
 	
 	.PARAMETER Build
 	If you only want details about a specific builds inside the package
-	
+		
+	.PARAMETER Unpacked
+	Mostly intended for internal use. Gets package information from extracted package.
+
+	.PARAMETER Confirm
+        Prompts to confirm certain actions
+
+    .PARAMETER WhatIf
+        Shows what would happen if the command would execute, but does not actually perform the command
+
 	.EXAMPLE
+	# Returns information about the package myPackage.zip, only including infomartion about builds 1.1 and 1.2
 	Get-PowerUpPackage -Path c:\temp\myPackage.zip -Build 1.1, 1.2
 	
 	.NOTES

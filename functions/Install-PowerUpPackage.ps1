@@ -86,7 +86,13 @@
 	.PARAMETER Configuration
 		Hashtable containing necessary configuration items. Will override parameters in ConfigurationFile
 	
-	.EXAMPLE
+	.PARAMETER Confirm
+        Prompts to confirm certain actions
+
+    .PARAMETER WhatIf
+        Shows what would happen if the command would execute, but does not actually perform the command
+
+    .EXAMPLE
 		# Installs package with predefined configuration inside the package
 		Install-PowerUpPackage .\MyPackage.zip
 	

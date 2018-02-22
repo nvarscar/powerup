@@ -13,7 +13,13 @@
 	.PARAMETER Configuration
 	Overrides for the configuration values. Will replace existing configuration values.
 
-	.EXAMPLE
+	.PARAMETER Confirm
+        Prompts to confirm certain actions
+
+    .PARAMETER WhatIf
+        Shows what would happen if the command would execute, but does not actually perform the command
+
+    .EXAMPLE
 	# Returns empty configuration
 	Get-PowerUpConfig
 	

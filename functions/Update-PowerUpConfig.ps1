@@ -32,7 +32,13 @@
 	.PARAMETER Unpacked
 	Mostly intended for internal use. Performs configuration changes inside unpacked package.
 
-	.EXAMPLE
+	.PARAMETER Confirm
+        Prompts to confirm certain actions
+
+    .PARAMETER WhatIf
+        Shows what would happen if the command would execute, but does not actually perform the command
+
+    .EXAMPLE
 	# Update a single parameter in the configuration file of the Package.zip package
 	Update-PowerUpConfig Package.zip -ConfigName ApplicationName -Value 'MyApp'
 

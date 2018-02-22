@@ -16,7 +16,13 @@ Function Remove-PowerUpBuild {
 	.PARAMETER SkipValidation
 	Skip package validation step when attempting to remove build(s) from the package.
 	
-	.EXAMPLE
+	.PARAMETER Confirm
+        Prompts to confirm certain actions
+
+    .PARAMETER WhatIf
+        Shows what would happen if the command would execute, but does not actually perform the command
+
+    .EXAMPLE
 	# Removes builds 1.1 and 1.2 from the package
 	Remove-PowerUpBuild -Path c:\temp\myPackage.zip -Build 1.1, 1.2
 

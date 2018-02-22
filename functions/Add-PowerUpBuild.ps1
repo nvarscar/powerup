@@ -42,7 +42,13 @@ function Add-PowerUpBuild {
 	.PARAMETER Unpacked
 		Intended for internal usage. Allows to work with unpacked package structures (basically, folders).
 	
-	.EXAMPLE
+	.PARAMETER Confirm
+        Prompts to confirm certain actions
+
+    .PARAMETER WhatIf
+        Shows what would happen if the command would execute, but does not actually perform the command
+
+    .EXAMPLE
 		# Add new build 2.0 to the existing package using files from .\Scripts\2.0
 		Add-PowerUpBuild -Path MyPackage.zip -ScriptPath .\Scripts\2.0 -Build 2.0
 

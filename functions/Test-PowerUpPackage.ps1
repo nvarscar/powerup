@@ -13,7 +13,13 @@
 	.PARAMETER Unpacked
 		Mostly intended for internal use. Performs tests against already extracted package.
 
-	.EXAMPLE
+	.PARAMETER Confirm
+        Prompts to confirm certain actions
+
+    .PARAMETER WhatIf
+        Shows what would happen if the command would execute, but does not actually perform the command
+
+    .EXAMPLE
 		#Validates package and returns validation details
 		Test-PowerUpPackage .\Mypkg.zip
 

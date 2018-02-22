@@ -42,11 +42,27 @@
 		Proper format of the variable tokens is #{MyVariableName}
 		Can also be provided as a part of Configuration hashtable: -Configuration @{ Variables = @{ Var1 = ...; Var2 = ...}}
 	
+	.PARAMETER Confirm
+        Prompts to confirm certain actions
+
+    .PARAMETER WhatIf
+        Shows what would happen if the command would execute, but does not actually perform the command
+
+    .EXAMPLE
+		# Creates new package using files from .\Scripts\2.0. Initial build version will be 2.0
+		New-PowerUpPackage -Path MyPackage.zip -ScriptPath .\Scripts\2.0 -Build 2.0
+
 	.EXAMPLE
-		PS C:\> New-PowerUpPackage -ScriptPath $value1 -Name 'Value2'
+		# Creates new package using files from .\Scripts\2.0. Destination file will be overwritten.
+		Get-ChildItem .\Scripts\2.0 | New-PowerUpPackage -Path MyPackage.zip -Build 1.0 -Force
+
+	.EXAMPLE
+		# Creates new package and applies custom configuration template to it
+		New-PowerUpPackage -Path MyPackage.zip -ScriptPath .\Scripts -ConfigurationFile .\config.json
 	
-	.NOTES
-		Additional information about the function.
+	.EXAMPLE
+		# Creates new package and uses predefined configuration parameters
+		New-PowerUpPackage -Path MyPackage.zip -ScriptPath .\Scripts -Configuration @{ Database = 'myDB'; ConnectionTimeout = 5 }
 #>
 function New-PowerUpPackage {
 	[CmdletBinding(SupportsShouldProcess = $true)]
