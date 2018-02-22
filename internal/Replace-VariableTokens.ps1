@@ -16,10 +16,6 @@
 					$str = $str -replace $tokenRegEx, $Runtime.$token
 				}
 			}
-			#Replace Octopus variables
-			if ($OctopusParameters -and $OctopusParameters.Keys -contains $token) {
-				$str = $str -replace $tokenRegEx, $OctopusParameters[$token]
-			}
 			Write-Debug "String after replace: $str"
 		}
 		$str
