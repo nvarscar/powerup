@@ -1,59 +1,33 @@
 ﻿function Test-PowerUpPackage {
 	<#
 	.SYNOPSIS
-		Deploys a prepared PowerUp package
+		Performs structural and integrity checks agains existing PowerUp package
 	
 	.DESCRIPTION
-		A detailed description of the Install-PowerUpPackage function.
+		Runs a number of tests agains PowerUp package contents and returns detailed report 
 	
 	.PARAMETER Path
-		A description of the Path parameter.
+		Path to the existing PowerUpPackage.
+		Aliases: Name, FileName, Package
 	
-	.PARAMETER SqlInstance
-		A description of the SqlInstance parameter.
-	
-	.PARAMETER Database
-		A description of the Database parameter.
-	
-	.PARAMETER DeploymentMethod
-		A description of the DeploymentMethod parameter.
-	
-	.PARAMETER ConnectionTimeout
-		A description of the ConnectionTimeout parameter.
-	
-	.PARAMETER Encrypt
-		A description of the Encrypt parameter.
-	
-	.PARAMETER Credential
-		A description of the Credential parameter.
-	
-	.PARAMETER UserName
-		A description of the UserName parameter.
-	
-	.PARAMETER Password
-		A description of the Password parameter.
-	
-	.PARAMETER LogToTable
-		A description of the LogToTable parameter.
-	
-	.PARAMETER Silent
-		A description of the Silent parameter.
-	
-	.PARAMETER Variables
-		A description of the Variables parameter.
-	
+	.PARAMETER Unpacked
+		Mostly intended for internal use. Performs tests against already extracted package.
+
 	.EXAMPLE
-		PS C:\> Install-PowerUpPackage
+		#Validates package and returns validation details
+		Test-PowerUpPackage .\Mypkg.zip
+
+	.EXAMPLE
+		#Validates package and returns boolean value
+		(Test-PowerUpPackage .\Mypkg.zip).IsValid
 	
-	.NOTES
-		Additional information about the function.
 #>
 	
 	[CmdletBinding()]
 	param
 	(
 		[Parameter(Mandatory = $true)]
-		[Alias('Name', 'Package')]
+		[Alias('Name', 'FileName', 'Package')]
 		[string]$Path,
 		[switch]$Unpacked
 	)

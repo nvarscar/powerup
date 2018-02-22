@@ -7,7 +7,8 @@ Function Remove-PowerUpBuild {
 	Remove specific list of builds from the existing PowerUp package keeping all other parts of the package intact
 	
 	.PARAMETER Path
-	Path to the PowerUp package
+	Path to the existing PowerUpPackage.
+	Aliases: Name, FileName, Package
 	
 	.PARAMETER Build
 	One or more builds to remove from the package.

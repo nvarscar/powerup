@@ -6,16 +6,47 @@
 	.DESCRIPTION
 	Overwrites configuration file inside the existing PowerUp package with the new values provided by user
 	
-	.EXAMPLE
-	Update-PowerUpConfig File.zip -Config ApplicationName -Value 'MyApp'
-
-	.EXAMPLE
-	Update-PowerUpConfig File.zip -Values @{'ApplicationName' = 'MyApp'; 'Database' = 'MyDB'}
-
-	.EXAMPLE
-	Update-PowerUpConfig File.zip -ConfigurationFile 'myconfig.json'
+	.PARAMETER Path
+	Path to the existing PowerUpPackage.
+	Aliases: Name, FileName, Package
 	
-	.NOTES
+	.PARAMETER ConfigurationFile
+	A path to the custom configuration json file
+	Alias: ConfigFile
+	
+	.PARAMETER Configuration
+	Hashtable containing several configuration items at once
+	Alias: Config
+	
+	.PARAMETER ConfigName
+	Name of the configuration item to update
+	
+	.PARAMETER Value
+	Value of the parameter specified in -ConfigName
+
+	.PARAMETER Variables
+	Hashtable with variables that can be used inside the scripts and deployment parameters.
+	Proper format of the variable tokens is #{MyVariableName}
+	Can also be provided as a part of Configuration hashtable: -Configuration @{ Variables = @{ Var1 = ...; Var2 = ...}}
+	
+	.PARAMETER Unpacked
+	Mostly intended for internal use. Performs configuration changes inside unpacked package.
+
+	.EXAMPLE
+	# Update a single parameter in the configuration file of the Package.zip package
+	Update-PowerUpConfig Package.zip -ConfigName ApplicationName -Value 'MyApp'
+
+	.EXAMPLE
+	# Update several configuration parameters at once using a hashtable
+	Update-PowerUpConfig Package.zip -Configuration @{'ApplicationName' = 'MyApp'; 'Database' = 'MyDB'}
+
+	.EXAMPLE
+	# Update parameters based on the contents of the json file myconfig.json
+	Update-PowerUpConfig Package.zip -ConfigurationFile 'myconfig.json'
+	
+	.EXAMPLE
+	# Specifically update values of the Variables parameter
+	Update-PowerUpConfig Package.zip -Variables @{ foo = 'bar' }
 	
 	#>
 	[CmdletBinding(DefaultParameterSetName = 'Value',
