@@ -1,5 +1,17 @@
 ﻿Function Get-VariableTokens {
-	#Get #{tokens} from the string
+	<#
+	.SYNOPSIS
+	Get a list of #{tokens} from the string
+	
+	.DESCRIPTION
+	Returns an array of tokens that matches token regex #{token}
+	
+	.PARAMETER InputString
+	String to run regex against
+	
+	.EXAMPLE
+	Get-VariableTokens '#{foo} myString #{bar}' # returns @('foo','bar')
+	#>
 	Param (
 		[string]$InputString
 	)

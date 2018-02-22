@@ -1,28 +1,38 @@
 ﻿Function Replace-VariableTokens {
-	#Replaces all the tokens with known variables (-Variables or $OctopusParameters)
+	<#
+	.SYNOPSIS
+	Replaces all the tokens in a string with provided variables
+	
+	.DESCRIPTION
+	Parses input string and replaces all the #{tokens} inside it with provided variables
+	
+	.PARAMETER InputString
+	String to parse
+	
+	.PARAMETER Runtime
+	Variables collection. Token names should match keys in the hashtable
+	
+	.EXAMPLE
+	Replace-VariableTokens -InputString "SELECT '#{foo}' as str" -Runtime @{ foo = 'bar'}
+	#>
 	[CmdletBinding()]
 	Param (
-		$InputString,
-		$RuntimeVariables
+		[string[]]$InputString,
+		[hashtable]$Runtime
 	)
-	Write-Debug "Processing string: $($InputString)"
-	foreach ($token in (Get-VariableTokens $InputString)) {
-		Write-Debug "Processing token: $token"
-		#Replace variables found in the config
-		$tokenRegEx = "\#\{$token\}"
-		if ($RuntimeVariables -and $property -ne 'Variables') {
-			if (
-				($RuntimeVariables.GetType() -eq [hashtable] -and $RuntimeVariables.Keys -contains $token) -or
-				($RuntimeVariables.GetType() -eq [PSCustomObject] -and $RuntimeVariables.psobject.Properties.Name -contains $token)
-			) {
-				$InputString = $InputString -replace $tokenRegEx, $RuntimeVariables.$token
+	foreach ($str in $InputString) {
+		Write-Debug "Processing string: $str"
+		foreach ($token in (Get-VariableTokens $str)) {
+			Write-Debug "Processing token: $token"
+			#Replace variables found in the config
+			$tokenRegEx = "\#\{$token\}"
+			if ($Runtime) {
+				if ($Runtime.Keys -contains $token) {
+					$str = $str -replace $tokenRegEx, $Runtime.$token
+				}
 			}
+			Write-Debug "String after replace: $str"
 		}
-		#Replace Octopus variables
-		if ($OctopusParameters -and $OctopusParameters.Keys -contains $token) {
-			$InputString = $InputString -replace $tokenRegEx, $OctopusParameters[$token]
-		}
-		Write-Debug "String after replace: $($InputString)"
+		$str
 	}
-	$InputString
 }

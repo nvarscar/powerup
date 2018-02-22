@@ -205,7 +205,7 @@
 		foreach ($script in $build.scripts) {
 			# Replace tokens in the scripts
 			$scriptPath = Join-Path $scriptRoot $script.PackagePath
-			$scriptContent = Replace-VariableTokens (Get-Content $scriptPath -Raw)
+			$scriptContent = Replace-VariableTokens (Get-Content $scriptPath -Raw) $runtimeVariables
 			$scriptCollection += [DbUp.Engine.SqlScript]::new($script.PackagePath, $scriptContent)
 		}
 	}
