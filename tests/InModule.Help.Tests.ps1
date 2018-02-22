@@ -1,6 +1,6 @@
 if ($SkipHelpTest) { return }
-
-$includedNames = (Get-ChildItem "$PSScriptRoot\..\functions" | Where-Object Name -like "*.ps1" ).BaseName
+$here = if ($PSScriptRoot) { $PSScriptRoot } else {	(Get-Item . ).FullName }
+$includedNames = (Get-ChildItem "$here\..\functions" | Where-Object Name -like "*.ps1" ).BaseName
 $commands = Get-Command -Module (Get-Module PowerUp) -CommandType Cmdlet, Function, Workflow | Where-Object Name -in $includedNames
 
 ## When testing help, remember that help is cached at the beginning of each session.
@@ -68,77 +68,83 @@ foreach ($command in $commands) {
             $Common = 'Debug', 'ErrorAction', 'ErrorVariable', 'InformationAction', 'InformationVariable', 'OutBuffer', 'OutVariable',
             'PipelineVariable', 'Verbose', 'WarningAction', 'WarningVariable'
 
-            $parameters = $command.ParameterSets.Parameters | Sort-Object -Property Name -Unique | Where-Object Name -notin $common
-            $parameterNames = $parameters.Name
-            $HelpParameterNames = $Help.Parameters.Parameter.Name | Sort-Object -Unique
-            foreach ($parameter in $parameters) {
-                $parameterName = $parameter.Name
-                $parameterHelp = $Help.parameters.parameter | Where-Object Name -EQ $parameterName
+            $parameterSets = $command.ParameterSets | Sort-Object -Property Name -Unique | Where-Object Parameters.Name -notin $common
+            foreach ($parameterSet in $parameterSets) {
+                $parameters = $parameterSet.Parameters | Sort-Object -Property Name -Unique | Where-Object Name -notin $common
+                $parameterNames = $parameters.Name
+                $HelpParameterNames = $Help.Parameters.Parameter.Name | Sort-Object -Unique
+                foreach ($parameter in $parameters) {
+                    $parameterName = $parameter.Name
+                    $parameterHelp = $Help.parameters.parameter | Where-Object Name -EQ $parameterName
 
-                $testparamsall += 1
-                if ([String]::IsNullOrEmpty($parameterHelp.Description.Text)) {
-                    # Should be a description for every parameter
-                    It "gets help for parameter: $parameterName : in $commandName" {
-                        $parameterHelp.Description.Text | Should Not BeNullOrEmpty
-                    }
-                    $testparamserrors += 1
-                }
-
-                $testparamsall += 1
-                $codeMandatory = $parameter.IsMandatory.toString()
-                if ($parameterHelp.Required -ne $codeMandatory) {
-                    # Required value in Help should match IsMandatory property of parameter
-                    It "help for $parameterName parameter in $commandName has correct Mandatory value" {
-                        $parameterHelp.Required | Should Be $codeMandatory
-                    }
-                    $testparamserrors += 1
-                }
-
-                #if ($HelpTestSkipParameterType[$commandName] -contains $parameterName) { continue }
-
-                $codeType = $parameter.ParameterType.Name
-
-                $testparamsall += 1
-                if ($parameter.ParameterType.IsEnum) {
-                    # Enumerations often have issues with the typename not being reliably available
-                    $names = $parameter.ParameterType::GetNames($parameter.ParameterType)
-                    if ($parameterHelp.parameterValueGroup.parameterValue -ne $names) {
-                        # Parameter type in Help should match code
-                        It "help for $commandName has correct parameter type for $parameterName" {
-                            $parameterHelp.parameterValueGroup.parameterValue | Should be $names
+                    $testparamsall += 1
+                    if ([String]::IsNullOrEmpty($parameterHelp.Description.Text)) {
+                        # Should be a description for every parameter
+                        It "gets help for parameter: $parameterName : in $commandName" {
+                            $parameterHelp.Description.Text | Should Not BeNullOrEmpty
                         }
                         $testparamserrors += 1
                     }
-                }
-                elseif ($parameter.ParameterType.FullName -in $HelpTestEnumeratedArrays) {
-                    # Enumerations often have issues with the typename not being reliably available
-                    $names = [Enum]::GetNames($parameter.ParameterType.DeclaredMembers[0].ReturnType)
-                    if ($parameterHelp.parameterValueGroup.parameterValue -ne $names) {
-                        # Parameter type in Help should match code
-                        It "help for $commandName has correct parameter type for $parameterName" {
-                            $parameterHelp.parameterValueGroup.parameterValue | Should be $names
+
+                    $testparamsall += 1
+                    if ($parameterSet.IsDefault) {
+                        #This test only valid for the default parameter set, but might fail on others if mandatory settings are different
+                        $codeMandatory = $parameter.IsMandatory.toString()
+                        if ($parameterHelp.Required -ne $codeMandatory) {
+                            # Required value in Help should match IsMandatory property of parameter
+                            It "help for $parameterName parameter in $commandName has correct Mandatory value" {
+                                $parameterHelp.Required | Should Be $codeMandatory
+                            }
+                            $testparamserrors += 1
                         }
-                        $testparamserrors += 1
                     }
-                }
-                else {
-                    # To avoid calling Trim method on a null object.
-                    $helpType = if ($parameterHelp.parameterValue) { $parameterHelp.parameterValue.Trim() }
-                    if ($helpType -ne $codeType ) {
-                        # Parameter type in Help should match code
-                        It "help for $commandName has correct parameter type for $parameterName" {
-                            $helpType | Should be $codeType
+
+                    #if ($HelpTestSkipParameterType[$commandName] -contains $parameterName) { continue }
+
+                    $codeType = $parameter.ParameterType.Name
+
+                    $testparamsall += 1
+                    if ($parameter.ParameterType.IsEnum) {
+                        # Enumerations often have issues with the typename not being reliably available
+                        $names = $parameter.ParameterType::GetNames($parameter.ParameterType)
+                        if ($parameterHelp.parameterValueGroup.parameterValue -ne $names) {
+                            # Parameter type in Help should match code
+                            It "help for $commandName has correct parameter type for $parameterName" {
+                                $parameterHelp.parameterValueGroup.parameterValue | Should be $names
+                            }
+                            $testparamserrors += 1
                         }
-                        $testparamserrors += 1
+                    }
+                    elseif ($parameter.ParameterType.FullName -in $HelpTestEnumeratedArrays) {
+                        # Enumerations often have issues with the typename not being reliably available
+                        $names = [Enum]::GetNames($parameter.ParameterType.DeclaredMembers[0].ReturnType)
+                        if ($parameterHelp.parameterValueGroup.parameterValue -ne $names) {
+                            # Parameter type in Help should match code
+                            It "help for $commandName has correct parameter type for $parameterName" {
+                                $parameterHelp.parameterValueGroup.parameterValue | Should be $names
+                            }
+                            $testparamserrors += 1
+                        }
+                    }
+                    else {
+                        # To avoid calling Trim method on a null object.
+                        $helpType = if ($parameterHelp.parameterValue) { $parameterHelp.parameterValue.Trim() }
+                        if ($helpType -ne $codeType ) {
+                            # Parameter type in Help should match code
+                            It "help for $commandName has correct parameter type for $parameterName" {
+                                $helpType | Should be $codeType
+                            }
+                            $testparamserrors += 1
+                        }
                     }
                 }
             }
             foreach ($helpParm in $HelpParameterNames) {
                 $testparamsall += 1
-                if ($helpParm -notin $parameterNames) {
+                if ($helpParm -notin $parameterSets.Parameters.Name) {
                     # Shouldn't find extra parameters in help.
                     It "finds help parameter in code: $helpParm" {
-                        $helpParm -in $parameterNames | Should Be $true
+                        $helpParm -in $parameterSets.Parameters.Name | Should Be $true
                     }
                     $testparamserrors += 1
                 }
