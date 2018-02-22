@@ -1,5 +1,20 @@
 ﻿Function Replace-VariableTokens {
-	#Replaces all the tokens with provided variables
+	<#
+	.SYNOPSIS
+	Replaces all the tokens in a string with provided variables
+	
+	.DESCRIPTION
+	Parses input string and replaces all the #{tokens} inside it with provided variables
+	
+	.PARAMETER InputString
+	String to parse
+	
+	.PARAMETER Runtime
+	Variables collection. Token names should match keys in the hashtable
+	
+	.EXAMPLE
+	Replace-VariableTokens -InputString "SELECT '#{foo}' as str" -Runtime @{ foo = 'bar'}
+	#>
 	[CmdletBinding()]
 	Param (
 		[string[]]$InputString,
