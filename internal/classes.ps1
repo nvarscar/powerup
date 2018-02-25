@@ -503,22 +503,10 @@ class PowerUpConfig : PowerUpClass {
 
 	#Constructors
 	PowerUpConfig () {
-		$this.ApplicationName = [NullString]::Value
-		$this.SqlInstance = [NullString]::Value
-		$this.Database = [NullString]::Value
-		$this.DeploymentMethod = [NullString]::Value
-		$this.Username = [NullString]::Value
-		$this.Password = [NullString]::Value
-		$this.SchemaVersionTable = [NullString]::Value
+		$this.Init()
 	}
 	PowerUpConfig ([string]$jsonString) {
-		$this.ApplicationName = [NullString]::Value
-		$this.SqlInstance = [NullString]::Value
-		$this.Database = [NullString]::Value
-		$this.DeploymentMethod = [NullString]::Value
-		$this.Username = [NullString]::Value
-		$this.Password = [NullString]::Value
-		$this.SchemaVersionTable = [NullString]::Value
+		$this.Init()
 
 		$jsonConfig = $jsonString | ConvertFrom-Json -ErrorAction Stop
 		
@@ -533,6 +521,18 @@ class PowerUpConfig : PowerUpClass {
 			}
 		}
 	}
+	#Hidden methods 
+	hidden [void] Init () {
+		#Defining default values
+		$this.ApplicationName = [NullString]::Value
+		$this.SqlInstance = [NullString]::Value
+		$this.Database = [NullString]::Value
+		$this.DeploymentMethod = [NullString]::Value
+		$this.Username = [NullString]::Value
+		$this.Password = [NullString]::Value
+		$this.SchemaVersionTable = [NullString]::Value
+	}
+
 	#Methods 
 	[hashtable] AsHashtable () {
 		$ht = @{}
