@@ -38,7 +38,7 @@
 		[switch]$Unpacked
 	)
 	begin {
-		function Return-ValidationItem ([string]$name, [bool]$result) {
+		function Select-ValidationItem ([string]$name, [bool]$result) {
 			$object = @{ } | Select-Object Name, Result
 			$object.Name = $name
 			$object.Result = $result
@@ -78,18 +78,18 @@
 			Write-Verbose "Starting validation"
 			$validationResults = @()
 		
-			$validationResults += Return-ValidationItem 'PackageFile' (Test-Path "$workFolder\PowerUp.package.json")
+			$validationResults += Select-ValidationItem 'PackageFile' (Test-Path "$workFolder\PowerUp.package.json")
 		
 			$package = [PowerUpPackage]::FromFile("$workFolder\PowerUp.package.json")
-			$validationResults += Return-ValidationItem 'DeploymentScript' (Test-Path "$workFolder\$($package.DeployScript)")
-			$validationResults += Return-ValidationItem 'ConfigurationFile' (Test-Path "$workFolder\$($package.ConfigurationFile)")
-			$validationResults += Return-ValidationItem 'ModuleManifest' (Test-Path $moduleManifest)
+			$validationResults += Select-ValidationItem 'DeploymentScript' (Test-Path "$workFolder\$($package.DeployScript)")
+			$validationResults += Select-ValidationItem 'ConfigurationFile' (Test-Path "$workFolder\$($package.ConfigurationFile)")
+			$validationResults += Select-ValidationItem 'ModuleManifest' (Test-Path $moduleManifest)
 		
 			foreach ($build in $package.builds) {
 				$contentPath = "$workFolder\$($package.ScriptDirectory)"
-				$validationResults += Return-ValidationItem $build (Test-Path "$contentPath\$($build.build)" -PathType Container)
+				$validationResults += Select-ValidationItem $build (Test-Path "$contentPath\$($build.build)" -PathType Container)
 				foreach ($script in $build.scripts) {
-					$validationResults += Return-ValidationItem $script ((Test-Path "$contentPath\$($script.packagePath)" -PathType Leaf) -and ((Get-FileHash "$contentPath\$($script.packagePath)").Hash -eq $script.hash))
+					$validationResults += Select-ValidationItem $script ((Test-Path "$contentPath\$($script.packagePath)" -PathType Leaf) -and ((Get-FileHash "$contentPath\$($script.packagePath)").Hash -eq $script.hash))
 				}
 			}
 			
@@ -100,7 +100,7 @@
 			}
 			$outObject.Package = $Path
 			$outObject.PackageVersion = $package.GetVersion()
-			$outObject.IsValid = $validationResults.Result | ForEach-Object -Begin { $r = $true } -Process { $r = $r -and $_ } -End { $r }
+			$outObject.IsValid = $validationResults.Result -notcontains $false
 			$outObject.ValidationTests = $validationResults
 			$outObject
 		}
