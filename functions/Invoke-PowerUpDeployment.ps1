@@ -148,13 +148,13 @@
 	
 	#Replace tokens if any
 	foreach ($property in $config.psobject.Properties.Name | Where-Object { $_ -ne 'Variables' }) {
-		$config.$property = Replace-VariableTokens $config.$property $runtimeVariables
+		$config.$property = Resolve-VariableToken $config.$property $runtimeVariables
 	}
 	
 	#Apply overrides if any
 	foreach ($key in ($PSBoundParameters.Keys | Where-Object { $_ -ne 'Variables' })) {
 		if ($key -in $config.psobject.Properties.Name) {
-			$config.$key = Replace-VariableTokens $PSBoundParameters[$key] $runtimeVariables
+			$config.$key = Resolve-VariableToken $PSBoundParameters[$key] $runtimeVariables
 		}
 	}
 	
@@ -205,7 +205,7 @@
 		foreach ($script in $build.scripts) {
 			# Replace tokens in the scripts
 			$scriptPath = Join-Path $scriptRoot $script.PackagePath
-			$scriptContent = Replace-VariableTokens (Get-Content $scriptPath -Raw) $runtimeVariables
+			$scriptContent = Resolve-VariableToken (Get-Content $scriptPath -Raw) $runtimeVariables
 			$scriptCollection += [DbUp.Engine.SqlScript]::new($script.PackagePath, $scriptContent)
 		}
 	}

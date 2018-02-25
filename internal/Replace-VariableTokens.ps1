@@ -1,4 +1,4 @@
-﻿Function Replace-VariableTokens {
+﻿Function Resolve-VariableToken {
 	<#
 	.SYNOPSIS
 	Replaces all the tokens in a string with provided variables
@@ -13,7 +13,7 @@
 	Variables collection. Token names should match keys in the hashtable
 	
 	.EXAMPLE
-	Replace-VariableTokens -InputString "SELECT '#{foo}' as str" -Runtime @{ foo = 'bar'}
+	Resolve-VariableToken -InputString "SELECT '#{foo}' as str" -Runtime @{ foo = 'bar'}
 	#>
 	[CmdletBinding()]
 	Param (
