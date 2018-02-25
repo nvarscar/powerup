@@ -1,81 +1,129 @@
 ﻿function Install-PowerUpPackage {
 	<#
 	.SYNOPSIS
-		Deploys a prepared PowerUp package
+		Deploys an existing PowerUp package
 	
 	.DESCRIPTION
-		A detailed description of the Install-PowerUpPackage function.
+		Deploys an existing PowerUp package with optional parameters. 
+		Uses a table specified in SchemaVersionTable parameter to determine scripts to run.
+		Will deploy all the builds from the package that previously have not been deployed.
 	
 	.PARAMETER Path
-		A description of the Path parameter.
+		Path to the existing PowerUpPackage.
+		Aliases: Name, FileName, Package
 	
 	.PARAMETER WorkSpace
-		A description of the WorkSpace parameter.
+		Optional folder to unzip the package to. Will hold the extracted package after completion.
 	
 	.PARAMETER SqlInstance
-		A description of the SqlInstance parameter.
+		Database server to connect to. SQL Server only for now.
+		Aliases: Server, SQLServer, DBServer, Instance
 	
 	.PARAMETER Database
-		A description of the Database parameter.
+		Name of the database to execute the scripts in. Optional - will use default database if not specified.
 	
 	.PARAMETER DeploymentMethod
-		A description of the DeploymentMethod parameter.
+		Choose one of the following deployment methods:
+		- SingleTransaction: wrap all the deployment scripts into a single transaction and rollback whole deployment on error
+		- TransactionPerScript: wrap each script into a separate transaction; rollback single script deployment in case of error
+		- NoTransaction: deploy as is
+		
+		Default: NoTransaction
 	
 	.PARAMETER ConnectionTimeout
-		A description of the ConnectionTimeout parameter.
+		Database server connection timeout in seconds. Only affects connection attempts. Does not affect execution timeout.
+		If 0, will wait for connection until the end of times.
+		
+		Default: 30
 		
 	.PARAMETER ExecutionTimeout
-		A description of the ExecutionTimeout parameter.
+		Script execution timeout. The script will be aborted if the execution takes more than specified number of seconds.
+		If 0, the script is allowed to run until the end of times.
+
+		Default: 180
 	
 	.PARAMETER Encrypt
-		A description of the Encrypt parameter.
+		Enables connection encryption.
 	
 	.PARAMETER Credential
-		A description of the Credential parameter.
+		PSCredential object with username and password to login to the database server.
 	
 	.PARAMETER UserName
-		A description of the UserName parameter.
+		An alternative to -Credential - specify username explicitly
 	
 	.PARAMETER Password
-		A description of the Password parameter.
+		An alternative to -Credential - specify password explicitly
 	
 	.PARAMETER SchemaVersionTable
-		A description of the SchemaVersionTable parameter.
+		A table that will hold the history of script execution.
+
+		Default: dbo.SchemaVersions
 	
 	.PARAMETER Silent
-		A description of the Silent parameter.
+		Will supress all output from the command.
 	
 	.PARAMETER Variables
-		A description of the Variables parameter.
+		Hashtable with variables that can be used inside the scripts and deployment parameters.
+		Proper format of the variable tokens is #{MyVariableName}
+		Can also be provided as a part of Configuration hashtable: -Configuration @{ Variables = @{ Var1 = ...; Var2 = ...}}
+		Will augment and/or overwrite Variables defined inside the package.
 	
 	.PARAMETER Force
-		A description of the Force parameter.
+		Will overwrite contents of -WorkSpace folder if it is not empty.
 	
 	.PARAMETER SkipValidation
-		A description of the SkipValidation parameter.
+		Skip validation of the package that ensures the integrity of all the files and builds.
 	
 	.PARAMETER OutputFile
-		A description of the OutputFile parameter.
+		Log output into specified file.
 	
 	.PARAMETER Append
-		A description of the Append parameter.
+		Append output to the -OutputFile instead of overwriting it.
+
+	.PARAMETER ConfigurationFile
+		A path to the custom configuration json file
+	
+	.PARAMETER Configuration
+		Hashtable containing necessary configuration items. Will override parameters in ConfigurationFile
+	
+	.PARAMETER Confirm
+        Prompts to confirm certain actions
+
+    .PARAMETER WhatIf
+        Shows what would happen if the command would execute, but does not actually perform the command
+
+    .EXAMPLE
+		# Installs package with predefined configuration inside the package
+		Install-PowerUpPackage .\MyPackage.zip
 	
 	.EXAMPLE
-		PS C:\> Install-PowerUpPackage
-	
-	.NOTES
-		Additional information about the function.
+		# Installs package using specific connection parameters
+		.\MyPackage.zip | Install-PowerUpPackage -SqlInstance 'myserver\instance1' -Database 'MyDb' -ExecutionTimeout 3600 
+		
+	.EXAMPLE
+		# Installs package using custom logging parameters and schema tracking table
+		.\MyPackage.zip | Install-PowerUpPackage -SchemaVersionTable dbo.SchemaHistory -OutputFile .\out.log -Append
+
+	.EXAMPLE
+		# Installs package using custom configuration file
+		.\MyPackage.zip | Install-PowerUpPackage -ConfigurationFile .\localconfig.json
+
+	.EXAMPLE
+		# Installs package using variables instead of specifying values directly
+		.\MyPackage.zip | Install-PowerUpPackage -SqlInstance '#{server}' -Database '#{db}' -Variables @{server = 'myserver\instance1'; db = 'MyDb'}
 #>
 	
 	[CmdletBinding(SupportsShouldProcess = $true)]
 	param
 	(
 		[Parameter(Mandatory = $true,
+			ValueFromPipeline = $true,
 			Position = 1)]
 		[Alias('Name', 'Package', 'Filename')]
 		[string]$Path,
 		[string]$WorkSpace,
 		[Parameter(Position = 2)]
+		[Alias('Server', 'SqlServer', 'DBServer', 'Instance')]
 		[string]$SqlInstance,
 		[Parameter(Position = 3)]
 		[string]$Database,
@@ -96,7 +144,8 @@
 		[string]$OutputFile,
 		[switch]$Append,
 		[Alias('Config')]
-		[string]$ConfigurationFile
+		[string]$ConfigurationFile,
+		[hashtable]$Configuration
 	)
 	
 	begin {
@@ -151,25 +200,17 @@
 				}
 			}
 
-			#Reading the package
-			$packageFileName = Join-Path $workFolder ([PowerUpConfig]::GetPackageFileName())
-			if ($PSCmdlet.ShouldProcess($packageFileName, "Reading package file")) {
-				$package = [PowerUpPackage]::FromFile($packageFileName)
-			}
-
 			#Overwrite config file if specified
-			if ($PSCmdlet.ParameterSetName -eq 'Config') {
-				if (Test-Path $ConfigurationFile) {
-					if ($PSCmdlet.ShouldProcess($ConfigurationFile, "Overwriting config file in $workFolder")) {
-						$null = Copy-Item (Get-Item $ConfigurationFile) (Join-Path $workFolder $package.ConfigurationFile)
-					}
-				}
-				else {
-					throw "Configuration file $ConfigurationFile not found. Aborting installation."
-				}
+			if ($ConfigurationFile) {
+				Update-PowerUpConfig -Path $workFolder -ConfigurationFile $ConfigurationFile -Variables $Variables -Unpacked
 			}
-		
+			if ($Configuration) {
+				Update-PowerUpConfig -Path $workFolder -Configuration $Configuration -Variables $Variables -Unpacked
+			} 
+			
+			
 			#Start deployment
+			$packageFileName = Join-Path $workFolder ([PowerUpConfig]::GetPackageFileName())
 			$params = @{ PackageFile = $packageFileName }
 			foreach ($key in ($PSBoundParameters.Keys | Where-Object {
 						$_ -in @(
@@ -191,7 +232,7 @@
 					})) {
 				$params += @{ $key = $PSBoundParameters[$key] }
 			}
-		
+			Write-Verbose "Preparing to start the deployment with custom parameters: $($params.Keys -join ', ')"
 			if ($PSCmdlet.ShouldProcess($params.PackageFile, "Initiating the deployment of the package")) {
 				Invoke-PowerUpDeployment @params
 			}

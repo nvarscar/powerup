@@ -1,58 +1,71 @@
 ﻿<#
 	.SYNOPSIS
-		Creates a new deployment package from specified set of scripts
+		Creates a new deployment package from a specified set of scripts
 	
 	.DESCRIPTION
-		Creates a new zip package which would contain a set of deployment scripts
+		Creates a new zip package which would contain a set of deployment scripts.
+		Deploy.ps1 inside the package will initiate the deployment of the extracted package.
+		Can be created with predefined parameters, which would allow for deployments without specifying additional info.
 	
 	.PARAMETER ScriptPath
-		A description of the ScriptPath parameter.
+		A collection of script files to add to the build. Accepts Get-Item/Get-ChildItem objects and wildcards.
+		Will recursively add all of the subfolders inside folders. See examples if you want only custom files to be added.
+		During deployment, scripts will be following this deployment order:
+		 - Item order provided in the ScriptPath parameter
+		   - Files inside each child folder (both folders and files in alphabetical order)
+			 - Files inside the root folder (in alphabetical order)
+			 
+		Aliases: SourcePath
 	
-	.PARAMETER Name
-		Output package name. Can be full file path or just a file name.
+	.PARAMETER Path
+		Package file name. Will add '.zip' extention, if no extension is specified
+
+		Aliases: Name, FileName, Package
 	
 	.PARAMETER Build
-		A description of the Build parameter.
-	
-	.PARAMETER ApplicationName
-		A description of the ApplicationName parameter.
-	
-	.PARAMETER DeploymentMethod
-		A description of the DeploymentMethod parameter.
-	
-	.PARAMETER UserName
-		A description of the UserName parameter.
-	
-	.PARAMETER Password
-		A description of the Password parameter.
-	
-	.PARAMETER ConnectionTimeout
-		A description of the ConnectionTimeout parameter.
-
-	.PARAMETER ExecutionTimeout
-		A description of the ExecutionTimeout parameter.
-	
-	.PARAMETER Encrypt
-		A description of the Encrypt parameter.
+		A string that would be representing a build number of the first build in this package. 
+		A single package can span multiple builds - see Add-PowerUpBuild.
+		Optional - can be genarated automatically.
+		Can only contain characters that will be valid on the filesystem.
 	
 	.PARAMETER Force
-		A description of the Force parameter.
+		Replaces the target file specified in -Path if it already exists.
 	
 	.PARAMETER ConfigurationFile
-		A description of the ConfigurationFile parameter.
+		A path to the custom configuration json file
 	
-	.PARAMETER Version
-		A description of the Version parameter.
+	.PARAMETER Configuration
+		Hashtable containing necessary configuration items. Will override parameters in ConfigurationFile
+
+	.PARAMETER Variables
+		Hashtable with variables that can be used inside the scripts and deployment parameters.
+		Proper format of the variable tokens is #{MyVariableName}
+		Can also be provided as a part of Configuration hashtable: -Configuration @{ Variables = @{ Var1 = ...; Var2 = ...}}
+	
+	.PARAMETER Confirm
+        Prompts to confirm certain actions
+
+    .PARAMETER WhatIf
+        Shows what would happen if the command would execute, but does not actually perform the command
+
+    .EXAMPLE
+		# Creates new package using files from .\Scripts\2.0. Initial build version will be 2.0
+		New-PowerUpPackage -Path MyPackage.zip -ScriptPath .\Scripts\2.0 -Build 2.0
+
+	.EXAMPLE
+		# Creates new package using files from .\Scripts\2.0. Destination file will be overwritten.
+		Get-ChildItem .\Scripts\2.0 | New-PowerUpPackage -Path MyPackage.zip -Build 1.0 -Force
+
+	.EXAMPLE
+		# Creates new package and applies custom configuration template to it
+		New-PowerUpPackage -Path MyPackage.zip -ScriptPath .\Scripts -ConfigurationFile .\config.json
 	
 	.EXAMPLE
-		PS C:\> New-PowerUpPackage -ScriptPath $value1 -Name 'Value2'
-	
-	.NOTES
-		Additional information about the function.
+		# Creates new package and uses predefined configuration parameters
+		New-PowerUpPackage -Path MyPackage.zip -ScriptPath .\Scripts -Configuration @{ Database = 'myDB'; ConnectionTimeout = 5 }
 #>
 function New-PowerUpPackage {
-	[CmdletBinding(DefaultParameterSetName = 'Default',
-		SupportsShouldProcess = $true)]
+	[CmdletBinding(SupportsShouldProcess = $true)]
 	param
 	(
 		[Parameter(Mandatory = $false,
@@ -62,27 +75,15 @@ function New-PowerUpPackage {
 		[Parameter(Mandatory = $true,
 			ValueFromPipeline = $true,
 			Position = 2)]
+		[Alias('SourcePath')]
 		[object[]]$ScriptPath,
 		[string]$Build,
-		[Parameter(ParameterSetName = 'Default')]
-		[string]$ApplicationName = 'PowerUp',
-		[Parameter(ParameterSetName = 'Default')]
-		[ValidateSet('SingleTransaction', 'TransactionPerScript', 'NoTransaction')]
-		[string]$DeploymentMethod = 'NoTransaction',
-		[Parameter(ParameterSetName = 'Default')]
-		[string]$UserName,
-		[Parameter(ParameterSetName = 'Default')]
-		[securestring]$Password,
-		[Parameter(ParameterSetName = 'Default')]
-		[int]$ConnectionTimeout,
-		[Parameter(ParameterSetName = 'Default')]
-		[int]$ExecutionTimeout,
-		[Parameter(ParameterSetName = 'Default')]
-		[switch]$Encrypt,
 		[switch]$Force,
-		[Parameter(ParameterSetName = 'Config')]
 		[Alias('Config')]
-		[string]$ConfigurationFile
+		[hashtable]$Configuration,
+		[Alias('ConfigFile')]
+		[string]$ConfigurationFile,
+		[hashtable]$Variables
 	)
 	
 	begin {
@@ -91,17 +92,18 @@ function New-PowerUpPackage {
 			$Path = "$Path.zip"
 		}
 		
-		#Get configuration object if specified
-		$config = Get-PowerUpConfig -Path $ConfigurationFile
-
-		#Apply overrides if any
-		foreach ($key in ($PSBoundParameters.Keys | Where-Object { $_ -ne 'Variables' })) {
-			if ($key -in $config.psobject.Properties.Name) {
-				Write-Verbose "Overriding config property $key"
-				$config.$key = $PSBoundParameters[$key]
+		#Combine Variables and Configuration into a single object
+		$configTable = $Configuration
+		if ($Variables) { 
+			if ($configTable) {
+				$configTable.Remove('Variables')
 			}
+			$configTable += @{ Variables = $Variables } 
 		}
 		
+		#Get configuration object according to current config options
+		$config = Get-PowerUpConfig -Path $ConfigurationFile -Configuration $configTable
+	
 		#Create a package object
 		$package = [PowerUpPackage]::new()
 		
@@ -112,13 +114,11 @@ function New-PowerUpPackage {
 		else {
 			$buildNumber = Get-NewBuildNumber
 		}
+		
+		$scriptCollection = @()
 	}
 	process {
-		foreach ($scriptItem in $ScriptPath) {
-			if (!(Test-Path $scriptItem)) {
-				throw "The following path is not valid: $scriptItem"
-			}
-		}
+		$scriptCollection += $ScriptPath
 	}
 	end {
 		if ($pscmdlet.ShouldProcess($package, "Generate a package file")) {
@@ -152,7 +152,7 @@ function New-PowerUpPackage {
 				Copy-ModuleFiles -Path (Join-Path $workFolder "Modules\PowerUp")
 
 				#Create a new build
-				$null = Add-PowerUpBuild -Path $workFolder -Build $buildNumber -ScriptPath $ScriptPath -Unpacked -SkipValidation
+				$null = Add-PowerUpBuild -Path $workFolder -Build $buildNumber -ScriptPath $scriptCollection -Unpacked -SkipValidation
 
 				#Storing package details in a variable
 				$packageInfo = Get-PowerUpPackage -Path $workFolder -Unpacked

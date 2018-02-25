@@ -4,18 +4,99 @@
 		Deploys extracted PowerUp package from the specified location
 	
 	.DESCRIPTION
-		A detailed description of the Invoke-PowerUpPackage function.
+		Mostly intended for internal use, deploys an extracted PowerUp package with optional parameters. 
+		Uses a table specified in SchemaVersionTable parameter to determine scripts to run.
+		Will deploy all the builds from the package that previously have not been deployed.
+	
+	.PARAMETER PackageFile
+		Path to the PowerUp package file (usually, PowerUp.package.json).
+	
+	.PARAMETER SqlInstance
+		Database server to connect to. SQL Server only for now.
+		Aliases: Server, SQLServer, DBServer, Instance
+	
+	.PARAMETER Database
+		Name of the database to execute the scripts in. Optional - will use default database if not specified.
+	
+	.PARAMETER DeploymentMethod
+		Choose one of the following deployment methods:
+		- SingleTransaction: wrap all the deployment scripts into a single transaction and rollback whole deployment on error
+		- TransactionPerScript: wrap each script into a separate transaction; rollback single script deployment in case of error
+		- NoTransaction: deploy as is
+		
+		Default: NoTransaction
+	
+	.PARAMETER ConnectionTimeout
+		Database server connection timeout in seconds. Only affects connection attempts. Does not affect execution timeout.
+		If 0, will wait for connection until the end of times.
+		
+		Default: 30
+		
+	.PARAMETER ExecutionTimeout
+		Script execution timeout. The script will be aborted if the execution takes more than specified number of seconds.
+		If 0, the script is allowed to run until the end of times.
+
+		Default: 180
+	
+	.PARAMETER Encrypt
+		Enables connection encryption.
+	
+	.PARAMETER Credential
+		PSCredential object with username and password to login to the database server.
+	
+	.PARAMETER UserName
+		An alternative to -Credential - specify username explicitly
+	
+	.PARAMETER Password
+		An alternative to -Credential - specify password explicitly
+	
+	.PARAMETER SchemaVersionTable
+		A table that will hold the history of script execution.
+
+		Default: dbo.SchemaVersions
+	
+	.PARAMETER Silent
+		Will supress all output from the command.
+	
+	.PARAMETER Variables
+		Hashtable with variables that can be used inside the scripts and deployment parameters.
+		Proper format of the variable tokens is #{MyVariableName}
+		Can also be provided as a part of Configuration hashtable: -Configuration @{ Variables = @{ Var1 = ...; Var2 = ...}}
+		Will augment and/or overwrite Variables defined inside the package.
+
+	.PARAMETER OutputFile
+		Log output into specified file.
+	
+	.PARAMETER Append
+		Append output to the -OutputFile instead of overwriting it.
+
+	.PARAMETER Confirm
+        Prompts to confirm certain actions
+
+    .PARAMETER WhatIf
+        Shows what would happen if the command would execute, but does not actually perform the command
+
+    .EXAMPLE
+		# Start the deployment of the extracted package from the current folder
+		Invoke-PowerUpDeployment
 	
 	.EXAMPLE
-				PS C:\> Invoke-PowerUpPackage
+		# Start the deployment of the extracted package from the current folder using specific connection parameters
+		Invoke-PowerUpDeployment -SqlInstance 'myserver\instance1' -Database 'MyDb' -ExecutionTimeout 3600 
+		
+	.EXAMPLE
+		# Start the deployment of the extracted package using custom logging parameters and schema tracking table
+		Invoke-PowerUpDeployment .\Extracted\PowerUp.package.json -SchemaVersionTable dbo.SchemaHistory -OutputFile .\out.log -Append
 	
-	.NOTES
-		Additional information about the function.
+	.EXAMPLE
+		# Start the deployment of the extracted package in the current folder using variables instead of specifying values directly
+		Invoke-PowerUpDeployment -SqlInstance '#{server}' -Database '#{db}' -Variables @{server = 'myserver\instance1'; db = 'MyDb'}
 #>
 	
 	[CmdletBinding(SupportsShouldProcess = $true)]
 	Param (
 		[string]$PackageFile = ".\PowerUp.package.json",
+		[Alias('Server', 'SqlServer', 'DBServer', 'Instance')]
 		[string]$SqlInstance,
 		[string]$Database,
 		[ValidateSet('SingleTransaction', 'TransactionPerScript', 'NoTransaction')]
@@ -67,13 +148,13 @@
 	
 	#Replace tokens if any
 	foreach ($property in $config.psobject.Properties.Name | Where-Object { $_ -ne 'Variables' }) {
-		$config.$property = Replace-VariableTokens $config.$property $runtimeVariables
+		$config.$property = Resolve-VariableToken $config.$property $runtimeVariables
 	}
 	
 	#Apply overrides if any
 	foreach ($key in ($PSBoundParameters.Keys | Where-Object { $_ -ne 'Variables' })) {
 		if ($key -in $config.psobject.Properties.Name) {
-			$config.$key = Replace-VariableTokens $PSBoundParameters[$key] $runtimeVariables
+			$config.$key = Resolve-VariableToken $PSBoundParameters[$key] $runtimeVariables
 		}
 	}
 	
@@ -124,7 +205,7 @@
 		foreach ($script in $build.scripts) {
 			# Replace tokens in the scripts
 			$scriptPath = Join-Path $scriptRoot $script.PackagePath
-			$scriptContent = Replace-VariableTokens (Get-Content $scriptPath -Raw)
+			$scriptContent = Resolve-VariableToken (Get-Content $scriptPath -Raw) $runtimeVariables
 			$scriptCollection += [DbUp.Engine.SqlScript]::new($script.PackagePath, $scriptContent)
 		}
 	}
@@ -145,7 +226,7 @@
 	}
 	
 	# Enable logging using PowerUpConsoleLog class implementing a logging Interface
-	$dbUp = [StandardExtensions]::LogTo($dbUp, [PowerUpLog]::new($Silent, $OutputFile, $Append))
+	$dbUp = [StandardExtensions]::LogTo($dbUp, [PowerUpLog]::new($config.Silent, $OutputFile, $Append))
 	$dbUp = [StandardExtensions]::LogScriptOutput($dbUp)
 	
 	# Configure schema versioning

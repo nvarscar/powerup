@@ -3,7 +3,7 @@
 $here = if ($PSScriptRoot) { $PSScriptRoot } else {	(Get-Item . ).FullName }
 $sut = (Split-Path -Leaf $MyInvocation.MyCommand.Path) -replace '\.Tests\.', '.'
 
-. "$here\..\internal\Get-ArchiveItems.ps1"
+. "$here\..\internal\Get-ArchiveItem.ps1"
 . "$here\..\internal\New-TempWorkspaceFolder.ps1"
 
 $workFolder = New-TempWorkspaceFolder

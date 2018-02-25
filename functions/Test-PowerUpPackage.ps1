@@ -1,64 +1,44 @@
 ﻿function Test-PowerUpPackage {
 	<#
 	.SYNOPSIS
-		Deploys a prepared PowerUp package
+		Performs structural and integrity checks agains existing PowerUp package
 	
 	.DESCRIPTION
-		A detailed description of the Install-PowerUpPackage function.
+		Runs a number of tests agains PowerUp package contents and returns detailed report 
 	
 	.PARAMETER Path
-		A description of the Path parameter.
+		Path to the existing PowerUpPackage.
+		Aliases: Name, FileName, Package
 	
-	.PARAMETER SqlInstance
-		A description of the SqlInstance parameter.
-	
-	.PARAMETER Database
-		A description of the Database parameter.
-	
-	.PARAMETER DeploymentMethod
-		A description of the DeploymentMethod parameter.
-	
-	.PARAMETER ConnectionTimeout
-		A description of the ConnectionTimeout parameter.
-	
-	.PARAMETER Encrypt
-		A description of the Encrypt parameter.
-	
-	.PARAMETER Credential
-		A description of the Credential parameter.
-	
-	.PARAMETER UserName
-		A description of the UserName parameter.
-	
-	.PARAMETER Password
-		A description of the Password parameter.
-	
-	.PARAMETER LogToTable
-		A description of the LogToTable parameter.
-	
-	.PARAMETER Silent
-		A description of the Silent parameter.
-	
-	.PARAMETER Variables
-		A description of the Variables parameter.
-	
+	.PARAMETER Unpacked
+		Mostly intended for internal use. Performs tests against already extracted package.
+
+	.PARAMETER Confirm
+        Prompts to confirm certain actions
+
+    .PARAMETER WhatIf
+        Shows what would happen if the command would execute, but does not actually perform the command
+
+    .EXAMPLE
+		#Validates package and returns validation details
+		Test-PowerUpPackage .\Mypkg.zip
+
 	.EXAMPLE
-		PS C:\> Install-PowerUpPackage
+		#Validates package and returns boolean value
+		(Test-PowerUpPackage .\Mypkg.zip).IsValid
 	
-	.NOTES
-		Additional information about the function.
 #>
 	
 	[CmdletBinding()]
 	param
 	(
 		[Parameter(Mandatory = $true)]
-		[Alias('Name', 'Package')]
+		[Alias('Name', 'FileName', 'Package')]
 		[string]$Path,
 		[switch]$Unpacked
 	)
 	begin {
-		function Return-ValidationItem ([string]$name, [bool]$result) {
+		function Select-ValidationItem ([string]$name, [bool]$result) {
 			$object = @{ } | Select-Object Name, Result
 			$object.Name = $name
 			$object.Result = $result
@@ -98,18 +78,18 @@
 			Write-Verbose "Starting validation"
 			$validationResults = @()
 		
-			$validationResults += Return-ValidationItem 'PackageFile' (Test-Path "$workFolder\PowerUp.package.json")
+			$validationResults += Select-ValidationItem 'PackageFile' (Test-Path "$workFolder\PowerUp.package.json")
 		
 			$package = [PowerUpPackage]::FromFile("$workFolder\PowerUp.package.json")
-			$validationResults += Return-ValidationItem 'DeploymentScript' (Test-Path "$workFolder\$($package.DeployScript)")
-			$validationResults += Return-ValidationItem 'ConfigurationFile' (Test-Path "$workFolder\$($package.ConfigurationFile)")
-			$validationResults += Return-ValidationItem 'ModuleManifest' (Test-Path $moduleManifest)
+			$validationResults += Select-ValidationItem 'DeploymentScript' (Test-Path "$workFolder\$($package.DeployScript)")
+			$validationResults += Select-ValidationItem 'ConfigurationFile' (Test-Path "$workFolder\$($package.ConfigurationFile)")
+			$validationResults += Select-ValidationItem 'ModuleManifest' (Test-Path $moduleManifest)
 		
 			foreach ($build in $package.builds) {
 				$contentPath = "$workFolder\$($package.ScriptDirectory)"
-				$validationResults += Return-ValidationItem $build (Test-Path "$contentPath\$($build.build)" -PathType Container)
+				$validationResults += Select-ValidationItem $build (Test-Path "$contentPath\$($build.build)" -PathType Container)
 				foreach ($script in $build.scripts) {
-					$validationResults += Return-ValidationItem $script ((Test-Path "$contentPath\$($script.packagePath)" -PathType Leaf) -and ((Get-FileHash "$contentPath\$($script.packagePath)").Hash -eq $script.hash))
+					$validationResults += Select-ValidationItem $script ((Test-Path "$contentPath\$($script.packagePath)" -PathType Leaf) -and ((Get-FileHash "$contentPath\$($script.packagePath)").Hash -eq $script.hash))
 				}
 			}
 			
@@ -120,7 +100,7 @@
 			}
 			$outObject.Package = $Path
 			$outObject.PackageVersion = $package.GetVersion()
-			$outObject.IsValid = $validationResults.Result | ForEach-Object -Begin { $r = $true } -Process { $r = $r -and $_ } -End { $r }
+			$outObject.IsValid = $validationResults.Result -notcontains $false
 			$outObject.ValidationTests = $validationResults
 			$outObject
 		}

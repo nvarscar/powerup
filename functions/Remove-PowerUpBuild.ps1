@@ -4,16 +4,32 @@ Function Remove-PowerUpBuild {
 	Removes one or more builds from the PowerUp package
 	
 	.DESCRIPTION
-	Remove specific list of builds from the existing PowerUp package
+	Remove specific list of builds from the existing PowerUp package keeping all other parts of the package intact
 	
 	.PARAMETER Path
-	PowerUp package path
+	Path to the existing PowerUpPackage.
+	Aliases: Name, FileName, Package
 	
 	.PARAMETER Build
-	Build number
+	One or more builds to remove from the package.
 	
-	.EXAMPLE
+	.PARAMETER SkipValidation
+	Skip package validation step when attempting to remove build(s) from the package.
+	
+	.PARAMETER Confirm
+        Prompts to confirm certain actions
+
+    .PARAMETER WhatIf
+        Shows what would happen if the command would execute, but does not actually perform the command
+
+    .EXAMPLE
+	# Removes builds 1.1 and 1.2 from the package
 	Remove-PowerUpBuild -Path c:\temp\myPackage.zip -Build 1.1, 1.2
+
+	.EXAMPLE
+	# Removes all 1.* builds from the package
+	$builds = (Get-PowerUpPackage c:\temp\myPackage.zip).Builds
+	$builds.Build | Where { $_ -like '1.*' } | Remove-PowerUpBuild -Path c:\temp\myPackage.zip
 	
 	.NOTES
 	
@@ -31,10 +47,6 @@ Function Remove-PowerUpBuild {
 		[switch]$SkipValidation
 	)
 	begin {
-		if (!$Build) {
-			throw "Build number not specified. Aborting build."
-			return
-		}
 		if (!(Test-Path $Path)) {
 			throw "Package $Path not found. Aborting build."
 			return

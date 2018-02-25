@@ -3,7 +3,7 @@
 $here = if ($PSScriptRoot) { $PSScriptRoot } else {	(Get-Item . ).FullName }
 $sut = (Split-Path -Leaf $MyInvocation.MyCommand.Path) -replace '\.Tests\.', '.'
 
-. "$here\..\internal\Get-ArchiveItems.ps1"
+. "$here\..\internal\Get-ArchiveItem.ps1"
 . "$here\..\internal\New-TempWorkspaceFolder.ps1"
 
 $workFolder = New-TempWorkspaceFolder
@@ -20,40 +20,40 @@ Describe "Update-PowerUpConfig tests" {
     }
 	Context "Updating single config item (config/value pairs)" {
 		It "updates config item with new value" {
-			{ Update-PowerUpConfig -Path $packageName -Config ApplicationName -Value 'MyNewApplication' } | Should Not throw
+			{ Update-PowerUpConfig -Path $packageName -ConfigName ApplicationName -Value 'MyNewApplication' } | Should Not throw
             $results = (Get-PowerUpPackage -Path $packageName).Config
             $results.ApplicationName | Should Be 'MyNewApplication'
         }
 		It "updates config item with null value" {
-			{ Update-PowerUpConfig -Path $packageName -Config ApplicationName -Value $null } | Should Not throw
+			{ Update-PowerUpConfig -Path $packageName -ConfigName ApplicationName -Value $null } | Should Not throw
 			$results = (Get-PowerUpPackage -Path $packageName).Config
 			$results.ApplicationName | Should Be $null
         }
 		It "should throw when config item is not specified" {
-			{ Update-PowerUpConfig -Path $packageName -Config $null -Value '123' } | Should throw
+			{ Update-PowerUpConfig -Path $packageName -ConfigName $null -Value '123' } | Should throw
         }
 		It "should throw when config item does not exist" {
-			{ Update-PowerUpConfig -Path $packageName -Config NonexistingItem -Value '123' } | Should throw
+			{ Update-PowerUpConfig -Path $packageName -ConfigName NonexistingItem -Value '123' } | Should throw
 		}
     }
 	Context "Updating config items using hashtable (values)" {
 		It "updates config items with new values" {
-			{ Update-PowerUpConfig -Path $packageName -Values @{ApplicationName = 'MyHashApplication'; Database = 'MyNewDb'} } | Should Not throw
+			{ Update-PowerUpConfig -Path $packageName -Configuration @{ApplicationName = 'MyHashApplication'; Database = 'MyNewDb'} } | Should Not throw
             $results = (Get-PowerUpPackage -Path $packageName).Config
             $results.ApplicationName | Should Be 'MyHashApplication'
             $results.Database | Should Be 'MyNewDb'
         }
 		It "updates config items with a null value" {
-			{ Update-PowerUpConfig -Path $packageName -Values @{ApplicationName = $null; Database = $null} } | Should Not throw
+			{ Update-PowerUpConfig -Path $packageName -Configuration @{ApplicationName = $null; Database = $null} } | Should Not throw
             $results = (Get-PowerUpPackage -Path $packageName).Config
             $results.ApplicationName | Should Be $null
             $results.Database | Should Be $null
         }
 		It "should throw when config item is not specified" {
-			{ Update-PowerUpConfig -Path $packageName -Values $null } | Should throw
+			{ Update-PowerUpConfig -Path $packageName -Configuration $null } | Should throw
         }
 		It "should throw when config item does not exist" {
-			{ Update-PowerUpConfig -Path $packageName -Values @{NonexistingItem = '123' } } | Should throw
+			{ Update-PowerUpConfig -Path $packageName -Configuration @{NonexistingItem = '123' } } | Should throw
 		}
     }
     Context "Updating config items using a file template" {
@@ -97,6 +97,18 @@ Describe "Update-PowerUpConfig tests" {
         }
         It "should throw when config file does not exist" {
             { Update-PowerUpConfig -Path $packageName -ConfigurationFile "$here\etc\nonexistingconfig.json" } | Should throw
+        }
+    }
+    Context "Updating variables" {
+		It "updates config variables with new hashtable" {
+			{ Update-PowerUpConfig -Path $packageName -Variables @{foo='bar'} } | Should Not throw
+            $results = (Get-PowerUpPackage -Path $packageName).Config
+            $results.Variables.foo | Should Be 'bar'
+        }
+		It "overrides specified config with a value from -Variables" {
+			{ Update-PowerUpConfig -Path $packageName -Configuration @{Variables = @{ foo = 'bar'}} -Variables @{foo = 'bar2'} } | Should Not throw
+			$results = (Get-PowerUpPackage -Path $packageName).Config
+			$results.Variables.foo | Should Be 'bar2'
         }
     }
 }

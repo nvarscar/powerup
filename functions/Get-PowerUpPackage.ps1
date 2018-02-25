@@ -1,18 +1,30 @@
 Function Get-PowerUpPackage {
 	<#
 	.SYNOPSIS
-	Shows information about the package
+	Shows information about the existin PowerUp package
 	
 	.DESCRIPTION
-	Reads package header and configuration files and returns an object with corresponding properties.
+	Reads PowerUp package header and configuration files and returns an object with corresponding properties.
 	
 	.PARAMETER Path
-	PowerUp package path
+	Path to the PowerUp package
+
+	Aliases: Name, FileName, Package
 	
 	.PARAMETER Build
 	If you only want details about a specific builds inside the package
-	
+		
+	.PARAMETER Unpacked
+	Mostly intended for internal use. Gets package information from extracted package.
+
+	.PARAMETER Confirm
+        Prompts to confirm certain actions
+
+    .PARAMETER WhatIf
+        Shows what would happen if the command would execute, but does not actually perform the command
+
 	.EXAMPLE
+	# Returns information about the package myPackage.zip, only including infomartion about builds 1.1 and 1.2
 	Get-PowerUpPackage -Path c:\temp\myPackage.zip -Build 1.1, 1.2
 	
 	.NOTES
