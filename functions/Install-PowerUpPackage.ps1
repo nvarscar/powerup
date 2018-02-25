@@ -216,25 +216,11 @@
 			#Start deployment
 			$packageFileName = Join-Path $workFolder ([PowerUpConfig]::GetPackageFileName())
 			$params = @{ PackageFile = $packageFileName }
-			foreach ($key in ($PSBoundParameters.Keys | Where-Object {
-						$_ -in @(
-							'SqlInstance',
-							'Database',
-							'DeploymentMethod',
-							'ConnectionTimeout',
-							'ExecutionTimeout',						
-							'Encrypt',
-							'Credential',
-							'UserName',
-							'Password',
-							'SchemaVersionTable',
-							'Silent',
-							'OutputFile',
-							'Variables',
-							'Append'
-						)
-					})) {
-				$params += @{ $key = $PSBoundParameters[$key] }
+			foreach ($key in ($PSBoundParameters.Keys)) {
+				#If any custom properties were specified
+				if ($key -in @('OutputFile','Append') -or $key -in [PowerUpConfig]::EnumProperties()) {
+					$params += @{ $key = $PSBoundParameters[$key] }
+				}
 			}
 			Write-Verbose "Preparing to start the deployment with custom parameters: $($params.Keys -join ', ')"
 			if ($PSCmdlet.ShouldProcess($params.PackageFile, "Initiating the deployment of the package")) {
