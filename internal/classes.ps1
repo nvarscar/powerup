@@ -530,7 +530,7 @@ class PowerUpConfig : PowerUpClass {
 		$this.DeploymentMethod = [NullString]::Value
 		$this.Username = [NullString]::Value
 		$this.Password = [NullString]::Value
-		$this.SchemaVersionTable = [NullString]::Value
+		$this.SchemaVersionTable = 'dbo.SchemaVersions'
 	}
 
 	#Methods 

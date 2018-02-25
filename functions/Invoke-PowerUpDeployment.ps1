@@ -51,7 +51,10 @@
 		An alternative to -Credential - specify password explicitly
 	
 	.PARAMETER SchemaVersionTable
-		A table that will hold the history of script execution.
+		A table that will hold the history of script execution. This table is used to choose what scripts are going to be 
+		run during the deployment, preventing the scripts from being execured twice.
+		If set to $null, the deployment will not be tracked in the database. That will also mean that all the scripts 
+		and all the builds from the package are going to be deployed regardless of any previous deployment history.
 
 		Default: dbo.SchemaVersions
 	
@@ -107,6 +110,7 @@
 		[pscredential]$Credential,
 		[string]$UserName,
 		[securestring]$Password,
+		[Nullable()]
 		[string]$SchemaVersionTable,
 		[switch]$Silent,
 		[string]$OutputFile,
@@ -163,7 +167,6 @@
 	if (!$config.SqlInstance) { $config.SqlInstance = 'localhost' }
 	if ($config.ConnectionTimeout -like '') { $config.ConnectionTimeout = 30 }
 	if ($config.ExecutionTimeout -like '') { $config.ConnectionTimeout = 180 }
-	if (!$config.SchemaVersionTable) { $config.SchemaVersionTable = 'dbo.SchemaVersions' }
 	
 	
 	#Build connection string
@@ -230,7 +233,10 @@
 	$dbUp = [StandardExtensions]::LogScriptOutput($dbUp)
 	
 	# Configure schema versioning
-	if ($config.SchemaVersionTable) {
+	if (!$config.SchemaVersionTable) {
+		$dbUp = [SqlServerExtensions]::JournalTo($dbUp,([NullJournal]::new()))
+	}
+	elseif ($config.SchemaVersionTable) {
 		$table = $config.SchemaVersionTable.Split('.')
 		if (($table | Measure-Object).Count -gt 2) {
 			throw 'Incorrect table name - use the following syntax: schema.table'
@@ -249,6 +255,7 @@
 		
 		$dbUp = [SqlServerExtensions]::JournalToSqlTable($dbUp, $schemaName, $tableName)
 	}
+
 
 	#Adding execution timeout - defaults to 180 seconds
 	$dbUp = [StandardExtensions]::WithExecutionTimeout($dbUp, [timespan]::FromSeconds($config.ExecutionTimeout))
