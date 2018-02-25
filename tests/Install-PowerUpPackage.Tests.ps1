@@ -249,7 +249,7 @@ Describe "$commandName tests" {
 		}
 	}
 	Context "testing deployment with no history`: SchemaVersion is null" {
-		BeforEach {
+		BeforeEach {
 			$null = New-PowerUpPackage -ScriptPath $v1scripts -Name "$workFolder\pv1" -Build 1.0 -Force
 			$null = Invoke-SqlCmd2 -ServerInstance $script:instance1 -Database $script:database1 -InputFile $cleanupScript
 		}
