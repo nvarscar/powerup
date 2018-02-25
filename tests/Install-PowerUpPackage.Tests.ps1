@@ -257,9 +257,9 @@ Describe "$commandName tests" {
 			$null = Invoke-SqlCmd2 -ServerInstance $script:instance1 -Database $script:database1 -Query "IF OBJECT_ID('SchemaVersions') IS NOT NULL DROP TABLE SchemaVersions"
 		}
 		It "should deploy version 1.0 without creating SchemaVersions" {
-			$before = Invoke-SqlCmd2 -ServerInstance $script:instance1 -Database $script:database1 -InputFile $verificationScript -SchemaVersionTable $null
+			$before = Invoke-SqlCmd2 -ServerInstance $script:instance1 -Database $script:database1 -InputFile $verificationScript
 			$rowsBefore = ($before | Measure-Object).Count
-			$results = Install-PowerUpPackage "$workFolder\pv1.zip" -SqlInstance $script:instance1 -Database $script:database1 -Silent
+			$results = Install-PowerUpPackage "$workFolder\pv1.zip" -SqlInstance $script:instance1 -Database $script:database1 -Silent -SchemaVersionTable $null
 			$results.Successful | Should Be $true
 			$results.Scripts.Name | Should Be ((Get-Item $v1scripts).Name | ForEach-Object {'1.0\' + $_})
 			#Verifying objects
