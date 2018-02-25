@@ -55,7 +55,10 @@
 		An alternative to -Credential - specify password explicitly
 	
 	.PARAMETER SchemaVersionTable
-		A table that will hold the history of script execution.
+		A table that will hold the history of script execution. This table is used to choose what scripts are going to be 
+		run during the deployment, preventing the scripts from being execured twice.
+		If set to $null, the deployment will not be tracked in the database. That will also mean that all the scripts 
+		and all the builds from the package are going to be deployed regardless of any previous deployment history.
 
 		Default: dbo.SchemaVersions
 	
@@ -135,6 +138,7 @@
 		[pscredential]$Credential,
 		[string]$UserName,
 		[securestring]$Password,
+		[AllowNull()]
 		[string]$SchemaVersionTable,
 		[switch]$Silent,
 		[Alias('ArgumentList')]
@@ -212,25 +216,11 @@
 			#Start deployment
 			$packageFileName = Join-Path $workFolder ([PowerUpConfig]::GetPackageFileName())
 			$params = @{ PackageFile = $packageFileName }
-			foreach ($key in ($PSBoundParameters.Keys | Where-Object {
-						$_ -in @(
-							'SqlInstance',
-							'Database',
-							'DeploymentMethod',
-							'ConnectionTimeout',
-							'ExecutionTimeout',						
-							'Encrypt',
-							'Credential',
-							'UserName',
-							'Password',
-							'SchemaVersionTable',
-							'Silent',
-							'OutputFile',
-							'Variables',
-							'Append'
-						)
-					})) {
-				$params += @{ $key = $PSBoundParameters[$key] }
+			foreach ($key in ($PSBoundParameters.Keys)) {
+				#If any custom properties were specified
+				if ($key -in @('OutputFile','Append') -or $key -in [PowerUpConfig]::EnumProperties()) {
+					$params += @{ $key = $PSBoundParameters[$key] }
+				}
 			}
 			Write-Verbose "Preparing to start the deployment with custom parameters: $($params.Keys -join ', ')"
 			if ($PSCmdlet.ShouldProcess($params.PackageFile, "Initiating the deployment of the package")) {

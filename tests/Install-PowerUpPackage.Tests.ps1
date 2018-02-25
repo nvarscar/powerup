@@ -248,6 +248,30 @@ Describe "$commandName tests" {
 			($results | Measure-Object).Count | Should Be ($rowsBefore + 2)
 		}
 	}
+	Context "testing deployment with no history`: SchemaVersion is null" {
+		BeforeEach {
+			$null = New-PowerUpPackage -ScriptPath $v1scripts -Name "$workFolder\pv1" -Build 1.0 -Force
+			$null = Invoke-SqlCmd2 -ServerInstance $script:instance1 -Database $script:database1 -InputFile $cleanupScript
+		}
+		AfterEach {
+			$null = Invoke-SqlCmd2 -ServerInstance $script:instance1 -Database $script:database1 -Query "IF OBJECT_ID('SchemaVersions') IS NOT NULL DROP TABLE SchemaVersions"
+		}
+		It "should deploy version 1.0 without creating SchemaVersions" {
+			$before = Invoke-SqlCmd2 -ServerInstance $script:instance1 -Database $script:database1 -InputFile $verificationScript
+			$rowsBefore = ($before | Measure-Object).Count
+			$results = Install-PowerUpPackage "$workFolder\pv1.zip" -SqlInstance $script:instance1 -Database $script:database1 -Silent -SchemaVersionTable $null
+			$results.Successful | Should Be $true
+			$results.Scripts.Name | Should Be ((Get-Item $v1scripts).Name | ForEach-Object {'1.0\' + $_})
+			#Verifying objects
+			$results = Invoke-SqlCmd2 -ServerInstance $script:instance1 -Database $script:database1 -InputFile $verificationScript
+			'SchemaVersions' | Should Not BeIn $results.name
+			'a' | Should BeIn $results.name
+			'b' | Should BeIn $results.name
+			'c' | Should Not BeIn $results.name
+			'd' | Should Not BeIn $results.name
+			($results | Measure-Object).Count | Should Be ($rowsBefore + 2)
+		}
+	}
 	Context "testing deployment using variables in config" {
 		BeforeAll {
 			$p1 = New-PowerUpPackage -ScriptPath $v1scripts -Name "$workFolder\pv1" -Build 1.0 -Force -Configuration @{SqlInstance = '#{srv}'; Database = '#{db}'}

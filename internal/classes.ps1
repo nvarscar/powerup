@@ -87,7 +87,7 @@ class PowerUpPackage : PowerUpClass {
 			$this.ThrowArgumentException($this, 'Build name is not specified.')
 			return $null
 		}
-		if ($currentBuild = $this.builds | Where-Object { $_.build -eq $build }) {
+		if ($this.builds | Where-Object { $_.build -eq $build }) {
 			$this.ThrowArgumentException($this, "Build $build already exists.")
 			return $null
 		}
@@ -123,7 +123,7 @@ class PowerUpPackage : PowerUpClass {
 		}
 	}
 	[void] AddBuild ([PowerUpBuild]$build) {
-		if ($currentBuild = $this.builds | Where-Object { $_.build -eq $build.build }) {
+		if ($this.builds | Where-Object { $_.build -eq $build.build }) {
 			$this.ThrowArgumentException($this, "Build $build already exists.")
 		}
 		else {
@@ -503,36 +503,34 @@ class PowerUpConfig : PowerUpClass {
 
 	#Constructors
 	PowerUpConfig () {
-		$this.ApplicationName = [NullString]::Value
-		$this.SqlInstance = [NullString]::Value
-		$this.Database = [NullString]::Value
-		$this.DeploymentMethod = [NullString]::Value
-		$this.Username = [NullString]::Value
-		$this.Password = [NullString]::Value
-		$this.SchemaVersionTable = [NullString]::Value
+		$this.Init()
 	}
 	PowerUpConfig ([string]$jsonString) {
-		$this.ApplicationName = [NullString]::Value
-		$this.SqlInstance = [NullString]::Value
-		$this.Database = [NullString]::Value
-		$this.DeploymentMethod = [NullString]::Value
-		$this.Username = [NullString]::Value
-		$this.Password = [NullString]::Value
-		$this.SchemaVersionTable = [NullString]::Value
+		$this.Init()
 
 		$jsonConfig = $jsonString | ConvertFrom-Json -ErrorAction Stop
 		
 		foreach ($property in $jsonConfig.psobject.properties.Name) {
 			if ($property -in [PowerUpConfig]::EnumProperties()) {
-				if ($jsonConfig.$property -ne $null) {
-					$this.$property = $jsonConfig.$property
-				}
+				$this.SetValue($property,$jsonConfig.$property)
 			}
 			else {
 				$this.ThrowArgumentException($this, "$property is not a valid configuration item")
 			}
 		}
 	}
+	#Hidden methods 
+	hidden [void] Init () {
+		#Defining default values
+		$this.ApplicationName = [NullString]::Value
+		$this.SqlInstance = [NullString]::Value
+		$this.Database = [NullString]::Value
+		$this.DeploymentMethod = [NullString]::Value
+		$this.Username = [NullString]::Value
+		$this.Password = [NullString]::Value
+		$this.SchemaVersionTable = 'dbo.SchemaVersions'
+	}
+
 	#Methods 
 	[hashtable] AsHashtable () {
 		$ht = @{}

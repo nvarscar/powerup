@@ -18,7 +18,7 @@ Describe "$commandName tests" {
 		$result.Credential | Should Be $null
 		$result.Username | Should Be $null
 		$result.Password | Should Be $null
-		$result.SchemaVersionTable | Should Be $null
+		$result.SchemaVersionTable | Should Be 'dbo.SchemaVersions'
 		$result.Silent | Should Be $null
 		$result.Variables | Should Be $null
 	}
@@ -34,7 +34,7 @@ Describe "$commandName tests" {
 		$result.Credential | Should Be $null
 		$result.Username | Should Be $null
 		$result.Password | Should Be $null
-		$result.SchemaVersionTable | Should Be $null
+		$result.SchemaVersionTable | Should Be 'dbo.SchemaVersions'
 		$result.Silent | Should Be $null
 		$result.Variables | Should Be $null
 	}
