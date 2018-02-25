@@ -84,7 +84,6 @@ function Add-PowerUpBuild {
 	)
 	
 	begin {
-		$currentDate = Get-Date
 		if (!$Build) {
 			$Build = Get-NewBuildNumber
 		}
