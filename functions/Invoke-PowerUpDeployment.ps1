@@ -234,7 +234,7 @@
 	
 	# Configure schema versioning
 	if (!$config.SchemaVersionTable) {
-		$dbUp = [SqlServerExtensions]::JournalTo($dbUp,([NullJournal]::new()))
+		$dbUp = [SqlServerExtensions]::JournalTo($dbUp,([DbUp.Helpers.NullJournal]::new()))
 	}
 	elseif ($config.SchemaVersionTable) {
 		$table = $config.SchemaVersionTable.Split('.')
