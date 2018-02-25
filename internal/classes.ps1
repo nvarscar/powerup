@@ -87,7 +87,7 @@ class PowerUpPackage : PowerUpClass {
 			$this.ThrowArgumentException($this, 'Build name is not specified.')
 			return $null
 		}
-		if ($currentBuild = $this.builds | Where-Object { $_.build -eq $build }) {
+		if ($this.builds | Where-Object { $_.build -eq $build }) {
 			$this.ThrowArgumentException($this, "Build $build already exists.")
 			return $null
 		}
@@ -123,7 +123,7 @@ class PowerUpPackage : PowerUpClass {
 		}
 	}
 	[void] AddBuild ([PowerUpBuild]$build) {
-		if ($currentBuild = $this.builds | Where-Object { $_.build -eq $build.build }) {
+		if ($this.builds | Where-Object { $_.build -eq $build.build }) {
 			$this.ThrowArgumentException($this, "Build $build already exists.")
 		}
 		else {
