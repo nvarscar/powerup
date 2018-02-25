@@ -1,4 +1,4 @@
-﻿function Get-ArchiveItems {
+﻿function Get-ArchiveItem {
 	param ([Parameter(Mandatory)]
 		[string]$Archive)
 	function recurse-items {

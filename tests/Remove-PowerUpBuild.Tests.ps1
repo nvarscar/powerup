@@ -2,7 +2,7 @@
 $here = if ($PSScriptRoot) { $PSScriptRoot } else {	(Get-Item . ).FullName }
 $sut = (Split-Path -Leaf $MyInvocation.MyCommand.Path) -replace '\.Tests\.', '.'
 
-. "$here\..\internal\Get-ArchiveItems.ps1"
+. "$here\..\internal\Get-ArchiveItem.ps1"
 . "$here\..\internal\Remove-ArchiveItem.ps1"
 . "$here\..\internal\New-TempWorkspaceFolder.ps1"
 
@@ -34,7 +34,7 @@ Describe "$commandName tests" {
 			{ Remove-PowerUpBuild -Name $packageNameTest -Build 1.0 } | Should Not Throw
 			Test-Path $packageNameTest | Should Be $true
 		}
-		$results = Get-ArchiveItems $packageNameTest
+		$results = Get-ArchiveItem $packageNameTest
 		It "build 1.0 should not exist" {
 			'content\1.0' | Should Not BeIn $results.Path
 		}
@@ -61,7 +61,7 @@ Describe "$commandName tests" {
 			{ Remove-PowerUpBuild -Name $packageNameTest -Build 2.0 } | Should Not Throw
 			Test-Path $packageNameTest | Should Be $true
 		}
-		$results = Get-ArchiveItems $packageNameTest
+		$results = Get-ArchiveItem $packageNameTest
 		It "build 1.0 should contain scripts from 1.0" {
 			'content\1.0\1.sql' | Should BeIn $results.Path
 		}
@@ -88,7 +88,7 @@ Describe "$commandName tests" {
 			{ Remove-PowerUpBuild -Name $packageNameTest -Build "1.0", "2.0"  } | Should Not Throw
 			Test-Path $packageNameTest | Should Be $true
 		}
-		$results = Get-ArchiveItems $packageNameTest
+		$results = Get-ArchiveItem $packageNameTest
 		It "build 1.0 should not exist" {
 			'content\1.0' | Should Not BeIn $results.Path
 		}
@@ -115,7 +115,7 @@ Describe "$commandName tests" {
 			{ '2.0' | Remove-PowerUpBuild -Path $packageNameTest } | Should Not Throw
 			Test-Path $packageNameTest | Should Be $true
 		}
-		$results = Get-ArchiveItems $packageNameTest
+		$results = Get-ArchiveItem $packageNameTest
 		It "build 1.0 should contain scripts from 1.0" {
 			'content\1.0\1.sql' | Should BeIn $results.Path
 		}

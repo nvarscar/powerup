@@ -4,7 +4,7 @@ $sut = (Split-Path -Leaf $MyInvocation.MyCommand.Path) -replace '\.Tests\.', '.'
 
 . "$here\constants.ps1"
 
-. "$here\..\internal\Get-ArchiveItems.ps1"
+. "$here\..\internal\Get-ArchiveItem.ps1"
 . "$here\..\internal\New-TempWorkspaceFolder.ps1"
 . "$here\etc\Invoke-SqlCmd2.ps1"
 

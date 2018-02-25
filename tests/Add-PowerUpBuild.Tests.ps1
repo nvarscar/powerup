@@ -2,7 +2,7 @@
 $here = if ($PSScriptRoot) { $PSScriptRoot } else {	(Get-Item . ).FullName }
 $sut = (Split-Path -Leaf $MyInvocation.MyCommand.Path) -replace '\.Tests\.', '.'
 
-. "$here\..\internal\Get-ArchiveItems.ps1"
+. "$here\..\internal\Get-ArchiveItem.ps1"
 . "$here\..\internal\New-TempWorkspaceFolder.ps1"
 . "$here\..\internal\Remove-ArchiveItem.ps1"
 
@@ -37,7 +37,7 @@ Describe "$commandName tests" {
 			$results.Name | Should Be (Split-Path $packageNameTest -Leaf)
 			Test-Path $packageNameTest | Should Be $true
 		}
-		$results = Get-ArchiveItems $packageNameTest
+		$results = Get-ArchiveItem $packageNameTest
 		It "build 1.0 should only contain scripts from 1.0" {
 			$results | Where-Object Path -eq 'content\1.0\1.sql' | Should Not Be $null
 			$results | Where-Object Path -eq 'content\1.0\2.sql' | Should Be $null
@@ -75,7 +75,7 @@ Describe "$commandName tests" {
 			$results.Size -gt 0 | Should Be $true
 			Test-Path $packageNameTest | Should Be $true
 		}
-		$results = Get-ArchiveItems $packageNameTest
+		$results = Get-ArchiveItem $packageNameTest
 		It "build 1.0 should only contain scripts from 1.0" {
 			$results | Where-Object Path -eq 'content\1.0\1.sql' | Should Not Be $null
 			$results | Where-Object Path -eq 'content\1.0\2.sql' | Should Be $null
@@ -130,7 +130,7 @@ Describe "$commandName tests" {
 			$results.Size -gt 0 | Should Be $true
 			Test-Path $packageNameTest | Should Be $true
 		}
-		$results = Get-ArchiveItems $packageNameTest
+		$results = Get-ArchiveItem $packageNameTest
 		It "build 1.0 should only contain scripts from 1.0" {
 			$results | Where-Object Path -eq 'content\1.0\1.sql' | Should Not Be $null
 			$results | Where-Object Path -eq 'content\1.0\2.sql' | Should Be $null

@@ -2,7 +2,7 @@
 $here = if ($PSScriptRoot) { $PSScriptRoot } else {	(Get-Item . ).FullName }
 $sut = (Split-Path -Leaf $MyInvocation.MyCommand.Path) -replace '\.Tests\.', '.'
 
-. "$here\..\internal\Get-ArchiveItems.ps1"
+. "$here\..\internal\Get-ArchiveItem.ps1"
 . "$here\..\internal\New-TempWorkspaceFolder.ps1"
 . "$here\..\internal\Expand-ArchiveItem.ps1"
 
@@ -28,16 +28,16 @@ Describe "$commandName tests" {
 			Test-Path $packagePath | Should Be $true
 		}
 		It "should contain query files" {
-			$results = Get-ArchiveItems $packagePath
+			$results = Get-ArchiveItem $packagePath
 			'query1.sql' | Should BeIn $results.Name
 		}
 		It "should contain module files" {
-			$results = Get-ArchiveItems $packagePath
+			$results = Get-ArchiveItem $packagePath
 			'Modules\PowerUp\PowerUp.psd1' | Should BeIn $results.Path
 			'Modules\PowerUp\bin\DbUp.dll' | Should BeIn $results.Path
 		}
 		It "should contain config files" {
-			$results = Get-ArchiveItems $packagePath
+			$results = Get-ArchiveItem $packagePath
 			'PowerUp.config.json' | Should BeIn $results.Path
 			'PowerUp.package.json' | Should BeIn $results.Path
 		}
@@ -111,7 +111,7 @@ Describe "$commandName tests" {
 			$results.ModuleVersion | Should Be (Get-Module PowerUp).Version
 			$results.Version | Should Be 'abracadabra'
 			Test-Path $packagePath | Should Be $true
-			$results = Get-ArchiveItems $packagePath
+			$results = Get-ArchiveItem $packagePath
 			'content\abracadabra\Cleanup.sql' | Should BeIn $results.Path
 			'content\abracadabra\success\1.sql' | Should BeIn $results.Path
 			'content\abracadabra\success\2.sql' | Should BeIn $results.Path
@@ -128,7 +128,7 @@ Describe "$commandName tests" {
 			$results.ModuleVersion | Should Be (Get-Module PowerUp).Version
 			$results.Version | Should Be 'abracadabra'
 			Test-Path $packagePath | Should Be $true
-			$results = Get-ArchiveItems $packagePath
+			$results = Get-ArchiveItem $packagePath
 			'content\abracadabra\1.sql' | Should BeIn $results.Path
 			'content\abracadabra\2.sql' | Should BeIn $results.Path
 			'content\abracadabra\3.sql' | Should BeIn $results.Path
@@ -141,7 +141,7 @@ Describe "$commandName tests" {
 			$results.ModuleVersion | Should Be (Get-Module PowerUp).Version
 			$results.Version | Should Be 'abracadabra'
 			Test-Path $packagePath | Should Be $true
-			$results = Get-ArchiveItems $packagePath
+			$results = Get-ArchiveItem $packagePath
 			'content\abracadabra\Cleanup.sql' | Should BeIn $results.Path
 			'content\abracadabra\success\1.sql' | Should BeIn $results.Path
 			'content\abracadabra\success\2.sql' | Should BeIn $results.Path
@@ -158,7 +158,7 @@ Describe "$commandName tests" {
 			$results.ModuleVersion | Should Be (Get-Module PowerUp).Version
 			$results.Version | Should Be 'abracadabra'
 			Test-Path $packagePath | Should Be $true
-			$results = Get-ArchiveItems $packagePath
+			$results = Get-ArchiveItem $packagePath
 			'content\abracadabra\1.sql' | Should BeIn $results.Path
 			'content\abracadabra\2.sql' | Should BeIn $results.Path
 			'content\abracadabra\3.sql' | Should BeIn $results.Path
