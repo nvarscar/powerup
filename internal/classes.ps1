@@ -512,9 +512,7 @@ class PowerUpConfig : PowerUpClass {
 		
 		foreach ($property in $jsonConfig.psobject.properties.Name) {
 			if ($property -in [PowerUpConfig]::EnumProperties()) {
-				if ($jsonConfig.$property -ne $null) {
-					$this.$property = $jsonConfig.$property
-				}
+				$this.SetValue($property,$jsonConfig.$property)
 			}
 			else {
 				$this.ThrowArgumentException($this, "$property is not a valid configuration item")
