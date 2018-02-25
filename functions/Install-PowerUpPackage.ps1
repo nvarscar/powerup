@@ -200,12 +200,6 @@
 				}
 			}
 
-			#Reading the package
-			$packageFileName = Join-Path $workFolder ([PowerUpConfig]::GetPackageFileName())
-			if ($PSCmdlet.ShouldProcess($packageFileName, "Reading package file")) {
-				$package = [PowerUpPackage]::FromFile($packageFileName)
-			}
-
 			#Overwrite config file if specified
 			if ($ConfigurationFile) {
 				Update-PowerUpConfig -Path $workFolder -ConfigurationFile $ConfigurationFile -Variables $Variables -Unpacked
