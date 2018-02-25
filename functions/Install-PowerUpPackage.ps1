@@ -138,7 +138,7 @@
 		[pscredential]$Credential,
 		[string]$UserName,
 		[securestring]$Password,
-		[Nullable()]
+		[AllowNull()]
 		[string]$SchemaVersionTable,
 		[switch]$Silent,
 		[Alias('ArgumentList')]
