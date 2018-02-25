@@ -1,4 +1,6 @@
-[![Build status](https://ci.appveyor.com/api/projects/status/m0ml0392r631tp60?svg=true)](https://ci.appveyor.com/project/nvarscar/powerup)
+| master | [![Build status](https://ci.appveyor.com/api/projects/status/m0ml0392r631tp60/branch/master?svg=true)](https://ci.appveyor.com/project/nvarscar/powerup/branch/master) |
+| development | [![Build status](https://ci.appveyor.com/api/projects/status/m0ml0392r631tp60/branch/development?svg=true)](https://ci.appveyor.com/project/nvarscar/powerup/branch/development) |
+
 # PowerUp
 PowerUp is a Powershell module that provides SQL script deployment capabilities. It organizes scripts into builds and then deploys them in a repeatable manner into the database of your choice ensuring that all builds are deployed in proper order and only once.
 
