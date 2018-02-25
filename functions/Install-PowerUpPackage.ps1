@@ -207,8 +207,10 @@
 			if ($Configuration) {
 				Update-PowerUpConfig -Path $workFolder -Configuration $Configuration -Variables $Variables -Unpacked
 			} 
-		
+			
+			
 			#Start deployment
+			$packageFileName = Join-Path $workFolder ([PowerUpConfig]::GetPackageFileName())
 			$params = @{ PackageFile = $packageFileName }
 			foreach ($key in ($PSBoundParameters.Keys | Where-Object {
 						$_ -in @(
