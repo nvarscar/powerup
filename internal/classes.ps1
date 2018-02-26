@@ -50,7 +50,7 @@ class PowerUpPackage : PowerUpClass {
 		$this.DeployScript = "Deploy.ps1"
 		$this.PreDeployScript = "PreDeploy.ps1"
 		$this.PostDeployScript = "PostDeploy.ps1"
-		$this.DeploySource = "$PSScriptRoot\..\bin\Deploy.ps1"
+		$this.DeploySource = ".\bin\Deploy.ps1"
 		$this.ConfigurationFile = 'PowerUp.config.json'
 		$this.PackageFile = 'PowerUp.package.json'
 	}
@@ -154,11 +154,7 @@ class PowerUpPackage : PowerUpClass {
 		}
 		return $false
 	}
-	[bool] SourcePathExists([string]$fileName) {
-		if (!(Test-Path $fileName)) {
-			$this.ThrowArgumentException($this, "Path not found: $fileName")
-		}
-		$path = (Resolve-Path $fileName).Path
+	[bool] SourcePathExists([string]$path) {
 		foreach ($build in $this.builds) {
 			if ($build.SourcePathExists($path)) {
 				return $true
@@ -222,7 +218,13 @@ class PowerUpBuild : PowerUpClass {
 			else {
 				$depth = 0
 			}
-			$s = New-Object PowerUpFile ($p.FullName, $this.GetPackagePath($p.FullName, $depth))
+			if ($p.SourcePath) {
+				$sourcePath = $p.SourcePath
+			}
+			else {
+				$sourcePath = $p.FullName
+			}
+			$s = New-Object PowerUpFile ($sourcePath, $this.GetPackagePath($p.FullName, $depth))
 			$this.AddScript($s)
 		}
 	}
@@ -264,11 +266,7 @@ class PowerUpBuild : PowerUpClass {
 		$hash = (Get-FileHash $fileName).Hash
 		return $this.HashExists($hash)
 	}
-	[bool] SourcePathExists([string]$fileName) {
-		if (!(Test-Path $fileName)) {
-			$this.ThrowArgumentException($this, "Path not found: $fileName")
-		}
-		$path = (Resolve-Path $fileName).Path
+	[bool] SourcePathExists([string]$path) {
 		foreach ($script in $this.Scripts) {
 			if ($path -eq $script.sourcePath) {
 				return $true

@@ -161,7 +161,7 @@ function Add-PowerUpBuild {
 
 				foreach ($buildScript in $scriptsToAdd) {
 					Write-Verbose "Adding file '$($buildScript.FullName)' to $currentBuild"
-					$currentBuild.NewScript($buildScript.FullName, $buildScript.Depth) 
+					$currentBuild.NewScript($buildScript) 
 				}
 
 				Write-Verbose "Adding $currentBuild to the package object"

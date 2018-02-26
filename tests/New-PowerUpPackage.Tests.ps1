@@ -41,6 +41,10 @@ Describe "$commandName tests" {
 			'PowerUp.config.json' | Should BeIn $results.Path
 			'PowerUp.package.json' | Should BeIn $results.Path
 		}
+		It "should contain deploy files" {
+			$results = Get-ArchiveItem $packagePath
+			'Deploy.ps1' | Should BeIn $results.Path
+		}
 	}
 	Context "testing configurations" {
 		BeforeEach {
