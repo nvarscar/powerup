@@ -98,19 +98,8 @@ function Add-PowerUpBuild {
 	}
 	process {
 		foreach ($scriptItem in $ScriptPath) {
-			if ($scriptItem.GetType() -in @([System.IO.FileSystemInfo], [System.IO.FileInfo])) {
-				Write-Verbose "Item $scriptItem ($($scriptItem.GetType())) is a File object"
-				$stringPath = $scriptItem.FullName
-			}
-			else {
-				Write-Verbose "Item $scriptItem ($($scriptItem.GetType())) will be treated as a string"
-				$stringPath = [string]$scriptItem
-			}
-			if (!(Test-Path $stringPath)) {
-				throw "The following path is not valid: $stringPath"
-			}
-			Write-Verbose "Processing path $stringPath"
-			$scriptCollection += Get-ChildScriptItem $stringPath
+			Write-Verbose "Processing path item $scriptItem"
+			$scriptCollection += Get-ChildScriptItem $scriptItem
 		}
 	}
 	end {
@@ -149,8 +138,8 @@ function Add-PowerUpBuild {
 			foreach ($childScript in $scriptCollection) { 
 				if ($NewOnly) {
 					#Check if the script path was already added in one of the previous builds
-					if ($package.SourcePathExists($childScript.FullName)) {
-						Write-Verbose "File $($childScript.FullName) was found among the package source files, skipping."
+					if ($package.SourcePathExists($childScript.SourcePath)) {
+						Write-Verbose "File $($childScript.SourcePath) was found among the package source files, skipping."
 						continue
 					}
 				}

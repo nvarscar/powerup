@@ -1,21 +1,41 @@
 ﻿function Get-ChildScriptItem {
 	[CmdletBinding()]
 	Param (
-		[string]$Path
+		[object]$Path
 	)
-	Function Get-ChildItemDepth ([System.IO.FileSystemInfo]$Item, [int]$Depth = 0) {
+	Function Get-ChildItemDepth ([System.IO.FileSystemInfo]$Item, [int]$Depth = 0, [bool]$IsAbsolute) {
 		Write-Debug "Getting child items from $Item with current depth $Depth"
 		foreach ($childItem in (Get-ChildItem $Item)) {
 			if ($childItem.PSIsContainer) {
 				Get-ChildItemDepth -Item (Get-Item $childItem.FullName) -Depth ($Depth + 1)
 			}
 			else {
-				Add-Member -InputObject $childItem -MemberType NoteProperty -Name Depth -Value $Depth -PassThru
+				Add-Member -InputObject $childItem -MemberType NoteProperty -Name Depth -Value $Depth
+				# if a relative path can be build to the file item, use relative paths, otherwise, use absolute
+				if ($childItem.FullName -like "$(Get-Location)\*" -and !$IsAbsolute) {
+					$srcPath = Resolve-Path $childItem.FullName -Relative
+				}
+				else {
+					$srcPath = $childItem.FullName
+				}
+				Add-Member -InputObject $childItem -MemberType NoteProperty -Name SourcePath -Value $srcPath -PassThru
 			}
 		}
 	}
-	$items = Get-Item $Path
-	foreach ($currentItem in $items) {
-		Get-ChildItemDepth -Item $currentItem -Depth ([int]$currentItem.PSIsContainer)
+	if ($Path.GetType() -in @([System.IO.FileSystemInfo], [System.IO.FileInfo])) {
+		Write-Verbose "Item $Path ($($Path.GetType())) is a File object"
+		$stringPath = $Path.FullName
+		$isAbsolute = $true
+	}
+	else {
+		Write-Verbose "Item $Path ($($Path.GetType())) will be treated as a string"
+		$stringPath = [string]$Path
+		$isAbsolute = Split-Path -Path $stringPath -IsAbsolute
+	}
+	if (!(Test-Path $stringPath)) {
+		throw "The following path is not valid: $stringPath"
+	}
+	foreach ($currentItem in (Get-Item $stringPath)) {
+		Get-ChildItemDepth -Item $currentItem -Depth ([int]$currentItem.PSIsContainer) -IsAbsolute $isAbsolute
 	}
 }
