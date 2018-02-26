@@ -154,6 +154,21 @@ class PowerUpPackage : PowerUpClass {
 		}
 		return $false
 	}
+	[bool] ScriptModified([string]$fileName, [string]$sourcePath) {
+		if (!(Test-Path $fileName)) {
+			$this.ThrowArgumentException($this, "Path not found: $fileName")
+		}
+		$hash = (Get-FileHash $fileName).Hash
+		foreach ($build in $this.builds) {
+			if ($build.SourcePathExists($sourcePath)) {
+				if (!$build.HashExists($hash, $sourcePath)) {
+					return $true
+				}
+				break
+			}
+		}
+		return $false
+	}
 	[bool] SourcePathExists([string]$path) {
 		foreach ($build in $this.builds) {
 			if ($build.SourcePathExists($path)) {
@@ -259,12 +274,32 @@ class PowerUpBuild : PowerUpClass {
 		}
 		return $false
 	}
+	hidden [bool] HashExists([string]$hash,[string]$sourcePath) {
+		foreach ($script in $this.Scripts) {
+			if ($script.SourcePath -eq $sourcePath -and $hash -eq $script.hash) {
+				return $true
+			}
+		}
+		return $false
+	}
 	[bool] ScriptExists([string]$fileName) {
 		if (!(Test-Path $fileName)) {
 			$this.ThrowArgumentException($this, "Path not found: $fileName")
 		}
 		$hash = (Get-FileHash $fileName).Hash
 		return $this.HashExists($hash)
+	}
+	[bool] ScriptModified([string]$fileName, [string]$sourcePath) {
+		if (!(Test-Path $fileName)) {
+			$this.ThrowArgumentException($this, "Path not found: $fileName")
+		}
+		if ($this.SourcePathExists($sourcePath)) {
+			$hash = (Get-FileHash $fileName).Hash
+			return -not $this.HashExists($hash, $sourcePath)
+		}
+		else {
+			return $false
+		}
 	}
 	[bool] SourcePathExists([string]$path) {
 		foreach ($script in $this.Scripts) {
