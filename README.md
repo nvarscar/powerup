@@ -7,6 +7,9 @@ PowerUp is a Powershell module that provides SQL script deployment capabilities.
 
 The module is built around [DbUp](https://github.com/DbUp/DbUp) .Net library, which provides flexibility and reliability during deployments. 
 
+Currently supported RDBMS:
+* SQL Server
+
 ## Features
 The most notable features of the module:
 
@@ -19,6 +22,11 @@ The most notable features of the module:
 * Transactionality of the deployments/migrations: every build can be deployed as a part of a single transaction, rolling back unsuccessful deployments
 * Dynamically change your code based on custom variables - use `#{customVarName}` tokens to define variables inside the scripts or execution parameters
 * Packages are fully compatible with Octopus Deploy deployments: all packages are in essence zip archives with Deploy.ps1 file that initiates deployment
+
+
+## System requirements
+
+* Powershell 5.0 or higher
 
 ## Installation
 ```powershell
@@ -44,6 +52,25 @@ Add-PowerUpBuild Deploy.zip -ScriptPath C:\temp\myscripts -UniqueOnly -Build 2.0
 Get-ChildItem C:\temp\myscripts\v3 | Add-PowerUpBuild Deploy.zip -NewOnly -Build 3.0
 
 # Setting deployment options within the package to be able to deploy it without specifying options
-Update-PowerUpConfig Deploy.zip -Values @{ DeploymentMethod = 'SingleTransaction'; SqlInstance = 'localhost'; DatabaseName = 'MyDb2' }
+Update-PowerUpConfig Deploy.zip -Configuration @{ DeploymentMethod = 'SingleTransaction'; SqlInstance = 'localhost'; DatabaseName = 'MyDb2' }
 Install-PowerUpPackage Deploy.zip
+
+# Generating config files and using it later as a deployment template
+(Get-PowerUpConfig -Configuration @{ DeploymentMethod = 'SingleTransaction'; SqlInstance = 'devInstance'; DatabaseName = 'MyDB' }).SaveToFile('.\dev.json')
+(Get-PowerUpConfig -Path '.\dev.json' -Configuration @{ SqlInstance = 'testInstance' }).SaveToFile('.\test.json')
+(Get-PowerUpConfig -Path '.\dev.json' -Configuration @{ SqlInstance = 'prodInstance' }).SaveToFile('.\prod.json')
+Install-PowerUpPackage Deploy.zip -ConfigurationFile .\dev.json
+
+# Install package using internal script Deploy.ps1 - useable when module is not installed locally
+Expand-Archive Deploy.zip '.\MyTempFolder'
+.\MyTempFolder\Deploy.ps1 -SqlInstance server1 -Database MyDB
 ```
+
+## Planned for future releases
+
+* Code analysis: know what kind of code makes its way into the package. Will find hidden sysadmin grants, USE statements and other undesired statements
+* Support for other RDBMS (eventually, everything that DbUp libraries can talk with)
+* Integration with unit tests (tSQLt/Pester/...?)
+* Module for Ansible (right now can still be used as a powershell task)
+* Linux support
+* SQLCMD support
