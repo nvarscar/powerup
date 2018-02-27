@@ -47,9 +47,12 @@ Import-Module .\PowerUp
 # Quick deployment
 New-PowerUpPackage Deploy.zip -ScriptPath C:\temp\myscripts | Install-PowerUpPackage -SqlInstance server1 -Database MyDB
 
+# Create new deployment package with predefined configuration
+New-PowerUpPackage -Path MyPackage.zip -ScriptPath .\Scripts -Configuration @{ Database = 'myDB'; ConnectionTimeout = 5 }
+
 # Adding builds to the package
-Add-PowerUpBuild Deploy.zip -ScriptPath C:\temp\myscripts -UniqueOnly -Build 2.0
-Get-ChildItem C:\temp\myscripts\v3 | Add-PowerUpBuild Deploy.zip -NewOnly -Build 3.0
+Add-PowerUpBuild Deploy.zip -ScriptPath .\myscripts -Type Unique -Build 2.0
+Get-ChildItem .\myscripts | Add-PowerUpBuild Deploy.zip -Type New,Modified -Build 3.0
 
 # Setting deployment options within the package to be able to deploy it without specifying options
 Update-PowerUpConfig Deploy.zip -Configuration @{ DeploymentMethod = 'SingleTransaction'; SqlInstance = 'localhost'; DatabaseName = 'MyDb2' }
