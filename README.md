@@ -47,8 +47,9 @@ Import-Module .\PowerUp
 # Quick deployment
 New-PowerUpPackage Deploy.zip -ScriptPath C:\temp\myscripts | Install-PowerUpPackage -SqlInstance server1 -Database MyDB
 
-# Create new deployment package with predefined configuration
-New-PowerUpPackage -Path MyPackage.zip -ScriptPath .\Scripts -Configuration @{ Database = 'myDB'; ConnectionTimeout = 5 }
+# Create new deployment package with predefined configuration and deploy it replacing #{dbName} tokens with corresponding values
+New-PowerUpPackage -Path MyPackage.zip -ScriptPath .\Scripts -Configuration @{ Database = '#{dbName}'; ConnectionTimeout = 5 }
+Install-PowerUpPackage MyPackage.zip -Variables @{ dbName = 'myDB' }
 
 # Adding builds to the package
 Add-PowerUpBuild Deploy.zip -ScriptPath .\myscripts -Type Unique -Build 2.0
