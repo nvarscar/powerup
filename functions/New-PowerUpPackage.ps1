@@ -128,8 +128,9 @@ function New-PowerUpPackage {
 			#Ensure that temporary workspace is removed
 			try {			
 				#Copy package contents to the temp folder
-				Write-Verbose "Copying deployment file $($package.DeploySource)"
-				Copy-Item -Path $package.DeploySource -Destination (Join-Path $workFolder $package.DeployScript)
+				$deployFileSource = Join-Path (Split-Path $PSScriptRoot -Parent) $package.DeploySource
+				Write-Verbose "Copying deployment file $deployFileSource"
+				Copy-Item -Path $deployFileSource -Destination (Join-Path $workFolder $package.DeployScript)
 				if ($package.PreDeploySource) {
 					Write-Verbose "Copying pre-deployment file $($package.PreDeploySource)"
 					Copy-Item -Path $package.PreDeploySource -Destination (Join-Path $workFolder $package.PreDeployScript)

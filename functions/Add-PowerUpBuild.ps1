@@ -29,10 +29,16 @@ function Add-PowerUpBuild {
 	.PARAMETER SkipValidation
 		Skip package validation step when attempting to add build to the package.
 	
-	.PARAMETER NewOnly
-		Out of all specified script files, only add new files that have not been added to any of the package builds yet. 
-		Compares file FullName against all the files from the existing builds to determine eligibility.
-		Moving file into different folder will make it a new file.
+	.PARAMETER Type
+		Adds only files that were not added to the package yet. The following options are available:
+		* New: add new files based on their source path (can be relative)
+		* Modified: adds files only if they have been modified since they had last been added to the package
+		* Unique: adds unique files to the build based on their hash values. Compares hashes accross the whole package
+		* All: add all files regardless of their previous involvement
+		
+		More than one value can be specified at the same time.
+		
+		Default value: All
 	
 	.PARAMETER UniqueOnly
 		Out of all specified script files, only add new/modified files that have not been added to any of the package builds yet. 
@@ -77,8 +83,8 @@ function Add-PowerUpBuild {
 		[object[]]$ScriptPath,
 		[string]$Build,
 		[switch]$SkipValidation,
-		[switch]$NewOnly,
-		[switch]$UniqueOnly,
+		[ValidateSet('New', 'Modified', 'Unique', 'All')]
+		[string[]]$Type = 'All',
 		[Parameter(DontShow)]
 		[switch]$Unpacked
 	)
@@ -94,23 +100,12 @@ function Add-PowerUpBuild {
 		else {
 			throw "Package $Path not found. Aborting build."
 			return
-		}
+		}		
 	}
 	process {
 		foreach ($scriptItem in $ScriptPath) {
-			if ($scriptItem.GetType() -in @([System.IO.FileSystemInfo], [System.IO.FileInfo])) {
-				Write-Verbose "Item $scriptItem ($($scriptItem.GetType())) is a File object"
-				$stringPath = $scriptItem.FullName
-			}
-			else {
-				Write-Verbose "Item $scriptItem ($($scriptItem.GetType())) will be treated as a string"
-				$stringPath = [string]$scriptItem
-			}
-			if (!(Test-Path $stringPath)) {
-				throw "The following path is not valid: $stringPath"
-			}
-			Write-Verbose "Processing path $stringPath"
-			$scriptCollection += Get-ChildScriptItem $stringPath
+			Write-Verbose "Processing path item $scriptItem"
+			$scriptCollection += Get-ChildScriptItem $scriptItem
 		}
 	}
 	end {
@@ -147,23 +142,36 @@ function Add-PowerUpBuild {
 			
 			$scriptsToAdd = @()
 			foreach ($childScript in $scriptCollection) { 
-				if ($NewOnly) {
+				# Include file by default
+				$includeFile = $Type -contains 'All'
+				if ($Type -contains 'New') {
 					#Check if the script path was already added in one of the previous builds
-					if ($package.SourcePathExists($childScript.FullName)) {
-						Write-Verbose "File $($childScript.FullName) was found among the package source files, skipping."
-						continue
+					if (!$package.SourcePathExists($childScript.SourcePath)) {
+						$includeFile = $true
+						Write-Verbose "File $($childScript.SourcePath) was not found among the package source files, adding to the list."
 					}
 				}
-				if ($UniqueOnly) {
+				if ($Type -contains 'Modified') {
+					#Check if the file was modified in the previous build
+					if ($package.ScriptModified($childScript.FullName, $childScript.SourcePath)) {
+						$includeFile = $true
+						Write-Verbose "Hash of the file $($childScript.FullName) was modified since last deployment, adding to the list."
+					}
+				}
+				if ($Type -contains 'Unique') {
 					#Check if the script hash was already added in one of the previous builds
-					if ($package.ScriptExists($childScript.FullName)) {
-						Write-Verbose "Hash of the file $($childScript.FullName) was found among the package scripts, skipping."
-						continue
+					if (!$package.ScriptExists($childScript.FullName)) {
+						$includeFile = $true
+						Write-Verbose "Hash of the file $($childScript.FullName) was not found among the package scripts, adding to the list.."
 					}
 				}
-				$scriptsToAdd += $childScript
+				if ($includeFile) {
+					$scriptsToAdd += $childScript
+				}
+				else {
+					Write-Verbose "File $($childScript.FullName) was not added to the current build due to -Type restrictions: $($Type -join ',')"
+				}
 			}	
-
 
 			if ($scriptsToAdd) {
 
@@ -172,7 +180,7 @@ function Add-PowerUpBuild {
 
 				foreach ($buildScript in $scriptsToAdd) {
 					Write-Verbose "Adding file '$($buildScript.FullName)' to $currentBuild"
-					$currentBuild.NewScript($buildScript.FullName, $buildScript.Depth) 
+					$currentBuild.NewScript($buildScript) 
 				}
 
 				Write-Verbose "Adding $currentBuild to the package object"

@@ -39,23 +39,23 @@ Describe "$commandName tests" {
 		}
 		$results = Get-ArchiveItem $packageNameTest
 		It "build 1.0 should only contain scripts from 1.0" {
-			$results | Where-Object Path -eq 'content\1.0\1.sql' | Should Not Be $null
-			$results | Where-Object Path -eq 'content\1.0\2.sql' | Should Be $null
+			'content\1.0\1.sql' | Should BeIn $results.Path
+			'content\1.0\2.sql' | Should Not BeIn $results.Path
 		}
 		It "build 2.0 should only contain scripts from 2.0" {
-			$results | Where-Object Path -eq 'content\2.0\2.sql' | Should Not Be $null
-			$results | Where-Object Path -eq 'content\2.0\1.sql' | Should Be $null
+			'content\2.0\2.sql' | Should BeIn $results.Path
+			'content\2.0\1.sql' | Should Not BeIn $results.Path
 		}
 		It "should contain module files" {
-			$results | Where-Object Path -eq 'Modules\PowerUp\PowerUp.psd1' | Should Not Be $null
-			$results | Where-Object Path -eq 'Modules\PowerUp\bin\DbUp.dll' | Should Not Be $null
+			'Modules\PowerUp\PowerUp.psd1' | Should BeIn $results.Path
+			'Modules\PowerUp\bin\DbUp.dll' | Should BeIn $results.Path
 		}
 		It "should contain config files" {
-			$results | Where-Object Path -eq 'PowerUp.config.json' | Should Not Be $null
-			$results | Where-Object Path -eq 'PowerUp.package.json' | Should Not Be $null
+			'PowerUp.config.json' | Should BeIn $results.Path
+			'PowerUp.package.json' | Should BeIn $results.Path
 		}
 	}
-	Context "adding new files only based on source path" {
+	Context "adding new files only based on source path (Type = New)" {
 		BeforeAll {
 			$null = Copy-Item $packageName $packageNameTest
 		}
@@ -63,7 +63,7 @@ Describe "$commandName tests" {
 			$null = Remove-Item $packageNameTest
 		}
 		It "should add new build to existing package" {
-			$results = Add-PowerUpBuild -ScriptPath $scriptFolder -Name $packageNameTest -Build 2.0 -NewOnly
+			$results = Add-PowerUpBuild -ScriptPath $scriptFolder -Name $packageNameTest -Build 2.0 -Type 'New'
 			$results | Should Not Be $null
 			$results.Name | Should Be (Split-Path $packageNameTest -Leaf)
 			$results.Config | Should Not Be $null
@@ -77,23 +77,23 @@ Describe "$commandName tests" {
 		}
 		$results = Get-ArchiveItem $packageNameTest
 		It "build 1.0 should only contain scripts from 1.0" {
-			$results | Where-Object Path -eq 'content\1.0\1.sql' | Should Not Be $null
-			$results | Where-Object Path -eq 'content\1.0\2.sql' | Should Be $null
+			'content\1.0\1.sql' | Should BeIn $results.Path
+			'content\1.0\2.sql' | Should Not BeIn $results.Path
 		}
 		It "build 2.0 should only contain scripts from 2.0" {
-			$results | Where-Object Path -eq "content\2.0\$(Split-Path $scriptFolder -Leaf)\2.sql" | Should Not Be $null
-			$results | Where-Object Path -eq "content\2.0\$(Split-Path $scriptFolder -Leaf)\1.sql" | Should Be $null
+			"content\2.0\$(Split-Path $scriptFolder -Leaf)\2.sql" | Should BeIn $results.Path
+			"content\2.0\$(Split-Path $scriptFolder -Leaf)\1.sql" | Should Not BeIn $results.Path
 		}
 		It "should contain module files" {
-			$results | Where-Object Path -eq 'Modules\PowerUp\PowerUp.psd1' | Should Not Be $null
-			$results | Where-Object Path -eq 'Modules\PowerUp\bin\DbUp.dll' | Should Not Be $null
+			'Modules\PowerUp\PowerUp.psd1' | Should BeIn $results.Path
+			'Modules\PowerUp\bin\DbUp.dll' | Should BeIn $results.Path
 		}
 		It "should contain config files" {
-			$results | Where-Object Path -eq 'PowerUp.config.json' | Should Not Be $null
-			$results | Where-Object Path -eq 'PowerUp.package.json' | Should Not Be $null
+			'PowerUp.config.json' | Should BeIn $results.Path
+			'PowerUp.package.json' | Should BeIn $results.Path
 		}
 	}
-	Context "adding new files only based on uniqueness (hash)" {
+	Context "adding new files only based on hash (Type = Unique/Modified)" {
 		BeforeAll {
 			$null = Copy-Item $packageName $packageNameTest
 			$null = Copy-Item $v1scripts "$workFolder\Test.sql"
@@ -103,55 +103,57 @@ Describe "$commandName tests" {
 			$null = Remove-Item "$workFolder\Test.sql"
 		}
 		It "should add new build to existing package" {
-			$results = Add-PowerUpBuild -ScriptPath $scriptFolder, "$workFolder\Test.sql" -Name $packageNameTest -Build 2.0 -UniqueOnly
+			$results = Add-PowerUpBuild -ScriptPath $scriptFolder, "$workFolder\Test.sql" -Name $packageNameTest -Build 2.0 -Type 'Unique'
 			$results | Should Not Be $null
 			$results.Name | Should Be (Split-Path $packageNameTest -Leaf)
 			$results.Config | Should Not Be $null
 			$results.Version | Should Be '2.0'
 			$results.ModuleVersion | Should Be (Get-Module PowerUp).Version
-			$results.Builds | Where-Object Build -eq '1.0' | Should Not Be $null
-			$results.Builds | Where-Object Build -eq '2.0' | Should Not Be $null
+			'1.0' | Should BeIn $results.Builds.Build
+			'2.0' | Should BeIn $results.Builds.Build
 			$results.Path | Should Be $packageNameTest
 			$results.Size -gt 0 | Should Be $true
 			Test-Path $packageNameTest | Should Be $true
 		}
 		It "should add new build to existing package based on changes in the file" {
+			$null = Add-PowerUpBuild -ScriptPath "$workFolder\Test.sql" -Name $packageNameTest -Build 2.1
 			"nope" | Out-File "$workFolder\Test.sql" -Append
-			$results = Add-PowerUpBuild -ScriptPath $scriptFolder, "$workFolder\Test.sql" -Name $packageNameTest -Build 3.0 -UniqueOnly
+			$results = Add-PowerUpBuild -ScriptPath $scriptFolder, "$workFolder\Test.sql" -Name $packageNameTest -Build 3.0 -Type 'Modified'
 			$results | Should Not Be $null
 			$results.Name | Should Be (Split-Path $packageNameTest -Leaf)
 			$results.Config | Should Not Be $null
 			$results.Version | Should Be '3.0'
 			$results.ModuleVersion | Should Be (Get-Module PowerUp).Version
-			$results.Builds | Where-Object Build -eq '1.0' | Should Not Be $null
-			$results.Builds | Where-Object Build -eq '2.0' | Should Not Be $null
-			$results.Builds | Where-Object Build -eq '3.0' | Should Not Be $null
+			'1.0' | Should BeIn $results.Builds.Build
+			'2.0' | Should BeIn $results.Builds.Build
+			'2.1' | Should BeIn $results.Builds.Build
+			'3.0' | Should BeIn $results.Builds.Build
 			$results.Path | Should Be $packageNameTest
 			$results.Size -gt 0 | Should Be $true
 			Test-Path $packageNameTest | Should Be $true
 		}
 		$results = Get-ArchiveItem $packageNameTest
 		It "build 1.0 should only contain scripts from 1.0" {
-			$results | Where-Object Path -eq 'content\1.0\1.sql' | Should Not Be $null
-			$results | Where-Object Path -eq 'content\1.0\2.sql' | Should Be $null
+			'content\1.0\1.sql' | Should BeIn $results.Path
+			'content\1.0\2.sql' | Should Not BeIn $results.Path
 		}
 		It "build 2.0 should only contain scripts from 2.0" {
-			$results | Where-Object Path -eq "content\2.0\$(Split-Path $scriptFolder -Leaf)\2.sql" | Should Not Be $null
-			$results | Where-Object Path -eq "content\2.0\$(Split-Path $scriptFolder -Leaf)\1.sql" | Should Be $null
-			$results | Where-Object Path -eq 'content\2.0\Test.sql' | Should Be $null
+			"content\2.0\$(Split-Path $scriptFolder -Leaf)\2.sql" | Should BeIn $results.Path
+			"content\2.0\$(Split-Path $scriptFolder -Leaf)\1.sql" | Should Not BeIn $results.Path
+			'content\2.0\Test.sql' | Should Not BeIn $results.Path
 		}
 		It "build 3.0 should only contain scripts from 3.0" {
-			$results | Where-Object Path -eq 'content\3.0\Test.sql' | Should Not Be $null
-			$results | Where-Object Path -eq "content\3.0\$(Split-Path $scriptFolder -Leaf)\2.sql" | Should Be $null
-			$results | Where-Object Path -eq "content\3.0\$(Split-Path $scriptFolder -Leaf)\1.sql" | Should Be $null
+			'content\3.0\Test.sql' | Should BeIn $results.Path
+			"content\3.0\$(Split-Path $scriptFolder -Leaf)\2.sql" | Should Not BeIn $results.Path
+			"content\3.0\$(Split-Path $scriptFolder -Leaf)\1.sql" | Should Not BeIn $results.Path
 		}
 		It "should contain module files" {
-			$results | Where-Object Path -eq 'Modules\PowerUp\PowerUp.psd1' | Should Not Be $null
-			$results | Where-Object Path -eq 'Modules\PowerUp\bin\DbUp.dll' | Should Not Be $null
+			'Modules\PowerUp\PowerUp.psd1' | Should BeIn $results.Path
+			'Modules\PowerUp\bin\DbUp.dll' | Should BeIn $results.Path
 		}
 		It "should contain config files" {
-			$results | Where-Object Path -eq 'PowerUp.config.json' | Should Not Be $null
-			$results | Where-Object Path -eq 'PowerUp.package.json' | Should Not Be $null
+			'PowerUp.config.json' | Should BeIn $results.Path
+			'PowerUp.package.json' | Should BeIn $results.Path
 		}
 	}
 	Context "unpacked package tests" {
@@ -170,8 +172,8 @@ Describe "$commandName tests" {
 			$results.Config | Should Not Be $null
 			$results.Version | Should Be '2.0'
 			$results.ModuleVersion | Should Be (Get-Module PowerUp).Version
-			$results.Builds | Where-Object Build -eq '1.0' | Should Not Be $null
-			$results.Builds | Where-Object Build -eq '2.0' | Should Not Be $null
+			'1.0' | Should BeIn $results.Builds.Build
+			'2.0' | Should BeIn $results.Builds.Build
 			$results.Path | Should Be $unpackedFolder.FullName
 			$results.Size | Should Be 0
 			Test-Path "$unpackedFolder\content\2.0" | Should Be $true
@@ -199,7 +201,7 @@ Describe "$commandName tests" {
 			Remove-Item $packageNoPkgFile
 		}
 		It "should show warning when there are no new files" {
-			$result = Add-PowerUpBuild -Name $packageNameTest -ScriptPath $v1scripts -UniqueOnly -WarningVariable warningResult 3>$null
+			$result = Add-PowerUpBuild -Name $packageNameTest -ScriptPath $v1scripts -Type 'Unique' -WarningVariable warningResult 3>$null
 			$warningResult.Message -join ';' | Should BeLike '*No scripts have been selected, the original file is unchanged.*'
 		}
 		It "should throw error when package data file does not exist" {
