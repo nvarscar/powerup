@@ -14,7 +14,7 @@ Currently supported RDBMS:
 The most notable features of the module:
 
 * No scripting experience required - the module is designed around usability and functionality
-* Will aggregate source scripts from multiple sources into a single ready-to-deploy file
+* Introduces an option to aggregate source scripts from multiple sources into a single ready-to-deploy file
 * Can detect new/changed files in your source code folder and generate a new build out of them
 * Reliably deploys the scripts in a consistent manner - all the scripts are executed in alphabetical order one build at a time
 * Can be deployed without the module installed in the system - module itself is integrated into the deployment package
@@ -44,7 +44,10 @@ Import-Module .\PowerUp
 ## Examples
 
 ```powershell
-# Quick deployment
+# Quick deployment without tracking deployment history
+Invoke-PowerUpDeployment -ScriptPath C:\temp\myscripts -SqlInstance server1 -Database MyDB -SchemaVersionTable $null
+
+# Deployment using packages & builds with keeping track of deployment history in dbo.SchemaVersions
 New-PowerUpPackage Deploy.zip -ScriptPath C:\temp\myscripts | Install-PowerUpPackage -SqlInstance server1 -Database MyDB
 
 # Create new deployment package with predefined configuration and deploy it replacing #{dbName} tokens with corresponding values
@@ -61,7 +64,6 @@ Install-PowerUpPackage Deploy.zip
 
 # Generating config files and using it later as a deployment template
 (Get-PowerUpConfig -Configuration @{ DeploymentMethod = 'SingleTransaction'; SqlInstance = 'devInstance'; DatabaseName = 'MyDB' }).SaveToFile('.\dev.json')
-(Get-PowerUpConfig -Path '.\dev.json' -Configuration @{ SqlInstance = 'testInstance' }).SaveToFile('.\test.json')
 (Get-PowerUpConfig -Path '.\dev.json' -Configuration @{ SqlInstance = 'prodInstance' }).SaveToFile('.\prod.json')
 Install-PowerUpPackage Deploy.zip -ConfigurationFile .\dev.json
 
