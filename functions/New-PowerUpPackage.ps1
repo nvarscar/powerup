@@ -101,11 +101,11 @@ function New-PowerUpPackage {
 			$configTable += @{ Variables = $Variables } 
 		}
 		
-		#Get configuration object according to current config options
-		$config = Get-PowerUpConfig -Path $ConfigurationFile -Configuration $configTable
-	
 		#Create a package object
 		$package = [PowerUpPackage]::new()
+
+		#Get configuration object according to current config options
+		$package.SetConfiguration((Get-PowerUpConfig -Path $ConfigurationFile -Configuration $configTable))
 		
 		#Create new build
 		if ($Build) {
@@ -122,63 +122,48 @@ function New-PowerUpPackage {
 	}
 	end {
 		if ($pscmdlet.ShouldProcess($package, "Generate a package file")) {
-			#Create temp folder
-			$workFolder = New-TempWorkspaceFolder
-
-			#Ensure that temporary workspace is removed
-			try {			
-				#Copy package contents to the temp folder
-				$deployFileSource = Join-Path (Split-Path $PSScriptRoot -Parent) $package.DeploySource
-				Write-Verbose "Copying deployment file $deployFileSource"
-				Copy-Item -Path $deployFileSource -Destination (Join-Path $workFolder $package.DeployScript)
-				if ($package.PreDeploySource) {
-					Write-Verbose "Copying pre-deployment file $($package.PreDeploySource)"
-					Copy-Item -Path $package.PreDeploySource -Destination (Join-Path $workFolder $package.PreDeployScript)
-				}
-				if ($package.PostDeploySource) {
-					Write-Verbose "Copying post-deployment file $($package.PostDeploySource)"
-					Copy-Item -Path $package.PostDeploySource -Destination (Join-Path $workFolder $package.PostDeployScript)
-				}
-
-				#Write files into the folder
-				$configPath = Join-Path $workFolder $package.ConfigurationFile
-				Write-Verbose "Writing configuration file $configPath"
-				$config.SaveToFile($configPath)
-			
-				$packagePath = Join-Path $workFolder $package.PackageFile
-				Write-Verbose "Writing package file $packagePath"
-				$package.SaveToFile($packagePath)
-
-				#Copy module into the archive
-				Copy-ModuleFiles -Path (Join-Path $workFolder "Modules\PowerUp")
-
-				#Create a new build
-				$null = Add-PowerUpBuild -Path $workFolder -Build $buildNumber -ScriptPath $scriptCollection -Unpacked -SkipValidation
-
-				#Storing package details in a variable
-				$packageInfo = Get-PowerUpPackage -Path $workFolder -Unpacked
-
-				#Compress the files
-				Write-Verbose "Creating archive file $Path"
-				Compress-Archive "$workFolder\*" -DestinationPath $Path -Force:$Force
-			
-				#Preparing output object
-				$outputObject = [PowerUpPackageFile]::new((Get-Item $Path))
-				$outputObject.Config = $packageInfo.Config
-				$outputObject.Version = $packageInfo.Version
-				$outputObject.ModuleVersion = $packageInfo.ModuleVersion
-				$outputObject.Builds = $packageInfo.Builds	
-				$outputObject
+			#Copy package contents to the temp folder
+			$deployFileSource = Join-Path (Split-Path $PSScriptRoot -Parent) $package.DeploySource
+			Write-Verbose "Copying deployment file $deployFileSource"
+			Copy-Item -Path $deployFileSource -Destination (Join-Path $workFolder $package.DeployScript)
+			if ($package.PreDeploySource) {
+				Write-Verbose "Copying pre-deployment file $($package.PreDeploySource)"
+				Copy-Item -Path $package.PreDeploySource -Destination (Join-Path $workFolder $package.PreDeployScript)
 			}
-			catch {
-				throw $_
+			if ($package.PostDeploySource) {
+				Write-Verbose "Copying post-deployment file $($package.PostDeploySource)"
+				Copy-Item -Path $package.PostDeploySource -Destination (Join-Path $workFolder $package.PostDeployScript)
 			}
-			finally {
-				if ($workFolder.Name -like 'PowerUpWorkspace*') {
-					Write-Verbose "Removing temporary folder $workFolder"
-					Remove-Item $workFolder -Recurse -Force
-				}
-			}
+
+			#Write files into the folder
+			$configPath = Join-Path $workFolder $package.ConfigurationFile
+			Write-Verbose "Writing configuration file $configPath"
+			$config.SaveToFile($configPath)
+		
+			$packagePath = Join-Path $workFolder $package.PackageFile
+			Write-Verbose "Writing package file $packagePath"
+			$package.SaveToFile($packagePath)
+
+			#Copy module into the archive
+			Copy-ModuleFiles -Path (Join-Path $workFolder "Modules\PowerUp")
+
+			#Create a new build
+			$null = Add-PowerUpBuild -Path $workFolder -Build $buildNumber -ScriptPath $scriptCollection -Unpacked -SkipValidation
+
+			#Storing package details in a variable
+			$packageInfo = Get-PowerUpPackage -Path $workFolder -Unpacked
+
+			#Compress the files
+			Write-Verbose "Creating archive file $Path"
+			Compress-Archive "$workFolder\*" -DestinationPath $Path -Force:$Force
+		
+			#Preparing output object
+			$outputObject = [PowerUpPackageFile]::new((Get-Item $Path))
+			$outputObject.Config = $packageInfo.Config
+			$outputObject.Version = $packageInfo.Version
+			$outputObject.ModuleVersion = $packageInfo.ModuleVersion
+			$outputObject.Builds = $packageInfo.Builds	
+			$outputObject
 		}
 		
 	}
