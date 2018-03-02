@@ -1,4 +1,4 @@
-Function Get-ModuleFileList {
+Function Get-PowerUpModuleFileList {
 	<#
 .SYNOPSIS
 Returns all module files based on json file in the module root
@@ -7,7 +7,7 @@ Returns all module files based on json file in the module root
 Returns objects from PowerUp.json
 
 .EXAMPLE
-Get-ModuleFileList
+Get-PowerUpModuleFileList
 
 .NOTES
 Nothing here

@@ -74,7 +74,7 @@ Function Get-PowerUpPackage {
 
 					Write-Verbose "Extracting module core files from the archive $pFile to $workFolder"
 					$coreFiles = @()
-					foreach ($moduleFile in (Get-ModuleFileList | Where-Object Type -eq 'Core')) {
+					foreach ($moduleFile in (Get-PowerUpModuleFileList | Where-Object Type -eq 'Core')) {
 						$coreFiles += Join-Path $modulePath $moduleFile.Name
 					}
 					Expand-ArchiveItem -Path $pFile -DestinationPath $workFolder -Item $coreFiles

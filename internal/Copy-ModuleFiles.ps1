@@ -23,7 +23,7 @@ Function Copy-ModuleFiles {
 		throw "The path provided is a file, cannot proceed"
 	}
 	Write-Verbose "Copying module files into the folder $Path"
-	foreach ($file in (Get-ModuleFileList)) {
+	foreach ($file in (Get-PowerUpModuleFileList)) {
 		if (-not (Test-Path (Join-Path $Path $file.Directory) -PathType Container)) {
 			$null = New-Item (Join-Path $Path $file.Directory) -ItemType Directory
 		}
