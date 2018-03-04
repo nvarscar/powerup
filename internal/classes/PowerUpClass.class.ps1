@@ -6,14 +6,6 @@ using namespace System.IO.Compression
 ###########################
 
 class PowerUpClass {
-	# Shared methods
-	[void] SaveToFile ([string]$fileName) {
-		$this | ConvertTo-Json -Depth 5 | Out-File $fileName
-	}
-	[void] SaveToFile ([string]$fileName, [bool]$force) {
-		$this | ConvertTo-Json -Depth 5 | Out-File $fileName -Force
-	}
-
 	hidden [void] ThrowException ([string]$exceptionType, [string]$errorText, [object]$object, [System.Management.Automation.ErrorCategory]$errorCategory) {
 		$errorMessageObject = [System.Management.Automation.ErrorRecord]::new( `
 			(New-Object -TypeName $exceptionType -ArgumentList $errorText),
@@ -36,11 +28,11 @@ class PowerUpClass {
 		}
 		return $returnPath
 	}
-	[byte[]] GetBinaryFile ([string]$fileName) {
+	hidden [byte[]] GetBinaryFile ([string]$fileName) {
 		$stream = [System.IO.File]::Open($fileName, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite)
 		return $this.ReadFileStream($stream)
 	}
-	[byte[]] ReadFileStream ([System.IO.Stream]$stream) {
+	hidden [byte[]] ReadFileStream ([System.IO.Stream]$stream) {
 		$b = [byte[]]::new($stream.Length)
 		try {
 			$stream.Read($b, 0, $b.Length)
@@ -53,13 +45,13 @@ class PowerUpClass {
 		}
 		return $b
 	}
-	[System.IO.MemoryStream] ReadDeflateStream ([DeflateStream]$stream) {
+	hidden [System.IO.MemoryStream] ReadDeflateStream ([DeflateStream]$stream) {
 		$memStream = [System.IO.MemoryStream]::new()
 		$stream.CopyTo($memStream)
 		$stream.Close()
 		return $memStream
 	}
-	[void] WriteZipFile ([ZipArchive]$zipFile, [string]$fileName, [byte[]]$data) {
+	hidden [void] WriteZipFile ([ZipArchive]$zipFile, [string]$fileName, [byte[]]$data) {
 		#Remove old file entry if exists
 		if ($zipFile.Mode -eq [ZipArchiveMode]::Update) {
 			if ($oldEntry = $zipFile.GetEntry($fileName)) {
@@ -74,7 +66,7 @@ class PowerUpClass {
 		#Close the stream
 		$writer.Close()
 	}
-	[void] WriteZipFileStream ([ZipArchive]$zipFile, [string]$fileName, [FileStream]$stream) {
+	hidden [void] WriteZipFileStream ([ZipArchive]$zipFile, [string]$fileName, [FileStream]$stream) {
 		$entry = $zipFile.CreateEntry($fileName)
 		$writer = $entry.Open()
 		$data = [byte[]]::new(4098)
@@ -84,19 +76,6 @@ class PowerUpClass {
 		}
 		#Close the stream
 		$writer.Close()
-	}
-	#Initiates package update saving the current file in the package
-	[void] Alter() {
-		#Open new file stream
-		$writeMode = [System.IO.FileMode]::Open
-		$stream = [FileStream]::new($this.Parent.FileName, $writeMode)
-		#Open zip file
-		$zip = [ZipArchive]::new($stream, [ZipArchiveMode]::Update)
-		#Write file
-		$this.Save($zip)
-		#Close archive
-		$zip.Dispose()
-		$stream.Dispose()
 	}
 	#Adding file objects to the parent 
 	[void] NewFile ([object[]]$FileObject, [string]$CollectionName) {
@@ -162,6 +141,12 @@ class PowerUpClass {
 			$this.AddFile($file, $CollectionName)
 		}
 	}
+	#Convert byte to hash string
+	hidden [string] ToHashString([byte[]]$InputObject) {
+		$outString = "0x"
+		$InputObject | ForEach-Object { $outString += ("{0:X}" -f $_).PadLeft(2, "0") }
+		return $outString
+	}
 }
 
 ########################
@@ -189,10 +174,13 @@ class PowerUpPackage : PowerUpClass {
 		# Processing deploy file
 		$file = [PowerUpPackage]::GetDeployFile()
 		# Adding root deploy file
-		$newFile = [PowerUpRootFile]::new($file.FullName, $file.Name)
-		$this.AddFile($newFile, 'DeployFile')
-		#Adding configuration file
-		[PowerUpConfig]::GetConfigurationFileName
+		$this.AddFile([PowerUpRootFile]::new($file.FullName, $file.Name), 'DeployFile')
+		# Adding configuration file default contents
+		$configFile = [PowerUpRootFile]::new()
+		$configContent = $this.Configuration.ExportToJson() | ConvertTo-Byte
+		$configFile.SetContent($configContent)
+		$configFile.PackagePath = [PowerUpConfig]::GetConfigurationFileName()
+		$this.AddFile($configFile, 'ConfigurationFile')
 	}
 
 	PowerUpPackage ([string]$fileName) {
@@ -297,7 +285,7 @@ class PowerUpPackage : PowerUpClass {
 			# $this.PackageFile = $jsonObject.PackageFile
 		}
 	}
-	[PowerUpBuild[]] GetBuilds ([string]$build) {
+	[PowerUpBuild[]] GetBuilds () {
 		return $this.Builds
 	}
 	[PowerUpBuild] NewBuild ([string]$build) {
@@ -313,6 +301,7 @@ class PowerUpPackage : PowerUpClass {
 			$newBuild = [PowerUpBuild]::new($build)
 			$newBuild.Parent = $this
 			$this.builds += $newBuild
+			$this.Version = $newBuild.Build
 			return $newBuild
 		}
 	}
@@ -404,22 +393,22 @@ class PowerUpPackage : PowerUpClass {
 		}
 		return $false
 	}
-	[bool] PackagePathExists([string]$PackagePath) {
-		foreach ($build in $this.builds) {
-			if ($build.PackagePathExists($PackagePath)) {
-				return $true
-			}
-		}
-		return $false
-	}
-	[bool] PackagePathExists([string]$fileName, [int]$Depth) {
-		foreach ($build in $this.builds) {
-			if ($build.PackagePathExists($fileName, $Depth)) {
-				return $true
-			}
-		}
-		return $false
-	}
+	# [bool] PackagePathExists([string]$PackagePath) {
+	# 	foreach ($build in $this.builds) {
+	# 		if ($build.PackagePathExists($PackagePath)) {
+	# 			return $true
+	# 		}
+	# 	}
+	# 	return $false
+	# }
+	# [bool] PackagePathExists([string]$fileName, [int]$Depth) {
+	# 	foreach ($build in $this.builds) {
+	# 		if ($build.PackagePathExists($fileName, $Depth)) {
+	# 			return $true
+	# 		}
+	# 	}
+	# 	return $false
+	# }
 	[string] ExportToJson() {
 		$exportObject = @{} | Select-Object 'ScriptDirectory', 'DeployFile', 'PreDeployFile', 'PostDeployFile', 'ConfigurationFile', 'Builds'
 		foreach ($type in $exportObject.psobject.Properties.name) {
@@ -446,7 +435,7 @@ class PowerUpPackage : PowerUpClass {
 		}
 		return $exportObject | ConvertTo-Json -Depth 3
 	}
-	[void] SavePackageFile([ZipArchive]$zipFile) {
+	hidden [void] SavePackageFile([ZipArchive]$zipFile) {
 		$pkgFileContent = $this.ExportToJson() | ConvertTo-Byte
 		$this.WriteZipFile($zipFile, ([PowerUpConfig]::GetPackageFileName()), $pkgFileContent)
 	}
@@ -496,7 +485,7 @@ class PowerUpPackage : PowerUpClass {
 		}
 	}
 
-	[void] SaveModuleToFile([ZipArchive]$zipArchive) {
+	hidden [void] SaveModuleToFile([ZipArchive]$zipArchive) {
 		foreach ($file in (Get-PowerUpModuleFileList)) {
 			$this.WriteZipFile($zipArchive, (Join-Path "Modules\PowerUp" $file.Path), $this.GetBinaryFile($file.FullName))
 		}
@@ -648,7 +637,7 @@ class PowerUpBuild : PowerUpClass {
 	}
 	[bool] PackagePathExists([string]$PackagePath) {
 		foreach ($script in $this.Scripts) {
-			if ($PackagePath -eq $script.packagePath) {
+			if ($PackagePath -eq $script.PackagePath) {
 				return $true
 			}
 		}
@@ -657,7 +646,7 @@ class PowerUpBuild : PowerUpClass {
 	[bool] PackagePathExists([string]$fileName, [int]$Depth) {
 		$path = $this.SplitRelativePath($fileName, $Depth)
 		foreach ($script in $this.Scripts) {
-			if ($path -eq $script.packagePath) {
+			if ($path -eq $script.PackagePath) {
 				return $true
 			}
 		}
@@ -687,12 +676,12 @@ class PowerUpBuild : PowerUpClass {
 		return $this | Select-Object -Property $fields | ConvertTo-Json -Depth 2
 	}
 	#Writes current build into the archive file
-	[void] Save([ZipArchive]$zipFile) {
+	hidden [void] Save([ZipArchive]$zipFile) {
 		foreach ($script in $this.Scripts) {
 			$script.Save($zipFile)
 		}
 	}
-	#Overload for builds - including module update
+	#Alter build - includes module updates and scripts
 	[void] Alter() {
 		#Open new file stream
 		$writeMode = [System.IO.FileMode]::Open
@@ -829,11 +818,10 @@ class PowerUpFile : PowerUpClass {
 		return Join-Path $this.Parent.GetPackagePath() $this.PackagePath
 	}		
 	[string] ExportToJson() {
-		$packagePathValue = $this.GetPackagePath()
 		$fields = @(
 			'SourcePath'
 			'Hash'
-			@{ Name = 'PackagePath'; Expression = { $packagePathValue }}
+			'PackagePath'
 		)
 		return $this | Select-Object -Property $fields | ConvertTo-Json -Depth 1
 	}
@@ -844,13 +832,29 @@ class PowerUpFile : PowerUpClass {
 	#Updates package content
 	[void] SetContent([byte[]]$Array) {
 		$this.ByteArray = $Array
+		$this.Hash = $this.ToHashString([Security.Cryptography.HashAlgorithm]::Create( "MD5" ).ComputeHash($Array))
 	}
-
-	#Convert byte to hash string
-	[string] ToHashString([byte[]]$InputObject) {
-		$outString = "0x"
-		$InputObject | ForEach-Object { $outString += ("{0:X}" -f $_).PadLeft(2, "0") }
-		return $outString
+	#Initiates package update saving the current file in the package
+	[void] Alter() {
+		#Open new file stream
+		$writeMode = [System.IO.FileMode]::Open
+		if ($this.Parent -is [PowerUpBuild]) {
+			$saveToFile = $this.Parent.Parent.FileName
+		}
+		elseif ($this.Parent -is [PowerUpPackage]) {
+			$saveToFile = $this.Parent.FileName
+		}
+		else {
+			$saveToFile = ""
+		}
+		$stream = [FileStream]::new($saveToFile, $writeMode, [System.IO.FileAccess]::ReadWrite)
+		#Open zip file
+		$zip = [ZipArchive]::new($stream, [ZipArchiveMode]::Update)
+		#Write file
+		$this.Save($zip)
+		#Close archive
+		$zip.Dispose()
+		$stream.Dispose()
 	}
 }
 
