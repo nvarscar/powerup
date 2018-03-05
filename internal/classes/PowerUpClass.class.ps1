@@ -78,7 +78,8 @@ class PowerUpClass {
 		$writer.Close()
 	}
 	#Adding file objects to the parent 
-	[void] NewFile ([object[]]$FileObject, [string]$CollectionName) {
+	hidden [PowerUpFile[]] NewFile ([object[]]$FileObject, [string]$CollectionName) {
+		[PowerUpFile[]]$output = @()
 		foreach ($p in $FileObject) {
 			if ($p.Depth) {
 				$depth = $p.Depth
@@ -94,13 +95,18 @@ class PowerUpClass {
 			}
 			$f = [PowerUpFile]::new($sourcePath, $this.SplitRelativePath($p.FullName, $depth))
 			$this.AddFile($f, $CollectionName)
+			$f.Parent = $this
+			$output += $f
 		}
+		return $output
 	}
-	[void] NewFile ([string]$FileName, [int]$Depth, [string]$CollectionName) {
+	hidden [PowerUpFile] NewFile ([string]$FileName, [int]$Depth, [string]$CollectionName) {
 		$f = [PowerUpFile]::new($FileName, $this.SplitRelativePath($FileName, $Depth))
+		$f.Parent = $this
 		$this.AddFile($f, $CollectionName)
+		return $f
 	}
-	[void] AddFile ([PowerUpFile[]]$PowerUpFile, [string]$CollectionName) {
+	hidden [void] AddFile ([PowerUpFile[]]$PowerUpFile, [string]$CollectionName) {
 		foreach ($file in $PowerUpFile) {
 			$file.Parent = $this
 			if ($this.$CollectionName -and $this.$CollectionName.GetType() -is [System.Array]) {
@@ -114,7 +120,7 @@ class PowerUpClass {
 			}
 		}
 	}
-	[PowerUpFile[]] GetFile ([string[]]$PackagePath, [string]$CollectionName) {
+	hidden [PowerUpFile[]] GetFile ([string[]]$PackagePath, [string]$CollectionName) {
 		$result = @()
 		if ($this.$CollectionName) {
 			if ($PackagePath) {
@@ -128,14 +134,14 @@ class PowerUpClass {
 		}
 		return $result
 	}
-	[void] RemoveFile ([string[]]$PackagePath, [string]$CollectionName) {
+	hidden [void] RemoveFile ([string[]]$PackagePath, [string]$CollectionName) {
 		if ($this.$CollectionName) {
 			foreach ($path in $PackagePath) {
 				$this.$CollectionName = $this.$CollectionName | Where-Object $_.GetPackagePath() -ne $path
 			}
 		}
 	}
-	[void] UpdateFile ([PowerUpFile[]]$PowerUpFile, [string]$CollectionName) {
+	hidden [void] UpdateFile ([PowerUpFile[]]$PowerUpFile, [string]$CollectionName) {
 		foreach ($file in $PowerUpFile) {
 			$this.RemoveFile($file.GetPackagePath(), $CollectionName)
 			$this.AddFile($file, $CollectionName)
@@ -326,7 +332,7 @@ class PowerUpPackage : PowerUpClass {
 			return $currentBuild
 		}
 		else {
-			$this.ThrowArgumentException($this, 'Build not found.')
+			# $this.ThrowArgumentException($this, 'Build not found.')
 			return $null
 		}
 	}
@@ -530,7 +536,6 @@ class PowerUpBuild : PowerUpClass {
 		$this.build = $build
 		$this.PackagePath = $build
 		$this.CreatedDate = (Get-Date).Datetime
-		#$this.deployOrder = $parent.GetLastBuildDeployOrder() + 10
 	}
 
 	hidden PowerUpBuild ([psobject]$object) {
@@ -548,7 +553,8 @@ class PowerUpBuild : PowerUpClass {
 	}
 
 	#Methods 
-	[void] NewScript ([object[]]$FileObject) {
+	[PowerUpFile[]] NewScript ([object[]]$FileObject) {
+		[PowerUpFile[]]$output = @()
 		foreach ($p in $FileObject) {
 			if ($p.Depth) {
 				$depth = $p.Depth
@@ -565,12 +571,15 @@ class PowerUpBuild : PowerUpClass {
 			$s = [PowerUpFile]::new($sourcePath, $this.SplitRelativePath($p.FullName, $depth))
 			$s.Parent = $this
 			$this.AddScript($s)
+			$output += $s
 		}
+		return $output
 	}
-	[void] NewScript ([string]$FileName, [int]$Depth) {
+	[PowerUpFile] NewScript ([string]$FileName, [int]$Depth) {
 		$s = [PowerUpFile]::new($FileName, $this.SplitRelativePath($FileName, $Depth))
 		$s.Parent = $this
 		$this.AddScript($s)
+		return $s
 	}
 	[void] AddScript ([PowerUpFile[]]$script) {
 		$this.AddScript($script, $false)
@@ -590,7 +599,7 @@ class PowerUpBuild : PowerUpClass {
 		}
 	}
 	[string] ToString() {
-		return "[Build: $($this.build); Scripts: @{$($this.Scripts.Name -join ', ') }]"
+		return "[Build: $($this.build); Scripts: @{$($this.Scripts.Name -join ', ')}]"
 	}
 	hidden [bool] HashExists([string]$hash) {
 		foreach ($script in $this.Scripts) {
@@ -666,11 +675,10 @@ class PowerUpBuild : PowerUpClass {
 		foreach ($script in $this.Scripts) {
 			$scriptCollection += $script.ExportToJson() | ConvertFrom-Json
 		}
-		$packagePathValue = $this.GetPackagePath()
 		$fields = @(
 			'Build'
 			'CreatedDate'
-			@{ Name = 'PackagePath'; Expression = { $packagePathValue }}
+			'PackagePath'
 			@{ Name = 'Scripts'; Expression = { $scriptCollection }}
 		)
 		return $this | Select-Object -Property $fields | ConvertTo-Json -Depth 2
@@ -708,7 +716,6 @@ class PowerUpFile : PowerUpClass {
 	#Public properties
 	[string]$SourcePath
 	[string]$PackagePath
-	#[string]$Content
 	[int]$Length
 	[string]$Name
 	[string]$LastWriteTime

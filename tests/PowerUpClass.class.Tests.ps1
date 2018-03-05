@@ -7,12 +7,18 @@ Add-Type -AssemblyName System.IO.Compression.FileSystem
 . "$here\..\internal\Get-ArchiveItem.ps1"
 $packageName = "$here\etc\$commandName.zip"
 $script:pkg = $null
+$script:build = $null
+$script1 = "$here\etc\install-tests\success\1.sql"
+$script2 = "$here\etc\install-tests\success\2.sql"
 
 Describe "$commandName - PowerUpPackage tests" {
-    AfterAll {
-        if (Test-Path $packageName) { Remove-Item $packageName }
-    }
+	AfterAll {
+		if (Test-Path $packageName) { Remove-Item $packageName }
+	}
 	Context "validating PowerUpPackage creation" {
+		AfterAll {
+			if (Test-Path $packageName) { Remove-Item $packageName }
+		}
 		It "Should create new PowerUpPackage object" {
 			$script:pkg = [PowerUpPackage]::new()
 			$script:pkg.ScriptDirectory | Should Be 'content'
@@ -37,178 +43,364 @@ Describe "$commandName - PowerUpPackage tests" {
 		}
 		It "should contain deploy file" {
 			'Deploy.ps1' | Should BeIn $results.Path
-        }
-    }
-    Context "validate PowerUpPackage being loaded from file" {
+		}
+	}
+	Context "validate PowerUpPackage being loaded from file" {
+		AfterAll {
+			if (Test-Path $packageName) { Remove-Item $packageName }
+		}
+		BeforeAll {
+			$script:pkg = [PowerUpPackage]::new()
+			$script:pkg.SaveToFile($packageName)
+		}
 		It "should load package from file" {
-            $script:pkg = [PowerUpPackage]::new($packageName)
+			$script:pkg = [PowerUpPackage]::new($packageName)
 			$script:pkg.ScriptDirectory | Should Be 'content'
 			$script:pkg.DeployFile.ToString() | Should Be 'Deploy.ps1'
 			$script:pkg.DeployFile.GetContent() | Should BeLike '*Invoke-PowerUpDeployment @params*'
-            $script:pkg.ConfigurationFile.ToString() | Should Be 'PowerUp.config.json'
-            ($script:pkg.ConfigurationFile.GetContent() | ConvertFrom-Json).SchemaVersionTable | Should Be 'dbo.SchemaVersions'
-            $script:pkg.Configuration.SchemaVersionTable | Should Be 'dbo.SchemaVersions'
+			$script:pkg.ConfigurationFile.ToString() | Should Be 'PowerUp.config.json'
+			($script:pkg.ConfigurationFile.GetContent() | ConvertFrom-Json).SchemaVersionTable | Should Be 'dbo.SchemaVersions'
+			$script:pkg.Configuration.SchemaVersionTable | Should Be 'dbo.SchemaVersions'
 			$script:pkg.FileName | Should Be $packageName
-            $script:pkg.$Version | Should BeNullOrEmpty
-        }
-    }
-    Context "should validate PowerUpPackage methods" {
-        It "Should test GetBuilds method" {
-            $script:pkg.GetBuilds() | Should Be $null
-        }
-        It "Should test NewBuild method" {
-            $b = $script:pkg.NewBuild('1.0')
-            $b.Build | Should Be '1.0'
-            $b.PackagePath | Should Be '1.0'
-            $b.Parent.GetType().Name | Should Be 'PowerUpPackage'
-            $b.Scripts | Should BeNullOrEmpty
-            ([datetime]$b.CreatedDate).Date | Should Be ([datetime]::Now).Date
-            $script:pkg.Version | Should Be '1.0'
-        }
-        It "Should test GetBuild method" {
-            $b = $script:pkg.GetBuild('1.0')
-            $b.Build | Should Be '1.0'
-            $b.PackagePath | Should Be '1.0'
-            $b.Parent.GetType().Name | Should Be 'PowerUpPackage'
-            $b.Scripts | Should BeNullOrEmpty
-            ([datetime]$b.CreatedDate).Date | Should Be ([datetime]::Now).Date
-        }
+			$script:pkg.$Version | Should BeNullOrEmpty
+		}
+	}
+	Context "should validate PowerUpPackage methods" {
+		AfterAll {
+			if (Test-Path $packageName) { Remove-Item $packageName }
+		}
+		BeforeAll {
+			$script:pkg = [PowerUpPackage]::new()
+			$script:pkg.SaveToFile($packageName)
+		}
+		It "Should test GetBuilds method" {
+			$script:pkg.GetBuilds() | Should Be $null
+		}
+		It "Should test NewBuild method" {
+			$b = $script:pkg.NewBuild('1.0')
+			$b.Build | Should Be '1.0'
+			$b.PackagePath | Should Be '1.0'
+			$b.Parent.GetType().Name | Should Be 'PowerUpPackage'
+			$b.Scripts | Should BeNullOrEmpty
+			([datetime]$b.CreatedDate).Date | Should Be ([datetime]::Now).Date
+			$script:pkg.Version | Should Be '1.0'
+		}
+		It "Should test GetBuild method" {
+			$b = $script:pkg.GetBuild('1.0')
+			$b.Build | Should Be '1.0'
+			$b.PackagePath | Should Be '1.0'
+			$b.Parent.GetType().Name | Should Be 'PowerUpPackage'
+			$b.Scripts | Should BeNullOrEmpty
+			([datetime]$b.CreatedDate).Date | Should Be ([datetime]::Now).Date
+		}
 		It "Should test AddBuild method" {
-            $script:pkg.AddBuild('2.0')
-            $b = $script:pkg.GetBuild('2.0')
+			$script:pkg.AddBuild('2.0')
+			$b = $script:pkg.GetBuild('2.0')
 			$b.Build | Should Be '2.0'
 			$b.PackagePath | Should Be '2.0'
 			$b.Parent.GetType().Name | Should Be 'PowerUpPackage'
 			$b.Scripts | Should BeNullOrEmpty
-            ([datetime]$b.CreatedDate).Date | Should Be ([datetime]::Now).Date
-             $script:pkg.Version | Should Be '2.0'
-        }
-        It "Should test EnumBuilds method" {
-            $script:pkg.EnumBuilds() | Should Be @('1.0','2.0')
-        }
-        It "Should test GetVersion method" {
-            $script:pkg.GetVersion() | Should Be '2.0'
-        }
-        It "Should test RemoveBuild method" {
-            $script:pkg.RemoveBuild('2.0')
-            '2.0' | Should Not BeIn $script:pkg.EnumBuilds()
-            try {
-                $b = $script:pkg.GetBuild('2.0')
-            }
-            catch {
-                $result = $_.Exception.Message -join ';'
-            }
-            $script:pkg.Version | Should Be '1.0'
-            $result | Should BeLike '*Build not found*'
-            #Testing overloads
-            $b = $script:pkg.NewBuild('2.0')
-            '2.0' | Should BeIn $script:pkg.EnumBuilds()
-            $script:pkg.Version | Should Be '2.0'
-            $script:pkg.RemoveBuild($b)
-            '2.0' | Should Not BeIn $script:pkg.EnumBuilds()
-            try {
-                $b = $script:pkg.GetBuild('2.0')
-            }
-            catch {
-                $result = $_.Exception.Message -join ';'
-            }
-            $script:pkg.Version | Should Be '1.0'
-            $result | Should BeLike '*Build not found*'
-        }
-        It "should test ScriptExists method" {
-            $b = $script:pkg.GetBuild('1.0')
-            $s = "$here\etc\install-tests\success\1.sql"
-            $f = [PowerUpFile]::new(@{SourcePath = $s; PackagePath = 'success\1.sql'})
-            $f.SetContent($f.GetBinaryFile($s))
-            $b.AddFile($f, 'Scripts')
-            $script:pkg.ScriptExists($s) | Should Be $true
-			$script:pkg.ScriptExists("$here\etc\install-tests\transactional-failure\1.sql") | Should Be $false
-        }
-        It "should test ScriptModified method" {
-            $s1 = "$here\etc\install-tests\success\1.sql"
-            $s2 = "$here\etc\install-tests\success\2.sql"
-            $script:pkg.ScriptModified($s2, $s1) | Should Be $true
+			([datetime]$b.CreatedDate).Date | Should Be ([datetime]::Now).Date
+			$script:pkg.Version | Should Be '2.0'
+		}
+		It "Should test EnumBuilds method" {
+			$script:pkg.EnumBuilds() | Should Be @('1.0', '2.0')
+		}
+		It "Should test GetVersion method" {
+			$script:pkg.GetVersion() | Should Be '2.0'
+		}
+		It "Should test RemoveBuild method" {
+			$script:pkg.RemoveBuild('2.0')
+			'2.0' | Should Not BeIn $script:pkg.EnumBuilds()
+			$script:pkg.GetBuild('2.0') | Should BeNullOrEmpty
+			$script:pkg.Version | Should Be '1.0'
+			#Testing overloads
+			$b = $script:pkg.NewBuild('2.0')
+			'2.0' | Should BeIn $script:pkg.EnumBuilds()
+			$script:pkg.Version | Should Be '2.0'
+			$script:pkg.RemoveBuild($b)
+			'2.0' | Should Not BeIn $script:pkg.EnumBuilds()
+			$script:pkg.GetBuild('2.0') | Should BeNullOrEmpty
+			$script:pkg.Version | Should Be '1.0'
+		}
+		It "should test ScriptExists method" {
+			$b = $script:pkg.GetBuild('1.0')
+			$s = "$here\etc\install-tests\success\1.sql"
+			$f = [PowerUpFile]::new(@{SourcePath = $s; PackagePath = 'success\1.sql'})
+			$f.SetContent($f.GetBinaryFile($s))
+			$b.AddFile($f, 'Scripts')
+			$script:pkg.ScriptExists($s) | Should Be $true
+            $script:pkg.ScriptExists("$here\etc\install-tests\transactional-failure\1.sql") | Should Be $false
+            { $script:pkg.ScriptExists("Nonexisting\path") } | Should Throw
+		}
+		It "should test ScriptModified method" {
+			$s1 = "$here\etc\install-tests\success\1.sql"
+			$s2 = "$here\etc\install-tests\success\2.sql"
+			$script:pkg.ScriptModified($s2, $s1) | Should Be $true
 			$script:pkg.ScriptModified($s1, $s1) | Should Be $false
-        }
-        It "should test SourcePathExists method" {
-            $s1 = "$here\etc\install-tests\success\1.sql"
-            $s2 = "$here\etc\install-tests\success\2.sql"
-            $script:pkg.SourcePathExists($s1) | Should Be $true
+		}
+		It "should test SourcePathExists method" {
+			$s1 = "$here\etc\install-tests\success\1.sql"
+			$s2 = "$here\etc\install-tests\success\2.sql"
+			$script:pkg.SourcePathExists($s1) | Should Be $true
 			$script:pkg.SourcePathExists($s2) | Should Be $false
-        }
-        It "should test ExportToJson method" {
-            $j = $script:pkg.ExportToJson() | ConvertFrom-Json
-            $j.Builds | Should Not BeNullOrEmpty
-            $j.ConfigurationFile | Should Not BeNullOrEmpty
-            $j.DeployFile | Should Not BeNullOrEmpty
-            $j.ScriptDirectory | Should Not BeNullOrEmpty
-        }
-        It "Should test GetPackagePath method" {
-            $script:pkg.GetPackagePath() | Should Be 'content'
-        }
-        It "Should test SetConfiguration method" {
-            $config = @{ SchemaVersionTable = 'dbo.NewTable' } | ConvertTo-Json -Depth 1
-            { $script:pkg.SetConfiguration([PowerUpConfig]::new($config)) } | Should Not Throw
-            $script:pkg.Configuration.SchemaVersionTable | Should Be 'dbo.NewTable'
-        }
-        $oldResults = Get-ArchiveItem $packageName | ? IsFolder -eq $false
-        #Sleep 1 second to ensure that modification date is changed
-        Start-Sleep -Seconds 1
-        It "should test Save*/Alter methods" {
-            { $script:pkg.SaveToFile($packageName) } | Should Throw
-            { $script:pkg.Alter() } | Should Not Throw
-            $results = Get-ArchiveItem $packageName
+		}
+		It "should test ExportToJson method" {
+			$j = $script:pkg.ExportToJson() | ConvertFrom-Json
+			$j.Builds | Should Not BeNullOrEmpty
+			$j.ConfigurationFile | Should Not BeNullOrEmpty
+			$j.DeployFile | Should Not BeNullOrEmpty
+			$j.ScriptDirectory | Should Not BeNullOrEmpty
+		}
+		It "Should test GetPackagePath method" {
+			$script:pkg.GetPackagePath() | Should Be 'content'
+		}
+		It "Should test SetConfiguration method" {
+			$config = @{ SchemaVersionTable = 'dbo.NewTable' } | ConvertTo-Json -Depth 1
+			{ $script:pkg.SetConfiguration([PowerUpConfig]::new($config)) } | Should Not Throw
+			$script:pkg.Configuration.SchemaVersionTable | Should Be 'dbo.NewTable'
+		}
+		$oldResults = Get-ArchiveItem $packageName | ? IsFolder -eq $false
+		#Sleep 1 second to ensure that modification date is changed
+		Start-Sleep -Seconds 2
+		It "should test Save*/Alter methods" {
+			{ $script:pkg.SaveToFile($packageName) } | Should Throw
+			{ $script:pkg.Alter() } | Should Not Throw
+			$results = Get-ArchiveItem $packageName
 			foreach ($file in (Get-PowerUpModuleFileList)) {
 				Join-Path 'Modules\PowerUp' $file.Path | Should BeIn $results.Path
 			}
 			'PowerUp.config.json' | Should BeIn $results.Path
 			'PowerUp.package.json' | Should BeIn $results.Path
-            'Deploy.ps1' | Should BeIn $results.Path
-            'content\1.0\success\1.sql' | Should BeIn $results.Path
-        }
-        # Testing file contents to be updated by the Save method
-        $results = Get-ArchiveItem $packageName | ? IsFolder -eq $false
-        $saveTestsErrors = 0
-        foreach($result in $oldResults) {
-            if ($result.ModifyDate -ge ($results | ? Path -eq $result.Path).ModifyDate) {
-                It "Should have updated Modified date for file $($result.Path)" {
-                    $result.ModifyDate -lt ($results | ? Path -eq $result.Path).ModifyDate | Should Be $true
-                }
-                $saveTestsErrors++
-            }
-        }
-        if ($saveTestsErrors -eq 0) {
-            It "Ran silently $($oldResults.Length) file modification tests" {
-                $saveTestsErrors | Should be 0
-            }
-        }
-        It "Should test static GetDeployFile method" {
-            $f = [PowerUpPackage]::GetDeployFile()
-            $f.Type | Should Be 'Misc'
-            $f.Path | Should BeLike '*\Deploy.ps1'
-            $f.Name | Should Be 'Deploy.ps1'
-        }
-    }
-    Context "tests PowerUpBuild object" {
-        It "should test PackagePathExists method" {
-            $s1 = "success\1.sql"
-            $s2 = "success\2.sql"
-            $script:pkg.GetBuild('1.0').PackagePathExists($s1) | Should Be $true
-            $script:pkg.GetBuild('1.0').PackagePathExists($s2) | Should Be $false
-            #Overloads
-			$script:pkg.GetBuild('1.0').PackagePathExists("a\$s1", 1) | Should Be $true
-			$script:pkg.GetBuild('1.0').PackagePathExists("a\$s2", 1) | Should Be $false
-        }
-        
-        
-        
+			'Deploy.ps1' | Should BeIn $results.Path
+			'content\1.0\success\1.sql' | Should BeIn $results.Path
+		}
+		# Testing file contents to be updated by the Save method
+		$results = Get-ArchiveItem $packageName | ? IsFolder -eq $false
+		$saveTestsErrors = 0
+		foreach ($result in $oldResults) {
+			if ($result.ModifyDate -ge ($results | ? Path -eq $result.Path).ModifyDate) {
+				It "Should have updated Modified date for file $($result.Path)" {
+					$result.ModifyDate -lt ($results | ? Path -eq $result.Path).ModifyDate | Should Be $true
+				}
+				$saveTestsErrors++
+			}
+		}
+		if ($saveTestsErrors -eq 0) {
+			It "Ran silently $($oldResults.Length) file modification tests" {
+				$saveTestsErrors | Should be 0
+			}
+		}
+		It "Should test static GetDeployFile method" {
+			$f = [PowerUpPackage]::GetDeployFile()
+			$f.Type | Should Be 'Misc'
+			$f.Path | Should BeLike '*\Deploy.ps1'
+			$f.Name | Should Be 'Deploy.ps1'
+		}
 	}
+}
 
-    
-	
-	# $p.AddBuild('1.0')
-	# $b = $p.GetBuild('1.0')
-	# $b.NewScript('c:\temp\a.htm', 0)
-	# $b.Alter()
-	# $pp = [poweruppackage]::new($fileName)
+Describe "$commandName - PowerUpBuild tests" {
+	Context "tests PowerUpBuild object creation" {
+		It "Should create new PowerUpBuild object" {
+			$b = [PowerUpBuild]::new('1.0')
+			$b.Build | Should Be '1.0'
+			$b.PackagePath | Should Be '1.0'
+			([datetime]$b.CreatedDate).Date | Should Be ([datetime]::Now).Date
+		}
+		It "Should create new PowerUpBuild object using custom object" {
+			$obj = @{
+				Build       = '2.0'
+				PackagePath = '2.00'
+				CreatedDate = (Get-Date).Date
+			}
+			$b = [PowerUpBuild]::new($obj)
+			$b.Build | Should Be $obj.Build
+			$b.PackagePath | Should Be $obj.PackagePath
+			$b.CreatedDate | Should Be $obj.CreatedDate
+		}
+    }
+    Context "tests PowerUpBuild file adding methods methods" {
+        AfterAll {
+            if (Test-Path $packageName) { Remove-Item $packageName }
+        }
+		BeforeAll {
+			$script:pkg = [PowerUpPackage]::new()
+			$script:pkg.SaveToFile($packageName)
+		}
+		It "should test NewScript method" {
+			$b = $script:pkg.NewBuild('1.0')
+			$s = "$here\etc\install-tests\success\1.sql"
+            $so = $b.NewScript(@{FullName = $s; Depth = 1})
+            #test build to contain the script
+            '1.sql' | Should BeIn $b.Scripts.Name
+            ($b.Scripts | Measure-Object).Count | Should Be 1
+            #test the file returned to have all the necessary properties
+			$so.SourcePath | Should Be $s
+			$so.PackagePath | Should Be 'success\1.sql'
+			$so.Length -gt 0 | Should Be $true
+			$so.Name | Should Be '1.sql'
+			$so.LastWriteTime | Should Not BeNullOrEmpty
+			$so.ByteArray | Should Not BeNullOrEmpty
+			$so.Hash |Should Not BeNullOrEmpty
+			$so.Parent.ToString() | Should Be '[Build: 1.0; Scripts: @{1.sql}]'  
+			# overloads
+            { $so = $b.NewScript($s, 1) } | Should Throw
+            $script:pkg.RemoveBuild('1.0')
+			$b = $script:pkg.NewBuild('1.0')
+			$s = "$here\etc\install-tests\success\1.sql"
+			$so = $b.NewScript(@{FullName = $s; Depth = 1})
+			$so.SourcePath | Should Be $s
+			$so.PackagePath | Should Be 'success\1.sql'
+			$so.Length -gt 0 | Should Be $true
+			$so.Name | Should Be '1.sql'
+			$so.LastWriteTime | Should Not BeNullOrEmpty
+			$so.ByteArray | Should Not BeNullOrEmpty
+			$so.Hash |Should Not BeNullOrEmpty
+			$so.Parent.ToString() | Should Be '[Build: 1.0; Scripts: @{1.sql}]'  
+			{ $script:pkg.Alter() } | Should Not Throw
+        }
+        It "Should test AddScript method" {
+            if ( $script:pkg.GetBuild('1.0')) { $script:pkg.RemoveBuild('1.0') }
+			$b = $script:pkg.NewBuild('1.0')
+			$s = "$here\etc\install-tests\success\1.sql"
+            $f = [PowerUpFile]::new($s, 'success\1.sql')
+            $b.AddScript($f)
+			#test build to contain the script
+			'1.sql' | Should BeIn $b.Scripts.Name
+			($b.Scripts | Measure-Object).Count | Should Be 1
+            #overloads
+            $f2 = [PowerUpFile]::new($s, 'success\1a.sql')
+            { $b.AddScript($f2, $false) } | Should Throw
+            ($b.Scripts | Measure-Object).Count | Should Be 1
+            $f2 = [PowerUpFile]::new($s, 'success\1a.sql')
+            { $b.AddScript($f2, $true) } | Should Not Throw
+            ($b.Scripts | Measure-Object).Count | Should Be 2
+		}
+	}
+	Context "tests other methods" {
+		BeforeEach {
+			if ( $script:pkg.GetBuild('1.0')) { $script:pkg.RemoveBuild('1.0') }
+			$b = $script:pkg.NewBuild('1.0')
+			$f = [PowerUpFile]::new($script1, 'success\1.sql')
+			$b.AddScript($f)
+			$script:build = $b
+		}
+		AfterAll {
+			if (Test-Path $packageName) { Remove-Item $packageName }
+		}
+		BeforeAll {
+			$script:pkg = [PowerUpPackage]::new()
+			$script:pkg.SaveToFile($packageName)
+		}
+        It "should test ToString method" {
+            $script:build.ToString() | Should Be '[Build: 1.0; Scripts: @{1.sql}]'  
+        }
+        It "should test HashExists method" {
+            $f = [PowerUpFile]::new(@{PackagePath = '1.sql'; SourcePath = '.\1.sql'; Hash = 'MyHash'})
+            $script:build.AddScript($f, $true)
+            $script:build.HashExists('MyHash') | Should Be $true
+            $script:build.HashExists('MyHash2') | Should Be $false
+            $script:build.HashExists('MyHash','.\1.sql') | Should Be $true
+            $script:build.HashExists('MyHash','.\1a.sql') | Should Be $false
+            $script:build.HashExists('MyHash2','.\1.sql') | Should Be $false
+        }
+        It "should test ScriptExists method" {
+			$script:build.ScriptExists($script1) | Should Be $true
+            $script:build.ScriptExists("$here\etc\install-tests\transactional-failure\1.sql") | Should Be $false
+            { $script:build.ScriptExists("Nonexisting\path") } | Should Throw
+		}
+		It "should test ScriptModified method" {
+			$script:build.ScriptModified($script1, $script1) | Should Be $false
+			$script:build.ScriptModified($script2, $script1) | Should Be $true
+			$script:build.ScriptModified($script2, $script2) | Should Be $false
+		}
+		It "should test SourcePathExists method" {
+			$script:build.SourcePathExists($script1) | Should Be $true
+			$script:build.SourcePathExists($script2) | Should Be $false
+			$script:build.SourcePathExists('') | Should Be $false
+		}
+		It "should test PackagePathExists method" {
+			$s1 = "success\1.sql"
+			$s2 = "success\2.sql"
+			$script:build.PackagePathExists($s1) | Should Be $true
+			$script:build.PackagePathExists($s2) | Should Be $false
+			#Overloads
+			$script:build.PackagePathExists("a\$s1", 1) | Should Be $true
+			$script:build.PackagePathExists("a\$s2", 1) | Should Be $false
+		}
+		It "should test GetPackagePath method" {
+			$script:build.GetPackagePath() | Should Be 'content\1.0'
+		}
+		It "should test ExportToJson method" {
+			$j = $script:build.ExportToJson() | ConvertFrom-Json
+			$j.Scripts | Should Not BeNullOrEmpty
+			$j.Build | Should Be '1.0'
+			$j.PackagePath | Should Be '1.0'
+			$j.CreatedDate | Should Not BeNullOrEmpty
+		}
+		It "should test Save method" {
+			#Add file to the build
+			$null = $script:build.NewScript($script2, 1)
+			#Open zip file stream
+			$writeMode = [System.IO.FileMode]::Open
+			try {
+				$stream = [FileStream]::new($packageName, $writeMode)
+				#Open zip file
+				$zip = [ZipArchive]::new($stream, [ZipArchiveMode]::Update)
+				#Initiate saving
+				{ $script:build.Save($zip) } | Should Not Throw
+			}
+			catch {
+				throw $_
+			}
+			finally {
+				#Close archive
+				$zip.Dispose()
+				$stream.Dispose()
+			}
+			$results = Get-ArchiveItem $packageName
+			foreach ($file in (Get-PowerUpModuleFileList)) {
+				Join-Path 'Modules\PowerUp' $file.Path | Should BeIn $results.Path
+			}
+			'PowerUp.config.json' | Should BeIn $results.Path
+			'PowerUp.package.json' | Should BeIn $results.Path
+			'Deploy.ps1' | Should BeIn $results.Path
+			'content\1.0\success\1.sql' | Should BeIn $results.Path
+			'content\1.0\success\2.sql' | Should BeIn $results.Path
+		}
+		$oldResults = Get-ArchiveItem $packageName | ? IsFolder -eq $false
+		#Sleep 1 second to ensure that modification date is changed
+		Start-Sleep -Seconds 2
+		It "should test Alter method" {
+			$null = $script:build.NewScript($script2, 1)
+			{ $script:build.Alter() } | Should Not Throw
+			$results = Get-ArchiveItem $packageName
+			foreach ($file in (Get-PowerUpModuleFileList)) {
+				Join-Path 'Modules\PowerUp' $file.Path | Should BeIn $results.Path
+			}
+			'PowerUp.config.json' | Should BeIn $results.Path
+			'PowerUp.package.json' | Should BeIn $results.Path
+			'Deploy.ps1' | Should BeIn $results.Path
+			'content\1.0\success\1.sql' | Should BeIn $results.Path
+			'content\1.0\success\2.sql' | Should BeIn $results.Path
+		}
+		# Testing file contents to be updated by the Save method
+		$results = Get-ArchiveItem $packageName | ? IsFolder -eq $false
+		$saveTestsErrors = 0
+		#should trigger file updates for build files and module files
+		foreach ($result in ($oldResults | ? { $_.Path -like 'content\1.0\success' -or $_.Path -like 'Modules\PowerUp\*'  } )) {
+			if ($result.ModifyDate -ge ($results | ? Path -eq $result.Path).ModifyDate) {
+				It "Should have updated Modified date for file $($result.Path)" {
+					$result.ModifyDate -lt ($results | ? Path -eq $result.Path).ModifyDate | Should Be $true
+				}
+				$saveTestsErrors++
+			}
+		}
+		if ($saveTestsErrors -eq 0) {
+			It "Ran silently $($oldResults.Length) file modification tests" {
+				$saveTestsErrors | Should be 0
+			}
+		}
+    }
 }
