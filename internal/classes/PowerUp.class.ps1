@@ -72,12 +72,12 @@ class PowerUp {
 	# hidden [PowerUpFile[]] NewFile ([object[]]$FileObject, [string]$CollectionName) {
 		
 	# }
-	hidden [PowerUpFile] NewFile ([string]$FileName, [int]$Depth, [string]$CollectionName) {
-		$relativePath = $this.SplitRelativePath($FileName, $Depth)
-		$f = [PowerUpFile]::new($FileName, $relativePath)
-		$this.AddFile($f, $CollectionName)
-		return $this.GetFile($relativePath, $CollectionName)
-	}
+	# hidden [PowerUpFile] NewFile ([string]$FileName, [int]$Depth, [string]$CollectionName) {
+	# 	$relativePath = $this.SplitRelativePath($FileName, $Depth)
+	# 	$f = [PowerUpFile]::new($FileName, $relativePath)
+	# 	$this.AddFile($f, $CollectionName)
+	# 	return $this.GetFile($relativePath, $CollectionName)
+	# }
 	hidden [PowerUpFile] NewFile ([string]$Name, [string]$PackagePath, [string]$CollectionName) {
 		$f = [PowerUpFile]::new($Name, $PackagePath)
 		$this.AddFile($f, $CollectionName)
@@ -705,15 +705,15 @@ class PowerUpFile : PowerUp {
 	
 	#Constructors
 	PowerUpFile () {}
-	PowerUpFile ([string]$SourcePath, [string]$packagePath) {
+	PowerUpFile ([string]$SourcePath, [string]$PackagePath) {
 		if (!(Test-Path $SourcePath)) {
 			$this.ThrowArgumentException($this, "Path not found: $SourcePath")
 		}
-		if (!$packagePath) {
+		if (!$PackagePath) {
 			$this.ThrowArgumentException($this, 'Path inside the package cannot be empty')
 		}
 		$this.SourcePath = $SourcePath
-		$this.packagePath = $packagePath
+		$this.PackagePath = $PackagePath
 		$this.Hash = $this.ToHashString([Security.Cryptography.HashAlgorithm]::Create( "MD5" ).ComputeHash($this.GetBinaryFile($SourcePath)))
 		$file = Get-Item $SourcePath
 		$this.Length = $file.Length
@@ -775,7 +775,7 @@ class PowerUpFile : PowerUp {
 		$this.Hash = $fileDescription.Hash
 	}
 	[string] ToString() {
-		return "$($this.packagePath)"
+		return "$($this.PackagePath)"
 	}
 	[string] GetContent() {
 		[byte[]]$Array = $this.ByteArray
