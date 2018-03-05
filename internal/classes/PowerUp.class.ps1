@@ -1,11 +1,11 @@
 using namespace System.IO
 using namespace System.IO.Compression
 
-###########################
-# Root class PowerUpClass #
-###########################
+######################
+# Root class PowerUp #
+######################
 
-class PowerUpClass {
+class PowerUp {
 	hidden [void] ThrowException ([string]$exceptionType, [string]$errorText, [object]$object, [System.Management.Automation.ErrorCategory]$errorCategory) {
 		$errorMessageObject = [System.Management.Automation.ErrorRecord]::new( `
 			(New-Object -TypeName $exceptionType -ArgumentList $errorText),
@@ -150,7 +150,7 @@ class PowerUpClass {
 # PowerUpPackage class #
 ########################
 
-class PowerUpPackage : PowerUpClass {
+class PowerUpPackage : PowerUp {
 	#Public properties
 	[PowerUpBuild[]]$Builds
 	[string]$ScriptDirectory
@@ -413,13 +413,13 @@ class PowerUpPackage : PowerUpClass {
 		$exportObject = @{} | Select-Object 'ScriptDirectory', 'DeployFile', 'PreDeployFile', 'PostDeployFile', 'ConfigurationFile', 'Builds'
 		foreach ($type in $exportObject.psobject.Properties.name) {
 					
-			if ($this.$type -is [PowerUpClass]) {
+			if ($this.$type -is [PowerUp]) {
 				$exportObject.$type = $this.$type.ExportToJson() | ConvertFrom-Json
 			}
 			elseif ($this.$type -is [System.Array] -or $this.$type -is [System.Collections.ArrayList]) {
 				$collection = @()
 				foreach ($collectionItem in $this.$type) {
-					if ($collectionItem -is [PowerUpClass]) {
+					if ($collectionItem -is [PowerUp]) {
 						$collection += $collectionItem.ExportToJson() | ConvertFrom-Json
 					}
 					else {
@@ -511,7 +511,7 @@ class PowerUpPackage : PowerUpClass {
 # PowerUpBuild class #
 ######################
 
-class PowerUpBuild : PowerUpClass {
+class PowerUpBuild : PowerUp {
 	#Public properties
 	[string]$Build
 	[PowerUpFile[]]$Scripts
@@ -709,7 +709,7 @@ class PowerUpBuild : PowerUpClass {
 # PowerUpFile class #
 #####################
 
-class PowerUpFile : PowerUpClass {
+class PowerUpFile : PowerUp {
 	#Public properties
 	[string]$SourcePath
 	[string]$PackagePath
@@ -720,7 +720,7 @@ class PowerUpFile : PowerUpClass {
 
 	#Hidden properties
 	hidden [string]$Hash
-	hidden [PowerUpClass]$Parent
+	hidden [PowerUp]$Parent
 	
 	#Constructors
 	PowerUpFile () {}
@@ -901,7 +901,7 @@ class PowerUpRootFile : PowerUpFile {
 # PowerUpConfig class #
 #######################
 
-class PowerUpConfig : PowerUpClass {
+class PowerUpConfig : PowerUp {
 	#Properties
 	[string]$ApplicationName
 	[string]$SqlInstance
