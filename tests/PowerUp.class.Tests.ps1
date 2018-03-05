@@ -531,7 +531,7 @@ Describe "$commandName - PowerUpFile tests" -Tag $commandName, UnitTests, PowerU
 	Context "tests other PowerUpFile methods" {
 		BeforeEach {
 			if ( $script:build.GetFile('success\1.sql', 'Scripts')) { $script:build.RemoveFile('success\1.sql', 'Scripts') }
-			$script:file = $script:build.NewFile($script1, 1, 'Scripts')
+			$script:file = $script:build.NewFile($script1, 'success\1.sql', 'Scripts')
 			$script:build.Alter()
 		}
 		AfterAll {
