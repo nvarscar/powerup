@@ -227,15 +227,20 @@ Describe "$commandName - PowerUpBuild tests" -Tag $commandName, UnitTests, Power
 			$script:pkg = [PowerUpPackage]::new()
 			$script:pkg.SaveToFile($packageName)
 		}
-		It "should test NewScript method" {
+		BeforeEach {
+			if ( $script:pkg.GetBuild('1.0')) { $script:pkg.RemoveBuild('1.0') }
 			$b = $script:pkg.NewBuild('1.0')
-			$s = "$here\etc\install-tests\success\1.sql"
-            $so = $b.NewScript(@{FullName = $s; Depth = 1})
-            #test build to contain the script
-            '1.sql' | Should BeIn $b.Scripts.Name
-            ($b.Scripts | Measure-Object).Count | Should Be 1
-            #test the file returned to have all the necessary properties
-			$so.SourcePath | Should Be $s
+			# $f = [PowerUpFile]::new($script1, 'success\1.sql')
+			# $b.AddScript($f)
+			$script:build = $b
+		}
+		It "should test NewScript([psobject]) method" {
+			$so = $script:build.NewScript(@{FullName = $script1; Depth = 1})
+			#test build to contain the script
+			'1.sql' | Should BeIn $script:build.Scripts.Name
+			($script:build.Scripts | Measure-Object).Count | Should Be 1
+			#test the file returned to have all the necessary properties
+			$so.SourcePath | Should Be $script1
 			$so.PackagePath | Should Be 'success\1.sql'
 			$so.Length -gt 0 | Should Be $true
 			$so.Name | Should Be '1.sql'
@@ -243,13 +248,11 @@ Describe "$commandName - PowerUpBuild tests" -Tag $commandName, UnitTests, Power
 			$so.ByteArray | Should Not BeNullOrEmpty
 			$so.Hash |Should Not BeNullOrEmpty
 			$so.Parent.ToString() | Should Be '[Build: 1.0; Scripts: @{1.sql}]'  
-			# overloads
-            { $so = $b.NewScript($s, 1) } | Should Throw
-            $script:pkg.RemoveBuild('1.0')
-			$b = $script:pkg.NewBuild('1.0')
-			$s = "$here\etc\install-tests\success\1.sql"
-			$so = $b.NewScript(@{FullName = $s; Depth = 1})
-			$so.SourcePath | Should Be $s
+		}
+		It "should test NewScript([string],[int]) method" {
+			$so = $script:build.NewScript(@{FullName = $script1; Depth = 1})
+			($script:build.Scripts | Measure-Object).Count | Should Be 1
+			$so.SourcePath | Should Be $script1
 			$so.PackagePath | Should Be 'success\1.sql'
 			$so.Length -gt 0 | Should Be $true
 			$so.Name | Should Be '1.sql'
@@ -258,23 +261,28 @@ Describe "$commandName - PowerUpBuild tests" -Tag $commandName, UnitTests, Power
 			$so.Hash |Should Not BeNullOrEmpty
 			$so.Parent.ToString() | Should Be '[Build: 1.0; Scripts: @{1.sql}]'  
 			{ $script:pkg.Alter() } | Should Not Throw
+			#Negative tests
+			{ $script:build.NewScript($script1, 1) } | Should Throw
         }
-        It "Should test AddScript method" {
-            if ( $script:pkg.GetBuild('1.0')) { $script:pkg.RemoveBuild('1.0') }
-			$b = $script:pkg.NewBuild('1.0')
-			$s = "$here\etc\install-tests\success\1.sql"
-            $f = [PowerUpFile]::new($s, 'success\1.sql')
-            $b.AddScript($f)
+		It "Should test AddScript([string]) method" {
+			$f = [PowerUpFile]::new($script1, 'success\1.sql')
+			$script:build.AddScript($f)
 			#test build to contain the script
-			'1.sql' | Should BeIn $b.Scripts.Name
-			($b.Scripts | Measure-Object).Count | Should Be 1
-            #overloads
-            $f2 = [PowerUpFile]::new($s, 'success\1a.sql')
-            { $b.AddScript($f2, $false) } | Should Throw
-            ($b.Scripts | Measure-Object).Count | Should Be 1
-            $f2 = [PowerUpFile]::new($s, 'success\1a.sql')
-            { $b.AddScript($f2, $true) } | Should Not Throw
-            ($b.Scripts | Measure-Object).Count | Should Be 2
+			'1.sql' | Should BeIn $script:build.Scripts.Name
+			($script:build.Scripts | Measure-Object).Count | Should Be 1
+		}
+		It "Should test AddScript([string],[bool]) method" {
+			$f = [PowerUpFile]::new($script1, 'success\1.sql')
+			$script:build.AddScript($f,$false)
+			#test build to contain the script
+			'1.sql' | Should BeIn $script:build.Scripts.Name
+			($script:build.Scripts | Measure-Object).Count | Should Be 1
+			$f2 = [PowerUpFile]::new($script1, 'success\1a.sql')
+			{ $script:build.AddScript($f2, $false) } | Should Throw
+			($script:build.Scripts | Measure-Object).Count | Should Be 1
+			$f3 = [PowerUpFile]::new($script1, 'success\1a.sql')
+			$script:build.AddScript($f3, $true)
+			($script:build.Scripts | Measure-Object).Count | Should Be 2
 		}
 	}
 	Context "tests other methods" {
