@@ -30,19 +30,10 @@ class PowerUpClass {
 	}
 	hidden [byte[]] GetBinaryFile ([string]$fileName) {
 		$stream = [System.IO.File]::Open($fileName, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite)
-		return $this.ReadFileStream($stream)
-	}
-	hidden [byte[]] ReadFileStream ([System.IO.Stream]$stream) {
 		$b = [byte[]]::new($stream.Length)
-		try {
-			$stream.Read($b, 0, $b.Length)
-		}
-		catch {
-			throw $_
-		}
-		finally {
-			$stream.Close()
-		}
+		try { $stream.Read($b, 0, $b.Length) }
+		catch {	throw $_ }
+		finally { $stream.Close() }
 		return $b
 	}
 	hidden [System.IO.MemoryStream] ReadDeflateStream ([DeflateStream]$stream) {
@@ -125,7 +116,7 @@ class PowerUpClass {
 		if ($this.$CollectionName) {
 			if ($PackagePath) {
 				foreach ($path in $PackagePath) {
-					$result += $this.$CollectionName | Where-Object $_.GetPackagePath() -eq $path
+					$result += $this.$CollectionName | Where-Object { $_.PackagePath -eq $path } 
 				}
 			}
 			else {
@@ -137,13 +128,13 @@ class PowerUpClass {
 	hidden [void] RemoveFile ([string[]]$PackagePath, [string]$CollectionName) {
 		if ($this.$CollectionName) {
 			foreach ($path in $PackagePath) {
-				$this.$CollectionName = $this.$CollectionName | Where-Object $_.GetPackagePath() -ne $path
+				$this.$CollectionName = $this.$CollectionName | Where-Object { $_.PackagePath -ne $path }
 			}
 		}
 	}
 	hidden [void] UpdateFile ([PowerUpFile[]]$PowerUpFile, [string]$CollectionName) {
 		foreach ($file in $PowerUpFile) {
-			$this.RemoveFile($file.GetPackagePath(), $CollectionName)
+			$this.RemoveFile($file.PackagePath, $CollectionName)
 			$this.AddFile($file, $CollectionName)
 		}
 	}
@@ -196,54 +187,57 @@ class PowerUpPackage : PowerUpClass {
 		$this.FileName = $FileName
 		# Reading zip file contents into memory
 		$zip = [Zipfile]::OpenRead($FileName)
-
-		# Processing package file
-		$pkgFile = $zip.Entries | Where-Object FullName -eq ([PowerUpConfig]::GetPackageFileName())
-		if ($pkgFile) {
-			$pFile = [PowerUpFile]::new()
-			$pFile.SetContent($this.ReadDeflateStream($pkgFile.Open()).ToArray())
-			$jsonObject = ConvertFrom-Json $pFile.GetContent() -ErrorAction Stop
-			$this.Init($jsonObject)
-			# Processing builds
-			foreach ($build in $jsonObject.builds) {
-				$newBuild = [PowerUpBuild]::new($build.build)
-				foreach ($script in $build.Scripts) {
-					$scriptFile = $zip.Entries | Where-Object FullName -eq $script.packagePath
-					if (!$scriptFile) {
-						$this.ThrowArgumentException($this, "File not found: $($script.packagePath)")
-					}
-					$newScript = [PowerUpFile]::new($script, $scriptFile)
-					$newBuild.AddScript($newScript, $true)
-				}
-				$this.AddBuild($newBuild)
-			}
-			# Processing root files
-			foreach ($file in @('DeployFile', 'PreDeployFile', 'PostDeployFile', 'ConfigurationFile')) {
-				$jsonFileObject = $jsonObject.$file
-				if ($jsonFileObject) {
-					$fileBinary = $zip.Entries | Where-Object FullName -eq $jsonFileObject.packagePath
-					if ($fileBinary) {
-						$newFile = [PowerUpRootFile]::new($jsonFileObject, $fileBinary)
-						$this.AddFile($newFile, $file)
-					}
-					else {
-						$this.ThrowException('Exception', "File $($jsonFileObject.packagePath) not found in the package", $this, 'InvalidData')
+		try { 
+			# Processing package file
+			$pkgFile = $zip.Entries | Where-Object FullName -eq ([PowerUpConfig]::GetPackageFileName())
+			if ($pkgFile) {
+				$pFile = [PowerUpFile]::new()
+				$pFile.SetContent($this.ReadDeflateStream($pkgFile.Open()).ToArray())
+				$jsonObject = ConvertFrom-Json $pFile.GetContent() -ErrorAction Stop
+				$this.Init($jsonObject)
+				# Processing builds
+				foreach ($build in $jsonObject.builds) {
+					$newBuild = $this.NewBuild($build.build)
+					foreach ($script in $build.Scripts) {
+						$filePackagePath = Join-Path $newBuild.GetPackagePath() $script.packagePath
+						$scriptFile = $zip.Entries | Where-Object FullName -eq $filePackagePath
+						if (!$scriptFile) {
+							$this.ThrowArgumentException($this, "File not found inside the package: $filePackagePath")
+						}
+						$newScript = [PowerUpFile]::new($script, $scriptFile)
+						$newBuild.AddScript($newScript, $true)
 					}
 				}
+				# Processing root files
+				foreach ($file in @('DeployFile', 'PreDeployFile', 'PostDeployFile', 'ConfigurationFile')) {
+					$jsonFileObject = $jsonObject.$file
+					if ($jsonFileObject) {
+						$fileBinary = $zip.Entries | Where-Object FullName -eq $jsonFileObject.packagePath
+						if ($fileBinary) {
+							$newFile = [PowerUpRootFile]::new($jsonFileObject, $fileBinary)
+							$this.AddFile($newFile, $file)
+						}
+						else {
+							$this.ThrowException('Exception', "File $($jsonFileObject.packagePath) not found in the package", $this, 'InvalidData')
+						}
+					}
+				}
+			}
+			else {
+				$this.ThrowArgumentException($this, "Incorrect package format: $fileName")
+			}
+
+			# Processing configuration file
+			if ($this.ConfigurationFile) {
+				$this.Configuration = [PowerUpConfig]::new($this.ConfigurationFile.GetContent())
+				$this.Configuration.Parent = $this
 			}
 		}
-		else {
-			$this.ThrowArgumentException($this, "Incorrect package format: $fileName")
+		catch { throw $_ }
+		finally {
+			# Dispose of the reader
+			$zip.Dispose()
 		}
-
-		# Processing configuration file
-		if ($this.ConfigurationFile) {
-			$this.Configuration = [PowerUpConfig]::new($this.ConfigurationFile.GetContent())
-			$this.Configuration.Parent = $this
-		}
-
-		# Dispose of the reader
-		$zip.Dispose()
 	}
 	
 	# hidden PowerUpPackage ([string]$jsonString) {
@@ -460,35 +454,33 @@ class PowerUpPackage : PowerUpClass {
 			$true { [System.IO.FileMode]::Create }
 			default { [System.IO.FileMode]::CreateNew }
 		}
+		$stream = [FileStream]::new($fileName, $writeMode)
 		try {
-			$stream = [FileStream]::new($fileName, $writeMode)
 			#Create zip file
 			$zip = [ZipArchive]::new($stream, [ZipArchiveMode]::Create)
-			#Change package file name in the object
-			$this.FileName = $fileName
-			#Write package file
-			$this.SavePackageFile($zip)
-			#Write files
-			foreach ($type in @('DeployFile', 'PreDeployFile', 'PostDeployFile', 'Builds')) {
-				foreach ($collectionItem in $this.$type) {
-					$collectionItem.Save($zip)
+			try {
+				#Change package file name in the object
+				$this.FileName = $fileName
+				#Write package file
+				$this.SavePackageFile($zip)
+				#Write files
+				foreach ($type in @('DeployFile', 'PreDeployFile', 'PostDeployFile', 'Builds')) {
+					foreach ($collectionItem in $this.$type) {
+						$collectionItem.Save($zip)
+					}
 				}
+
+				#Write configs
+				$this.Configuration.Save($zip)
+
+				#Write module
+				$this.SaveModuleToFile($zip)
 			}
-
-			#Write configs
-			$this.Configuration.Save($zip)
-
-			#Write module
-			$this.SaveModuleToFile($zip)
+			catch { throw $_ }
+			finally { $zip.Dispose() } 
 		}
-		catch {
-			throw $_
-		}
-		finally {
-			#Close archive
-			if ($zip) { $zip.Dispose() }
-			if ($stream) { $stream.Dispose() }
-		}
+		catch {	throw $_ }
+		finally { $stream.Dispose() }
 	}
 
 	hidden [void] SaveModuleToFile([ZipArchive]$zipArchive) {
@@ -694,17 +686,22 @@ class PowerUpBuild : PowerUpClass {
 		#Open new file stream
 		$writeMode = [System.IO.FileMode]::Open
 		$stream = [FileStream]::new($this.Parent.FileName, $writeMode)
-		#Open zip file
-		$zip = [ZipArchive]::new($stream, [ZipArchiveMode]::Update)
-		#Write package file
-		$this.Parent.SavePackageFile($zip)
-		#Write builds
-		$this.Save($zip)
-		#Write module
-		$this.Parent.SaveModuleToFile($zip)
-		#Close archive
-		$zip.Dispose()
-		$stream.Dispose()
+		try {
+			#Open zip file
+			$zip = [ZipArchive]::new($stream, [ZipArchiveMode]::Update)
+			try {
+				#Write package file
+				$this.Parent.SavePackageFile($zip)
+				#Write builds
+				$this.Save($zip)
+				#Write module
+				$this.Parent.SaveModuleToFile($zip)
+			}
+			catch { throw $_ }
+			finally { $zip.Dispose() }	
+		}
+		catch { throw $_ }
+		finally { $stream.Dispose()	}
 	}
 }
 
@@ -744,14 +741,13 @@ class PowerUpFile : PowerUpClass {
 		$this.ByteArray = $this.GetBinaryFile($SourcePath)
 	}
 
-	PowerUpFile ([psobject]$object) {
-		$this.Init($object)
+	PowerUpFile ([psobject]$fileDescription) {
+		$this.Init($fileDescription)
 	}
 
-	PowerUpFile ([psobject]$object, [ZipArchiveEntry]$file) {
+	PowerUpFile ([psobject]$fileDescription, [ZipArchiveEntry]$file) {
 		#Set properties imported from package file
-		"Initiating PowerUpfile from object $object, file $($file.FullName)" | Out-File c:\temp\asd4.log -Force -Append
-		$this.Init($object)
+		$this.Init($fileDescription)
 
 		#Set properties from Zip archive
 		$this.Name = $file.Name
@@ -759,14 +755,23 @@ class PowerUpFile : PowerUpClass {
 
 		#Read deflate stream and set other properties
 		$stream = $this.ReadDeflateStream($file.Open())
-		$this.SetContent($stream.ToArray())
+		try {
+			$this.ByteArray = $stream.ToArray()
+		}
+		catch {
+			throw $_
+		}
+		finally {
+			$stream.Dispose()
+		}
+
 		$fileHash = $this.ToHashString([Security.Cryptography.HashAlgorithm]::Create( "MD5" ).ComputeHash($this.ByteArray))
+		
 		if ($this.Hash -ne $fileHash) {
-			$this.ThrowArgumentException($this, "File cannot be loaded, hash mismatch: $($file.Name)")
+			$this.ThrowArgumentException($fileDescription, "File cannot be loaded, hash mismatch: $($file.Name)")
 		}
 		
 		$this.Length = $this.ByteArray.Length
-		$stream.Dispose()
 	}
 
 	# #Static methods 
@@ -780,13 +785,13 @@ class PowerUpFile : PowerUpClass {
 	
 
 	#Methods 
-	[void] Init ([psobject]$object) {
-		if (!$object.packagePath) {
+	[void] Init ([psobject]$fileDescription) {
+		if (!$fileDescription.PackagePath) {
 			$this.ThrowArgumentException($this, 'Path inside the package cannot be empty')
 		}
-		$this.SourcePath = $object.SourcePath
-		$this.packagePath = $object.packagePath
-		$this.Hash = $object.hash
+		$this.SourcePath = $fileDescription.SourcePath
+		$this.PackagePath = $fileDescription.PackagePath
+		$this.Hash = $fileDescription.Hash
 	}
 	[string] ToString() {
 		return "$($this.packagePath)"
@@ -846,22 +851,29 @@ class PowerUpFile : PowerUpClass {
 		#Open new file stream
 		$writeMode = [System.IO.FileMode]::Open
 		if ($this.Parent -is [PowerUpBuild]) {
-			$saveToFile = $this.Parent.Parent.FileName
+			$pkgObj = $this.Parent.Parent
 		}
 		elseif ($this.Parent -is [PowerUpPackage]) {
-			$saveToFile = $this.Parent.FileName
+			$pkgObj = $this.Parent.FileName
 		}
 		else {
-			$saveToFile = ""
+			$pkgObj = $null
 		}
-		$stream = [FileStream]::new($saveToFile, $writeMode, [System.IO.FileAccess]::ReadWrite)
-		#Open zip file
-		$zip = [ZipArchive]::new($stream, [ZipArchiveMode]::Update)
-		#Write file
-		$this.Save($zip)
-		#Close archive
-		$zip.Dispose()
-		$stream.Dispose()
+		$stream = [FileStream]::new($pkgObj.FileName, $writeMode, [System.IO.FileAccess]::ReadWrite)
+		try {
+			#Open zip file
+			$zip = [ZipArchive]::new($stream, [ZipArchiveMode]::Update)
+			try {
+				#Write file
+				$this.Save($zip)
+				#Update package file
+				$pkgObj.SavePackageFile($zip)
+			}
+			catch { throw $_ }
+			finally { $zip.Dispose() }	
+		}
+		catch { throw $_ }
+		finally { $stream.Dispose()	}
 	}
 }
 
