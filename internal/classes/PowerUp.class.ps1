@@ -69,33 +69,19 @@ class PowerUp {
 		$writer.Close()
 	}
 	#Adding file objects to the parent 
-	hidden [PowerUpFile[]] NewFile ([object[]]$FileObject, [string]$CollectionName) {
-		[PowerUpFile[]]$output = @()
-		foreach ($p in $FileObject) {
-			if ($p.Depth) {
-				$depth = $p.Depth
-			}
-			else {
-				$depth = 0
-			}
-			if ($p.SourcePath) {
-				$sourcePath = $p.SourcePath
-			}
-			else {
-				$sourcePath = $p.FullName
-			}
-			$relativePath = $this.SplitRelativePath($sourcePath, $depth)
-			$f = [PowerUpFile]::new($sourcePath, $relativePath)
-			$this.AddFile($f, $CollectionName)
-			$output += $this.GetFile($relativePath, $CollectionName)
-		}
-		return $output
-	}
+	# hidden [PowerUpFile[]] NewFile ([object[]]$FileObject, [string]$CollectionName) {
+		
+	# }
 	hidden [PowerUpFile] NewFile ([string]$FileName, [int]$Depth, [string]$CollectionName) {
 		$relativePath = $this.SplitRelativePath($FileName, $Depth)
 		$f = [PowerUpFile]::new($FileName, $relativePath)
 		$this.AddFile($f, $CollectionName)
 		return $this.GetFile($relativePath, $CollectionName)
+	}
+	hidden [PowerUpFile] NewFile ([string]$Name, [string]$PackagePath, [string]$CollectionName) {
+		$f = [PowerUpFile]::new($Name, $PackagePath)
+		$this.AddFile($f, $CollectionName)
+		return $this.GetFile($PackagePath, $CollectionName)
 	}
 	hidden [void] AddFile ([PowerUpFile[]]$PowerUpFile, [string]$CollectionName) {
 		foreach ($file in $PowerUpFile) {
@@ -546,14 +532,31 @@ class PowerUpBuild : PowerUp {
 
 	#Methods 
 	[PowerUpFile[]] NewScript ([object[]]$FileObject) {
-		return $this.NewFile($FileObject, 'Scripts')
+		[PowerUpFile[]]$output = @()
+		foreach ($p in $FileObject) {
+			if ($p.Depth) {
+				$depth = $p.Depth
+			}
+			else {
+				$depth = 0
+			}
+			if ($p.SourcePath) {
+				$sourcePath = $p.SourcePath
+			}
+			else {
+				$sourcePath = $p.FullName
+			}
+			$relativePath = $this.SplitRelativePath($sourcePath, $depth)
+			$output += $this.NewFile($sourcePath, $relativePath, 'Scripts')
+		}
+		return $output
 	}
 	[PowerUpFile] NewScript ([string]$FileName, [int]$Depth) {
 		$relativePath = $this.SplitRelativePath($FileName, $Depth)
 		if ($this.SourcePathExists($relativePath)) {
 			$this.ThrowArgumentException($this, "External script $($relativePath) already exists.")
 		}
-		return $this.NewFile($FileName, $Depth, 'Scripts')
+		return $this.NewFile($FileName, $relativePath, 'Scripts')
 	}
 	[void] AddScript ([PowerUpFile[]]$script) {
 		$this.AddScript($script, $false)
