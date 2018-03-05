@@ -3,7 +3,7 @@ $commandName = $MyInvocation.MyCommand.Name.Replace(".Tests.ps1", "")
 
 Add-Type -AssemblyName System.IO.Compression
 Add-Type -AssemblyName System.IO.Compression.FileSystem
-. "$here\..\internal\classes\PowerUpClass.class.ps1"
+. "$here\..\internal\classes\PowerUp.class.ps1"
 . "$here\..\internal\Get-ArchiveItem.ps1"
 $packageName = "$here\etc\$commandName.zip"
 $script:pkg = $script:build = $script:file = $null
