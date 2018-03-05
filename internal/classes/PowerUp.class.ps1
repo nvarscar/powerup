@@ -84,46 +84,46 @@ class PowerUp {
 			else {
 				$sourcePath = $p.FullName
 			}
-			$f = [PowerUpFile]::new($sourcePath, $this.SplitRelativePath($p.FullName, $depth))
+			$relativePath = $this.SplitRelativePath($sourcePath, $depth)
+			$f = [PowerUpFile]::new($sourcePath, $relativePath)
 			$this.AddFile($f, $CollectionName)
-			$f.Parent = $this
-			$output += $f
+			$output += $this.GetFile($relativePath, $CollectionName)
 		}
 		return $output
 	}
 	hidden [PowerUpFile] NewFile ([string]$FileName, [int]$Depth, [string]$CollectionName) {
-		$f = [PowerUpFile]::new($FileName, $this.SplitRelativePath($FileName, $Depth))
-		$f.Parent = $this
+		$relativePath = $this.SplitRelativePath($FileName, $Depth)
+		$f = [PowerUpFile]::new($FileName, $relativePath)
 		$this.AddFile($f, $CollectionName)
-		return $f
+		return $this.GetFile($relativePath, $CollectionName)
 	}
 	hidden [void] AddFile ([PowerUpFile[]]$PowerUpFile, [string]$CollectionName) {
 		foreach ($file in $PowerUpFile) {
 			$file.Parent = $this
-			if ($this.$CollectionName -and $this.$CollectionName.GetType() -is [System.Array]) {
-				$this.$CollectionName += $file
+			if ($CollectionName -notin $this.PsObject.Properties.Name) {
+				$this.ThrowArgumentException($this, "$CollectionName is not a valid collection name")
 			}
-			elseif ($this.$CollectionName -and $this.$CollectionName.GetType() -is [System.Collections.ArrayList]) {
-				$this.$CollectionName.Add($file)
+			foreach ($collectionItem in $this.$CollectionName) {
+				if ($collectionItem.PackagePath -eq $file.PackagePath) {
+					$this.ThrowArgumentException($this, "File $($file.PackagePath) already exists in $($this.ToString()).")
+				}
+			}
+			if (($this.PsObject.Properties | Where-Object Name -eq $CollectionName).TypeNameOfValue -like '*`[`]') {
+				$this.$CollectionName += $file
 			}
 			else {
 				$this.$CollectionName = $file
 			}
 		}
 	}
-	hidden [PowerUpFile[]] GetFile ([string[]]$PackagePath, [string]$CollectionName) {
-		$result = @()
-		if ($this.$CollectionName) {
-			if ($PackagePath) {
-				foreach ($path in $PackagePath) {
-					$result += $this.$CollectionName | Where-Object { $_.PackagePath -eq $path } 
-				}
-			}
-			else {
-				$result = $this.$CollectionName
-			}
+	hidden [PowerUpFile]GetFile ([string]$PackagePath, [string]$CollectionName) {
+		if (!$CollectionName) {
+			$this.ThrowArgumentException($this, "No collection name provided")
 		}
-		return $result
+		if (!$PackagePath) {
+			$this.ThrowArgumentException($this, 'No path provided')
+		}
+		return $this.$CollectionName | Where-Object { $_.PackagePath -eq $PackagePath } 
 	}
 	hidden [void] RemoveFile ([string[]]$PackagePath, [string]$CollectionName) {
 		if ($this.$CollectionName) {
@@ -546,47 +546,25 @@ class PowerUpBuild : PowerUp {
 
 	#Methods 
 	[PowerUpFile[]] NewScript ([object[]]$FileObject) {
-		[PowerUpFile[]]$output = @()
-		foreach ($p in $FileObject) {
-			if ($p.Depth) {
-				$depth = $p.Depth
-			}
-			else {
-				$depth = 0
-			}
-			if ($p.SourcePath) {
-				$sourcePath = $p.SourcePath
-			}
-			else {
-				$sourcePath = $p.FullName
-			}
-			$s = [PowerUpFile]::new($sourcePath, $this.SplitRelativePath($p.FullName, $depth))
-			$s.Parent = $this
-			$this.AddScript($s)
-			$output += $s
-		}
-		return $output
+		return $this.NewFile($FileObject, 'Scripts')
 	}
 	[PowerUpFile] NewScript ([string]$FileName, [int]$Depth) {
-		$s = [PowerUpFile]::new($FileName, $this.SplitRelativePath($FileName, $Depth))
-		$s.Parent = $this
-		$this.AddScript($s)
-		return $s
+		$relativePath = $this.SplitRelativePath($FileName, $Depth)
+		if ($this.SourcePathExists($relativePath)) {
+			$this.ThrowArgumentException($this, "External script $($relativePath) already exists.")
+		}
+		return $this.NewFile($FileName, $Depth, 'Scripts')
 	}
 	[void] AddScript ([PowerUpFile[]]$script) {
 		$this.AddScript($script, $false)
 	}
-	[void] AddScript ([PowerUpFile[]]$script, [bool]$SkipSourceCheck) {
+	[void] AddScript ([PowerUpFile[]]$script, [bool]$Force) {
 		foreach ($s in $script) {
-			if (!$SkipSourceCheck -and $this.SourcePathExists($s.sourcePath)) {
-				$this.ThrowArgumentException($this, "External script $($s.sourcePath) already exists.")
-			}
-			elseif ($this.PackagePathExists($s.packagePath)) {
-				$this.ThrowArgumentException($this, "Script $($s.packagePath) already exists inside this build.")
+			if (!$Force -and $this.SourcePathExists($s.SourcePath)) {
+				$this.ThrowArgumentException($this, "External script $($s.SourcePath) already exists.")
 			}
 			else {
-				$s.Parent = $this
-				$this.scripts += $s
+				$this.AddFile($s, 'Scripts')
 			}
 		}
 	}
