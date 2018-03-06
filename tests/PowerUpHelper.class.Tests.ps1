@@ -97,10 +97,16 @@ Describe "$commandName tests" -Tag $commandName, UnitTests, PowerUpHelper {
 			$results = [PowerUpHelper]::GetArchiveItem($archiveName, '1.sql')
 			'1.sql' | Should BeIn $results.FullName
 			'2.sql' | Should Not BeIn $results.FullName
+			foreach ($result in $results) {
+				$result.ByteArray | Should Not BeNullOrEmpty
+			}
 
-			$results = [PowerUpHelper]::GetArchiveItem($archiveName, @('1.sql','2.sql'))
+			$results = [PowerUpHelper]::GetArchiveItem($archiveName, @('1.sql', '2.sql'))
 			'1.sql' | Should BeIn $results.FullName
 			'2.sql' | Should BeIn $results.FullName
+			foreach ($result in $results) {
+				$result.ByteArray | Should Not BeNullOrEmpty
+			}
 		}
 		It "should validate negative tests" {
 			{ [PowerUpHelper]::GetArchiveItem($null, '1.sql') } | Should Throw
@@ -179,6 +185,26 @@ Describe "$commandName tests" -Tag $commandName, UnitTests, PowerUpHelper {
 		It "should validate negative tests" {
 			{ [PowerUpHelper]::ToHexString('0xAAAA') } | Should Throw
 			{ [PowerUpHelper]::ToHexString('qwe') } | Should Throw
+		}
+	}
+	Context "tests DecodeBinaryText method" {
+		It "should validate positive tests" {
+			$string = 'SELECT foo from bar'
+			$h = [PowerUpHelper]
+			$enc = [System.Text.Encoding]
+			$h::DecodeBinaryText($enc::ASCII.GetBytes($string)) | Should Be $string
+			$h::DecodeBinaryText($enc::Unicode.GetBytes($string)) | Should Be $string
+			$h::DecodeBinaryText($enc::BigEndianUnicode.GetBytes($string)) | Should Be $string
+			$h::DecodeBinaryText($enc::UTF32.GetBytes($string)) | Should Be $string
+			$h::DecodeBinaryText($enc::UTF7.GetBytes($string)) | Should Be $string
+			$h::DecodeBinaryText($enc::UTF8.GetBytes($string)) | Should Be $string
+
+		}
+		It "should validate negative tests" {
+			$h = [PowerUpHelper]
+			{ $h::DecodeBinaryText('0xAAAA') } | Should Throw
+			{ $h::DecodeBinaryText('NotAByte') } | Should Throw
+			{ $h::DecodeBinaryText($enc::UTF8.GetBytes($null)) } | Should Throw
 		}
 	}
 }

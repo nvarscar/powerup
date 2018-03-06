@@ -57,29 +57,68 @@ class PowerUpHelper {
 	# 	$writer.Close()
 	# }
 	# Returns an entry list from the archive file
-	static [ZipArchiveEntry[]] GetArchiveItems ([string]$fileName) {
+	static [psobject[]] GetArchiveItems ([string]$fileName) {
 		$zip = [Zipfile]::OpenRead($FileName)
 		try {
-			$entries = $zip.Entries
+			$entries = $zip.Entries | Select-Object *
 		}
 		catch { throw $_ }
 		finally { $zip.Dispose() }
 		return $entries
 	}
-	# Returns a specific entries from the archive file
-	static [ZipArchiveEntry[]] GetArchiveItem ([string]$fileName, [string[]]$itemName) {
+	# Returns a specific entry from the archive file
+	static [psobject[]] GetArchiveItem ([string]$fileName, [string[]]$itemName) {
 		$zip = [Zipfile]::OpenRead($FileName)
+		[psobject[]]$output = @()
 		try {
-			$entries = $zip.Entries | Where-Object { $_.FullName -in $itemName}
+			$entries = $zip.Entries | Where-Object { $_.FullName -in $itemName }
+			foreach ($entry in $entries) {
+				#Read deflate stream
+				$stream = [PowerUpHelper]::ReadDeflateStream($entry.Open())
+				try { $bin = $stream.ToArray() }
+				catch { throw $_ }
+				finally { $stream.Dispose()	}
+				
+				$output += $entry | Select-Object * | Add-Member -MemberType NoteProperty -Name ByteArray -Value $bin -PassThru
+			}
 		}
 		catch { throw $_ }
 		finally { $zip.Dispose() }
-		return $entries
+		return $output
 	}
 	# Converts byte array to hash string
 	static [string] ToHexString([byte[]]$InputObject) {
 		$outString = "0x"
 		$InputObject | ForEach-Object { $outString += ("{0:X}" -f $_).PadLeft(2, "0") }
 		return $outString
+	}
+	static [string] DecodeBinaryText ([byte[]]$Array) {
+		# EF BB BF (UTF8)
+		if ( $Array[0] -eq 0xef -and $Array[1] -eq 0xbb -and $Array[2] -eq 0xbf ) {
+			$encoding = [System.Text.Encoding]::UTF8
+		}
+		# FE FF  (UTF-16 Big-Endian)
+		elseif ($Array[0] -eq 0xfe -and $Array[1] -eq 0xff) {
+			$encoding = [System.Text.Encoding]::BigEndianUnicode
+		}
+		# FF FE  (UTF-16 Little-Endian)
+		elseif ($Array[0] -eq 0xff -and $Array[1] -eq 0xfe) {
+			$encoding = [System.Text.Encoding]::Unicode
+		}
+		# 00 00 FE FF (UTF32 Big-Endian)
+		elseif ($Array[0] -eq 0 -and $Array[1] -eq 0 -and $Array[2] -eq 0xfe -and $Array[3] -eq 0xff) {
+			$encoding = [System.Text.Encoding]::UTF32
+		}
+		# FE FF 00 00 (UTF32 Little-Endian)
+		elseif ($Array[0] -eq 0xfe -and $Array[1] -eq 0xff -and $Array[2] -eq 0 -and $Array[3] -eq 0) {
+			$encoding = [System.Text.Encoding]::UTF32
+		}
+		elseif ($Array[0] -eq 0x2b -and $Array[1] -eq 0x2f -and $Array[2] -eq 0x76 -and ($Array[3] -eq 0x38 -or $Array[3] -eq 0x39 -or $Array[3] -eq 0x2b -or $Array[3] -eq 0x2f)) {
+			$encoding = [System.Text.Encoding]::UTF7
+		}
+		else {
+			$encoding = [System.Text.Encoding]::ASCII
+		}
+		return $encoding.GetString($Array)
 	}
 }
