@@ -495,7 +495,7 @@ Describe "$commandName - PowerUpFile tests" -Tag $commandName, UnitTests, PowerU
 						Hash        = 'MyHash'
 					}
 					{ [PowerUpFile]::new($obj, $zipEntry) } | Should Throw #hash is invalid
-					$obj.Hash = [PowerUpHelper]::ToHashString([Security.Cryptography.HashAlgorithm]::Create( "MD5" ).ComputeHash([PowerUpHelper]::GetBinaryFile($script1)))
+					$obj.Hash = [PowerUpHelper]::ToHexString([Security.Cryptography.HashAlgorithm]::Create( "MD5" ).ComputeHash([PowerUpHelper]::GetBinaryFile($script1)))
 					$f = [PowerUpFile]::new($obj, $zipEntry)
 					$f | Should Not BeNullOrEmpty
 					$f.SourcePath | Should Be $script1
@@ -562,7 +562,7 @@ Describe "$commandName - PowerUpFile tests" -Tag $commandName, UnitTests, PowerU
 		It "should test ExportToJson method" {
 			$j = $script:file.ExportToJson() | ConvertFrom-Json
 			$j.PackagePath | Should Be 'success\1.sql'
-			$j.Hash | Should Be ([PowerUpHelper]::ToHashString([Security.Cryptography.HashAlgorithm]::Create( "MD5" ).ComputeHash([PowerUpHelper]::GetBinaryFile($script1))))
+			$j.Hash | Should Be ([PowerUpHelper]::ToHexString([Security.Cryptography.HashAlgorithm]::Create( "MD5" ).ComputeHash([PowerUpHelper]::GetBinaryFile($script1))))
 			$j.SourcePath | Should Be $script1
 		}
 		It "should test Save method" {

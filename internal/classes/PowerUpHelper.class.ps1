@@ -44,18 +44,18 @@ class PowerUpHelper {
 		#Close the stream
 		$writer.Close()
 	}
-	# Adds a new file entry into an opened ZipArchive object and fills it from file stream object
-	static [void] WriteZipFileStream ([ZipArchive]$zipFile, [string]$fileName, [FileStream]$stream) {
-		$entry = $zipFile.CreateEntry($fileName)
-		$writer = $entry.Open()
-		$data = [byte[]]::new(4098)
-		#Read from stream and write file contents
-		while ($read = $stream.Read($data, 0, $data.Length)) {
-			$writer.Write($data, 0, $data.Length )
-		}
-		#Close the stream
-		$writer.Close()
-	}
+	# Adds a new file entry into an opened ZipArchive object and fills it from file stream object - not used for now
+	# static [void] WriteZipFileStream ([ZipArchive]$zipFile, [string]$fileName, [FileStream]$stream) {
+	# 	$entry = $zipFile.CreateEntry($fileName)
+	# 	$writer = $entry.Open()
+	# 	$data = [byte[]]::new(4098)
+	# 	#Read from stream and write file contents
+	# 	while ($read = $stream.Read($data, 0, $data.Length)) {
+	# 		$writer.Write($data, 0, $data.Length )
+	# 	}
+	# 	#Close the stream
+	# 	$writer.Close()
+	# }
 	# Returns an entry list from the archive file
 	static [ZipArchiveEntry[]] GetArchiveItems ([string]$fileName) {
 		$zip = [Zipfile]::OpenRead($FileName)
@@ -77,7 +77,7 @@ class PowerUpHelper {
 		return $entries
 	}
 	# Converts byte array to hash string
-	static [string] ToHashString([byte[]]$InputObject) {
+	static [string] ToHexString([byte[]]$InputObject) {
 		$outString = "0x"
 		$InputObject | ForEach-Object { $outString += ("{0:X}" -f $_).PadLeft(2, "0") }
 		return $outString
