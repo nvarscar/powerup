@@ -84,16 +84,39 @@ class PowerUpPackage : PowerUp {
 	#Public properties
 	[PowerUpBuild[]]$Builds
 	[string]$ScriptDirectory
-	# [string]$DeployScript
 	[PowerUpFile]$DeployFile
 	[PowerUpFile]$PostDeployFile
 	[PowerUpFile]$PreDeployFile
 	[PowerUpFile]$ConfigurationFile
 	[PowerUpConfig]$Configuration
 	[string]$Version
+	[System.Version]$ModuleVersion
+
+	#Regular file properties
+	[string]$PSPath
+	[string]$PSParentPath
+	[string]$PSChildName
+	[string]$PSDrive
+	[bool]  $PSIsContainer
+	[string]$Mode
+	[string]$BaseName
+	[string]$Name
+	[int]$Length
+	[string]$DirectoryName
+	[System.IO.DirectoryInfo]$Directory
+	[bool]$IsReadOnly
+	[bool]$Exists
+	[string]$FullName
+	[string]$Extension
+	[datetime]$CreationTime
+	[datetime]$CreationTimeUtc
+	[datetime]$LastAccessTime
+	[datetime]$LastAccessTimeUtc
+	[datetime]$LastWriteTime
+	[datetime]$LastWriteTimeUtc
+	[System.IO.FileAttributes]$Attributes
 
 	hidden [string]$FileName
-	# hidden [string]$DeploySource
 	
 	#Constructors
 	PowerUpPackage () {
@@ -111,12 +134,14 @@ class PowerUpPackage : PowerUp {
 	}
 
 	PowerUpPackage ([string]$fileName) {
-		if (!(Test-Path $fileName)) {
+		if (!(Test-Path $fileName -PathType Leaf)) {
 			throw "File $fileName not found. Aborting."
 		}
-		$this.FileName = $FileName
+		$this.FileName = $fileName
+		# Setting regular file properties
+		$this.RefreshFileProperties()
 		# Reading zip file contents into memory
-		$zip = [Zipfile]::OpenRead($FileName)
+		$zip = [Zipfile]::OpenRead($fileName)
 		try { 
 			# Processing package file
 			$pkgFile = $zip.Entries | Where-Object FullName -eq ([PowerUpConfig]::GetPackageFileName())
@@ -182,6 +207,36 @@ class PowerUpPackage : PowerUp {
 		$this.Init()
 		if ($jsonObject) {
 			$this.ScriptDirectory = $jsonObject.ScriptDirectory
+		}
+	}
+	[void] RefreshFileProperties() {
+		if ($this.FileName) {
+			$FileObject = Get-Item $this.FileName
+			$this.PSPath = $FileObject.PSPath
+			$this.PSParentPath = $FileObject.PSParentPath
+			$this.PSChildName = $FileObject.PSChildName
+			$this.PSDrive = $FileObject.PSDrive
+			$this.PSIsContainer = $FileObject.PSIsContainer
+			$this.Mode = $FileObject.Mode
+			$this.BaseName = $FileObject.BaseName
+			$this.Name = $FileObject.Name
+			$this.Length = $FileObject.Length
+			$this.DirectoryName = $FileObject.DirectoryName
+			$this.Directory = $FileObject.Directory
+			$this.IsReadOnly = $FileObject.IsReadOnly
+			$this.Exists = $FileObject.Exists
+			$this.FullName = $FileObject.FullName
+			$this.Extension = $FileObject.Extension
+			$this.CreationTime = $FileObject.CreationTime
+			$this.CreationTimeUtc = $FileObject.CreationTimeUtc
+			$this.LastAccessTime = $FileObject.LastAccessTime
+			$this.LastAccessTimeUtc = $FileObject.LastAccessTimeUtc
+			$this.LastWriteTime = $FileObject.LastWriteTime
+			$this.LastWriteTimeUtc = $FileObject.LastWriteTimeUtc
+			$this.Attributes = $FileObject.Attributes
+
+			# Also refresh PowerUp module version from the archive
+			$this.RefreshModuleVersion()
 		}
 	}
 	[PowerUpBuild[]] GetBuilds () {
@@ -380,6 +435,9 @@ class PowerUpPackage : PowerUp {
 		}
 		catch {	throw $_ }
 		finally { $stream.Dispose() }
+
+		# Setting regular file properties
+		$this.RefreshFileProperties()
 	}
 
 	hidden [void] SaveModuleToFile([ZipArchive]$zipArchive) {
@@ -390,6 +448,27 @@ class PowerUpPackage : PowerUp {
 	#Returns content folder for scripts
 	[string] GetPackagePath() {
 		return $this.ScriptDirectory
+	}
+
+	#Refresh module version from the module file inside the package
+	[void] RefreshModuleVersion() {
+		if ($this.FileName) {
+			$packagePath = 'Modules\PowerUp\PowerUp.psd1'
+			$contents = ([PowerUpHelper]::GetArchiveItem($this.FileName, $packagePath)).ByteArray
+			if ([PowerUpHelper]::DecodeBinaryText($contents) -match "[\s+]ModuleVersion[\s+]\=[\s+]\'(.*)\'") {
+				$this.ModuleVersion = [System.Version]$Matches[1]
+			}
+		}
+	}
+
+	#Standard ToString() method
+	[string] ToString () {
+		if ($this.FullName) {
+			return $this.FullName
+		}
+		else {
+			return "PowerUpPackage"
+		}
 	}
 
 	#Sets package configuration
@@ -436,14 +515,10 @@ class PowerUpBuild : PowerUp {
 		$this.build = $object.build
 		$this.PackagePath = $object.PackagePath
 		$this.CreatedDate = $object.CreatedDate
-		# foreach ($script in $object.scripts) {
-		# 	$newScript = [PowerUpFile]::AddPackageFile($script)
-		# 	$this.AddScript($newScript, $true)
-		# }
-		#$this.deployOrder = $parent.GetLastBuildDeployOrder() + 10
 	}
 
 	#Methods 
+	#Creates a new script and returns it as an object
 	[PowerUpFile[]] NewScript ([object[]]$FileObject) {
 		[PowerUpFile[]]$output = @()
 		foreach ($p in $FileObject) {
@@ -471,6 +546,7 @@ class PowerUpBuild : PowerUp {
 		}
 		return $this.NewFile($FileName, $relativePath, 'Scripts')
 	}
+	# Adds script to the current build
 	[void] AddScript ([PowerUpFile[]]$script) {
 		$this.AddScript($script, $false)
 	}
@@ -487,6 +563,7 @@ class PowerUpBuild : PowerUp {
 	[string] ToString() {
 		return "[Build: $($this.build); Scripts: @{$($this.Scripts.Name -join ', ')}]"
 	}
+	#Searches for a certain hash value within the build
 	hidden [bool] HashExists([string]$hash) {
 		foreach ($script in $this.Scripts) {
 			if ($hash -eq $script.hash) {
@@ -495,6 +572,7 @@ class PowerUpBuild : PowerUp {
 		}
 		return $false
 	}
+	#Searches for a certain hash value within the build for a specific source file
 	hidden [bool] HashExists([string]$hash, [string]$sourcePath) {
 		foreach ($script in $this.Scripts) {
 			if ($script.SourcePath -eq $sourcePath -and $hash -eq $script.hash) {
@@ -503,6 +581,7 @@ class PowerUpBuild : PowerUp {
 		}
 		return $false
 	}
+	#Compares file hash and returns true if such has has been found within the build
 	[bool] ScriptExists([string]$fileName) {
 		if (!(Test-Path $fileName)) {
 			$this.ThrowArgumentException($this, "Path not found: $fileName")
@@ -510,6 +589,7 @@ class PowerUpBuild : PowerUp {
 		$hash = [PowerUpHelper]::ToHexString([Security.Cryptography.HashAlgorithm]::Create( "MD5" ).ComputeHash([PowerUpHelper]::GetBinaryFile($fileName)))
 		return $this.HashExists($hash)
 	}
+	#Returns true if the file was modified since it last has been added to the build
 	[bool] ScriptModified([string]$fileName, [string]$sourcePath) {
 		if (!(Test-Path $fileName)) {
 			$this.ThrowArgumentException($this, "Path not found: $fileName")
@@ -522,6 +602,7 @@ class PowerUpBuild : PowerUp {
 			return $false
 		}
 	}
+	#Verify if the file has already been added to the build
 	[bool] SourcePathExists([string]$path) {
 		foreach ($script in $this.Scripts) {
 			if ($path -eq $script.sourcePath) {
@@ -530,6 +611,7 @@ class PowerUpBuild : PowerUp {
 		}
 		return $false
 	}
+	#Verify if Package Path is already used by a different file
 	[bool] PackagePathExists([string]$PackagePath) {
 		foreach ($script in $this.Scripts) {
 			if ($PackagePath -eq $script.PackagePath) {
@@ -539,23 +621,13 @@ class PowerUpBuild : PowerUp {
 		return $false
 	}
 	[bool] PackagePathExists([string]$fileName, [int]$Depth) {
-		$path = [PowerUpHelper]::SplitRelativePath($fileName, $Depth)
-		foreach ($script in $this.Scripts) {
-			if ($path -eq $script.PackagePath) {
-				return $true
-			}
-		}
-		return $false
+		return $this.PackagePathExists([PowerUpHelper]::SplitRelativePath($fileName, $Depth))
 	}
+	#Get absolute path inside the package
 	[string] GetPackagePath() {
 		return Join-Path $this.Parent.GetPackagePath() $this.PackagePath
-	}	
-	# [string] GetPackagePath([string]$fileName) {
-	# 	return $this.GetPackagePath($fileName, 0)
-	# }
-	# [string] GetPackagePath([string]$fileName, [int]$Depth) {
-	# 	return [PowerUpHelper]::SplitRelativePath($fileName, $Depth)
-	# }
+	}
+	#Exports object to Json in the format in which it will be stored in the package file
 	[string] ExportToJson() {
 		$scriptCollection = @()
 		foreach ($script in $this.Scripts) {
@@ -596,6 +668,9 @@ class PowerUpBuild : PowerUp {
 		}
 		catch { throw $_ }
 		finally { $stream.Dispose()	}
+
+		# Refreshing regular file properties for parent object
+		$this.Parent.RefreshFileProperties()
 	}
 }
 
@@ -668,16 +743,6 @@ class PowerUpFile : PowerUp {
 		$this.Length = $this.ByteArray.Length
 	}
 
-	# #Static methods 
-	# static [PowerUpFile] AddPackageFile ([psobject]$object) {
-	# 	return [PowerUpFile]::new($object)
-	# }
-
-	# static [PowerUpFile] AddPackageFile ([psobject]$object) {
-	# 	return [PowerUpFile]::new($object)
-	# }
-	
-
 	#Methods 
 	[void] Init ([psobject]$fileDescription) {
 		if (!$fileDescription.PackagePath) {
@@ -691,34 +756,7 @@ class PowerUpFile : PowerUp {
 		return "$($this.PackagePath)"
 	}
 	[string] GetContent() {
-		[byte[]]$Array = $this.ByteArray
-		# EF BB BF (UTF8)
-		if ( $Array[0] -eq 0xef -and $Array[1] -eq 0xbb -and $Array[2] -eq 0xbf ) {
-			$encoding = [System.Text.Encoding]::UTF8
-		}
-		# FE FF  (UTF-16 Big-Endian)
-		elseif ($Array[0] -eq 0xfe -and $Array[1] -eq 0xff) {
-			$encoding = [System.Text.Encoding]::BigEndianUnicode
-		}
-		# FF FE  (UTF-16 Little-Endian)
-		elseif ($Array[0] -eq 0xff -and $Array[1] -eq 0xfe) {
-			$encoding = [System.Text.Encoding]::Unicode
-		}
-		# 00 00 FE FF (UTF32 Big-Endian)
-		elseif ($Array[0] -eq 0 -and $Array[1] -eq 0 -and $Array[2] -eq 0xfe -and $Array[3] -eq 0xff) {
-			$encoding = [System.Text.Encoding]::UTF32
-		}
-		# FE FF 00 00 (UTF32 Little-Endian)
-		elseif ($Array[0] -eq 0xfe -and $Array[1] -eq 0xff -and $Array[2] -eq 0 -and $Array[3] -eq 0) {
-			$encoding = [System.Text.Encoding]::UTF32
-		}
-		elseif ($Array[0] -eq 0x2b -and $Array[1] -eq 0x2f -and $Array[2] -eq 0x76 -and ($Array[3] -eq 0x38 -or $Array[3] -eq 0x39 -or $Array[3] -eq 0x2b -or $Array[3] -eq 0x2f)) {
-			$encoding = [System.Text.Encoding]::UTF7
-		}
-		else {
-			$encoding = [System.Text.Encoding]::ASCII
-		}
-		return $encoding.GetString($Array)
+		return [PowerUpHelper]::DecodeBinaryText($this.ByteArray)
 	}
 	[string] GetPackagePath() {
 		return Join-Path $this.Parent.GetPackagePath() $this.PackagePath
@@ -768,6 +806,11 @@ class PowerUpFile : PowerUp {
 		}
 		catch { throw $_ }
 		finally { $stream.Dispose()	}
+
+		# Refreshing regular file properties for parent object
+		if ($pkgObj) {
+			$pkgObj.RefreshFileProperties()
+		}
 	}
 }
 
@@ -779,13 +822,13 @@ class PowerUpFile : PowerUp {
 class PowerUpRootFile : PowerUpFile {
 	#Mirroring base constructors
 	PowerUpRootFile () : base () { }
-	PowerUpRootFile ([string]$SourcePath, [string]$packagePath) : base($SourcePath, $packagePath) { }
+	PowerUpRootFile ([string]$SourcePath, [string]$PackagePath) : base($SourcePath, $PackagePath) { }
 
-	PowerUpRootFile ([psobject]$object) : base($object) { }
+	PowerUpRootFile ([psobject]$fileDescription) : base($fileDescription) { }
 
-	PowerUpRootFile ([psobject]$object, [ZipArchiveEntry]$file) : base($object, $file) { }	
+	PowerUpRootFile ([psobject]$fileDescription, [ZipArchiveEntry]$file) : base($fileDescription, $file) { }	
 
-	#Overloading GetPackagePath to ignore Script folder
+	#Overloading GetPackagePath to ignore folders of the parent objects
 	[string] GetPackagePath() {
 		return $this.PackagePath
 	}	

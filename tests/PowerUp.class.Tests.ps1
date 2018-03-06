@@ -155,6 +155,37 @@ Describe "$commandName - PowerUpPackage tests" -Tag $commandName, UnitTests, Pow
 		It "Should test GetPackagePath method" {
 			$script:pkg.GetPackagePath() | Should Be 'content'
 		}
+		It "Should test RefreshModuleVersion method" {
+			$script:pkg.RefreshModuleVersion()
+			$script:pkg.ModuleVersion | Should Be (Get-Module PowerUp).Version
+		}
+		It "Should test RefreshFileProperties method" {
+			$script:pkg.RefreshFileProperties()
+			$FileObject = Get-Item $packageName
+			$script:pkg.PSPath | Should Be $FileObject.PSPath.ToString()
+			$script:pkg.PSParentPath | Should Be $FileObject.PSParentPath.ToString()
+			$script:pkg.PSChildName | Should Be $FileObject.PSChildName.ToString()
+			$script:pkg.PSDrive | Should Be $FileObject.PSDrive.ToString()
+			$script:pkg.PSIsContainer | Should Be $FileObject.PSIsContainer
+			$script:pkg.Mode | Should Be $FileObject.Mode
+			$script:pkg.BaseName | Should Be $FileObject.BaseName
+			$script:pkg.Name | Should Be $FileObject.Name
+			$script:pkg.Length | Should Be $FileObject.Length
+			$script:pkg.DirectoryName | Should Be $FileObject.DirectoryName
+			$script:pkg.Directory | Should Be $FileObject.Directory.ToString()
+			$script:pkg.IsReadOnly | Should Be $FileObject.IsReadOnly
+			$script:pkg.Exists | Should Be $FileObject.Exists
+			$script:pkg.FullName | Should Be $FileObject.FullName
+			$script:pkg.Extension | Should Be $FileObject.Extension
+			$script:pkg.CreationTime | Should Be $FileObject.CreationTime
+			$script:pkg.CreationTimeUtc | Should Be $FileObject.CreationTimeUtc
+			$script:pkg.LastAccessTime | Should Be $FileObject.LastAccessTime
+			$script:pkg.LastAccessTimeUtc | Should Be $FileObject.LastAccessTimeUtc
+			$script:pkg.LastWriteTime | Should Be $FileObject.LastWriteTime
+			$script:pkg.LastWriteTimeUtc | Should Be $FileObject.LastWriteTimeUtc
+			$script:pkg.Attributes | Should Be $FileObject.Attributes
+		}
+
 		It "Should test SetConfiguration method" {
 			$config = @{ SchemaVersionTable = 'dbo.NewTable' } | ConvertTo-Json -Depth 1
 			{ $script:pkg.SetConfiguration([PowerUpConfig]::new($config)) } | Should Not Throw
