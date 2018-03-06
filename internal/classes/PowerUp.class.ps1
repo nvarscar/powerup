@@ -18,62 +18,12 @@ class PowerUp {
 	hidden [void] ThrowArgumentException ([object]$object, [string]$message) {
 		$this.ThrowException('ArgumentException', $message, $object, 'InvalidArgument')
 	}
-
-	hidden [string] SplitRelativePath ([string]$Path, [int]$Depth) {
-		$returnPath = Split-Path -Path $Path -Leaf
-		$parent = Split-Path -Path $Path -Parent
-		while ($Depth-- -gt 0) {
-			$returnPath = Join-Path -Path (Split-Path -Path $parent -Leaf) -ChildPath $returnPath
-			$parent = Split-Path -Path $parent -Parent
-		}
-		return $returnPath
-	}
-	hidden [byte[]] GetBinaryFile ([string]$fileName) {
-		$stream = [System.IO.File]::Open($fileName, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite)
-		$b = [byte[]]::new($stream.Length)
-		try { $stream.Read($b, 0, $b.Length) }
-		catch {	throw $_ }
-		finally { $stream.Close() }
-		return $b
-	}
-	hidden [System.IO.MemoryStream] ReadDeflateStream ([DeflateStream]$stream) {
-		$memStream = [System.IO.MemoryStream]::new()
-		$stream.CopyTo($memStream)
-		$stream.Close()
-		return $memStream
-	}
-	hidden [void] WriteZipFile ([ZipArchive]$zipFile, [string]$fileName, [byte[]]$data) {
-		#Remove old file entry if exists
-		if ($zipFile.Mode -eq [ZipArchiveMode]::Update) {
-			if ($oldEntry = $zipFile.GetEntry($fileName)) {
-				$oldEntry.Delete()
-			}
-		}
-		#Create new file entry
-		$entry = $zipFile.CreateEntry($fileName)
-		$writer = $entry.Open()
-		#Write file contents
-		$writer.Write($data, 0, $data.Length )
-		#Close the stream
-		$writer.Close()
-	}
-	hidden [void] WriteZipFileStream ([ZipArchive]$zipFile, [string]$fileName, [FileStream]$stream) {
-		$entry = $zipFile.CreateEntry($fileName)
-		$writer = $entry.Open()
-		$data = [byte[]]::new(4098)
-		#Read from stream and write file contents
-		while ($read = $stream.Read($data, 0, $data.Length)) {
-			$writer.Write($data, 0, $data.Length )
-		}
-		#Close the stream
-		$writer.Close()
-	}
 	#Adding file objects to the parent 
 	# hidden [PowerUpFile[]] NewFile ([object[]]$FileObject, [string]$CollectionName) {
 		
 	# }
 	# hidden [PowerUpFile] NewFile ([string]$FileName, [int]$Depth, [string]$CollectionName) {
-	# 	$relativePath = $this.SplitRelativePath($FileName, $Depth)
+	# 	$relativePath = [PowerUpHelper]::SplitRelativePath($FileName, $Depth)
 	# 	$f = [PowerUpFile]::new($FileName, $relativePath)
 	# 	$this.AddFile($f, $CollectionName)
 	# 	return $this.GetFile($relativePath, $CollectionName)
@@ -124,12 +74,6 @@ class PowerUp {
 			$this.AddFile($file, $CollectionName)
 		}
 	}
-	#Convert byte to hash string
-	hidden [string] ToHashString([byte[]]$InputObject) {
-		$outString = "0x"
-		$InputObject | ForEach-Object { $outString += ("{0:X}" -f $_).PadLeft(2, "0") }
-		return $outString
-	}
 }
 
 ########################
@@ -178,7 +122,7 @@ class PowerUpPackage : PowerUp {
 			$pkgFile = $zip.Entries | Where-Object FullName -eq ([PowerUpConfig]::GetPackageFileName())
 			if ($pkgFile) {
 				$pFile = [PowerUpFile]::new()
-				$pFile.SetContent($this.ReadDeflateStream($pkgFile.Open()).ToArray())
+				$pFile.SetContent([PowerUpHelper]::ReadDeflateStream($pkgFile.Open()).ToArray())
 				$jsonObject = ConvertFrom-Json $pFile.GetContent() -ErrorAction Stop
 				$this.Init($jsonObject)
 				# Processing builds
@@ -226,32 +170,6 @@ class PowerUpPackage : PowerUp {
 		}
 	}
 	
-	# hidden PowerUpPackage ([string]$jsonString) {
-	# 	$jsonObject = ConvertFrom-Json $jsonString -ErrorAction Stop
-	# 	$this.ScriptDirectory = $jsonObject.ScriptDirectory
-	# 	$this.DeployScript = $jsonObject.DeployScript
-	# 	$this.PreDeployScript = $jsonObject.PreDeployScript
-	# 	$this.PostDeployScript = $jsonObject.PostDeployScript
-	# 	$this.DeploySource = $jsonObject.DeploySource
-	# 	$this.ConfigurationFile = $jsonObject.ConfigurationFile
-	# 	$this.PackageFile = $jsonObject.PackageFile
-	# 	foreach ($build in $jsonObject.builds) {
-	# 		$newBuild = [PowerUpBuild]::new($build)
-	# 		$this.AddBuild($newBuild)
-	# 	}
-	# }
-
-	#Static Methods
-	# static [PowerUpPackage] FromJsonString ([string]$jsonString) {
-	# 	return [PowerUpPackage]::new($jsonString)
-	# }
-	# static [PowerUpPackage] FromFile ([string]$path) {
-	# 	if (!(Test-Path $path)) {
-	# 		throw "Package file $path not found. Aborting."
-	# 	}
-	# 	return [PowerUpPackage]::new($path)
-	# }
-
 	#Methods
 	[void] Init () {
 		$this.ScriptDirectory = 'content'
@@ -264,11 +182,6 @@ class PowerUpPackage : PowerUp {
 		$this.Init()
 		if ($jsonObject) {
 			$this.ScriptDirectory = $jsonObject.ScriptDirectory
-			# $this.DeployScript = $jsonObject.DeployScript
-			# $this.PreDeployScript = $jsonObject.PreDeployScript
-			# $this.PostDeployScript = $jsonObject.PostDeployScript
-			# $this.ConfigurationFile = $jsonObject.ConfigurationFile
-			# $this.PackageFile = $jsonObject.PackageFile
 		}
 	}
 	[PowerUpBuild[]] GetBuilds () {
@@ -348,7 +261,7 @@ class PowerUpPackage : PowerUp {
 		if (!(Test-Path $fileName)) {
 			$this.ThrowArgumentException($this, "Path not found: $fileName")
 		}
-		$hash = $this.ToHashString([Security.Cryptography.HashAlgorithm]::Create( "MD5" ).ComputeHash($this.GetBinaryFile($fileName)))
+		$hash = [PowerUpHelper]::ToHashString([Security.Cryptography.HashAlgorithm]::Create( "MD5" ).ComputeHash([PowerUpHelper]::GetBinaryFile($fileName)))
 		foreach ($build in $this.builds) {
 			if ($build.HashExists($hash)) {
 				return $true
@@ -360,7 +273,7 @@ class PowerUpPackage : PowerUp {
 		if (!(Test-Path $fileName)) {
 			$this.ThrowArgumentException($this, "Path not found: $fileName")
 		}
-		$hash = $this.ToHashString([Security.Cryptography.HashAlgorithm]::Create( "MD5" ).ComputeHash($this.GetBinaryFile($fileName)))
+		$hash = [PowerUpHelper]::ToHashString([Security.Cryptography.HashAlgorithm]::Create( "MD5" ).ComputeHash([PowerUpHelper]::GetBinaryFile($fileName)))
 		foreach ($build in $this.builds) {
 			if ($build.SourcePathExists($sourcePath)) {
 				if (!$build.HashExists($hash, $sourcePath)) {
@@ -423,7 +336,7 @@ class PowerUpPackage : PowerUp {
 	}
 	hidden [void] SavePackageFile([ZipArchive]$zipFile) {
 		$pkgFileContent = $this.ExportToJson() | ConvertTo-Byte
-		$this.WriteZipFile($zipFile, ([PowerUpConfig]::GetPackageFileName()), $pkgFileContent)
+		[PowerUpHelper]::WriteZipFile($zipFile, ([PowerUpConfig]::GetPackageFileName()), $pkgFileContent)
 	}
 	[void] Alter() {
 		$this.SaveToFile($this.FileName, $true)
@@ -471,7 +384,7 @@ class PowerUpPackage : PowerUp {
 
 	hidden [void] SaveModuleToFile([ZipArchive]$zipArchive) {
 		foreach ($file in (Get-PowerUpModuleFileList)) {
-			$this.WriteZipFile($zipArchive, (Join-Path "Modules\PowerUp" $file.Path), $this.GetBinaryFile($file.FullName))
+			[PowerUpHelper]::WriteZipFile($zipArchive, (Join-Path "Modules\PowerUp" $file.Path), [PowerUpHelper]::GetBinaryFile($file.FullName))
 		}
 	}
 	#Returns content folder for scripts
@@ -546,13 +459,13 @@ class PowerUpBuild : PowerUp {
 			else {
 				$sourcePath = $p.FullName
 			}
-			$relativePath = $this.SplitRelativePath($sourcePath, $depth)
+			$relativePath = [PowerUpHelper]::SplitRelativePath($sourcePath, $depth)
 			$output += $this.NewFile($sourcePath, $relativePath, 'Scripts')
 		}
 		return $output
 	}
 	[PowerUpFile] NewScript ([string]$FileName, [int]$Depth) {
-		$relativePath = $this.SplitRelativePath($FileName, $Depth)
+		$relativePath = [PowerUpHelper]::SplitRelativePath($FileName, $Depth)
 		if ($this.SourcePathExists($relativePath)) {
 			$this.ThrowArgumentException($this, "External script $($relativePath) already exists.")
 		}
@@ -594,7 +507,7 @@ class PowerUpBuild : PowerUp {
 		if (!(Test-Path $fileName)) {
 			$this.ThrowArgumentException($this, "Path not found: $fileName")
 		}
-		$hash = $this.ToHashString([Security.Cryptography.HashAlgorithm]::Create( "MD5" ).ComputeHash($this.GetBinaryFile($fileName)))
+		$hash = [PowerUpHelper]::ToHashString([Security.Cryptography.HashAlgorithm]::Create( "MD5" ).ComputeHash([PowerUpHelper]::GetBinaryFile($fileName)))
 		return $this.HashExists($hash)
 	}
 	[bool] ScriptModified([string]$fileName, [string]$sourcePath) {
@@ -602,7 +515,7 @@ class PowerUpBuild : PowerUp {
 			$this.ThrowArgumentException($this, "Path not found: $fileName")
 		}
 		if ($this.SourcePathExists($sourcePath)) {
-			$hash = $this.ToHashString([Security.Cryptography.HashAlgorithm]::Create( "MD5" ).ComputeHash($this.GetBinaryFile($fileName)))
+			$hash = [PowerUpHelper]::ToHashString([Security.Cryptography.HashAlgorithm]::Create( "MD5" ).ComputeHash([PowerUpHelper]::GetBinaryFile($fileName)))
 			return -not $this.HashExists($hash, $sourcePath)
 		}
 		else {
@@ -626,7 +539,7 @@ class PowerUpBuild : PowerUp {
 		return $false
 	}
 	[bool] PackagePathExists([string]$fileName, [int]$Depth) {
-		$path = $this.SplitRelativePath($fileName, $Depth)
+		$path = [PowerUpHelper]::SplitRelativePath($fileName, $Depth)
 		foreach ($script in $this.Scripts) {
 			if ($path -eq $script.PackagePath) {
 				return $true
@@ -641,7 +554,7 @@ class PowerUpBuild : PowerUp {
 	# 	return $this.GetPackagePath($fileName, 0)
 	# }
 	# [string] GetPackagePath([string]$fileName, [int]$Depth) {
-	# 	return $this.SplitRelativePath($fileName, $Depth)
+	# 	return [PowerUpHelper]::SplitRelativePath($fileName, $Depth)
 	# }
 	[string] ExportToJson() {
 		$scriptCollection = @()
@@ -714,12 +627,12 @@ class PowerUpFile : PowerUp {
 		}
 		$this.SourcePath = $SourcePath
 		$this.PackagePath = $PackagePath
-		$this.Hash = $this.ToHashString([Security.Cryptography.HashAlgorithm]::Create( "MD5" ).ComputeHash($this.GetBinaryFile($SourcePath)))
+		$this.Hash = [PowerUpHelper]::ToHashString([Security.Cryptography.HashAlgorithm]::Create( "MD5" ).ComputeHash([PowerUpHelper]::GetBinaryFile($SourcePath)))
 		$file = Get-Item $SourcePath
 		$this.Length = $file.Length
 		$this.Name = $file.Name
 		$this.LastWriteTime = $file.LastWriteTime
-		$this.ByteArray = $this.GetBinaryFile($SourcePath)
+		$this.ByteArray = [PowerUpHelper]::GetBinaryFile($SourcePath)
 	}
 
 	PowerUpFile ([psobject]$fileDescription) {
@@ -735,7 +648,7 @@ class PowerUpFile : PowerUp {
 		$this.LastWriteTime = $file.LastWriteTime
 
 		#Read deflate stream and set other properties
-		$stream = $this.ReadDeflateStream($file.Open())
+		$stream = [PowerUpHelper]::ReadDeflateStream($file.Open())
 		try {
 			$this.ByteArray = $stream.ToArray()
 		}
@@ -746,7 +659,7 @@ class PowerUpFile : PowerUp {
 			$stream.Dispose()
 		}
 
-		$fileHash = $this.ToHashString([Security.Cryptography.HashAlgorithm]::Create( "MD5" ).ComputeHash($this.ByteArray))
+		$fileHash = [PowerUpHelper]::ToHashString([Security.Cryptography.HashAlgorithm]::Create( "MD5" ).ComputeHash($this.ByteArray))
 		
 		if ($this.Hash -ne $fileHash) {
 			$this.ThrowArgumentException($fileDescription, "File cannot be loaded, hash mismatch: $($file.Name)")
@@ -820,12 +733,12 @@ class PowerUpFile : PowerUp {
 	}
 	#Writes current script into the archive file
 	[void] Save([ZipArchive]$zipFile) {
-		$this.WriteZipFile($zipFile, $this.GetPackagePath(), $this.ByteArray)
+		[PowerUpHelper]::WriteZipFile($zipFile, $this.GetPackagePath(), $this.ByteArray)
 	}
 	#Updates package content
 	[void] SetContent([byte[]]$Array) {
 		$this.ByteArray = $Array
-		$this.Hash = $this.ToHashString([Security.Cryptography.HashAlgorithm]::Create( "MD5" ).ComputeHash($Array))
+		$this.Hash = [PowerUpHelper]::ToHashString([Security.Cryptography.HashAlgorithm]::Create( "MD5" ).ComputeHash($Array))
 	}
 	#Initiates package update saving the current file in the package
 	[void] Alter() {
@@ -963,7 +876,7 @@ class PowerUpConfig : PowerUp {
 		else {
 			$filePath = [PowerUpConfig]::GetConfigurationFileName()
 		}
-		$this.WriteZipFile($zipFile, $filePath, $fileContent)
+		[PowerUpHelper]::WriteZipFile($zipFile, $filePath, $fileContent)
 	}
 
 	#Static Methods

@@ -3,6 +3,7 @@ $commandName = $MyInvocation.MyCommand.Name.Replace(".Tests.ps1", "")
 
 Add-Type -AssemblyName System.IO.Compression
 Add-Type -AssemblyName System.IO.Compression.FileSystem
+. "$here\..\internal\classes\PowerUpHelper.class.ps1"
 . "$here\..\internal\classes\PowerUp.class.ps1"
 . "$here\..\internal\Get-ArchiveItem.ps1"
 $packageName = "$here\etc\$commandName.zip"
@@ -126,7 +127,7 @@ Describe "$commandName - PowerUpPackage tests" -Tag $commandName, UnitTests, Pow
 			$b = $script:pkg.GetBuild('1.0')
 			$s = "$here\etc\install-tests\success\1.sql"
 			$f = [PowerUpFile]::new(@{SourcePath = $s; PackagePath = 'success\1.sql'})
-			$f.SetContent($f.GetBinaryFile($s))
+			$f.SetContent([PowerUpHelper]::GetBinaryFile($s))
 			$b.AddFile($f, 'Scripts')
 			$script:pkg.ScriptExists($s) | Should Be $true
             $script:pkg.ScriptExists("$here\etc\install-tests\transactional-failure\1.sql") | Should Be $false
@@ -494,7 +495,7 @@ Describe "$commandName - PowerUpFile tests" -Tag $commandName, UnitTests, PowerU
 						Hash        = 'MyHash'
 					}
 					{ [PowerUpFile]::new($obj, $zipEntry) } | Should Throw #hash is invalid
-					$obj.Hash = $p.ToHashString([Security.Cryptography.HashAlgorithm]::Create( "MD5" ).ComputeHash($p.GetBinaryFile($script1)))
+					$obj.Hash = [PowerUpHelper]::ToHashString([Security.Cryptography.HashAlgorithm]::Create( "MD5" ).ComputeHash([PowerUpHelper]::GetBinaryFile($script1)))
 					$f = [PowerUpFile]::new($obj, $zipEntry)
 					$f | Should Not BeNullOrEmpty
 					$f.SourcePath | Should Be $script1
@@ -552,7 +553,7 @@ Describe "$commandName - PowerUpFile tests" -Tag $commandName, UnitTests, PowerU
 		It "should test SetContent method" {
 			$oldData = $script:file.ByteArray
 			$oldHash = $script:file.Hash
-			$script:file.SetContent($script:file.GetBinaryFile($script2))
+			$script:file.SetContent([PowerUpHelper]::GetBinaryFile($script2))
 			$script:file.ByteArray | Should Not Be $oldData
 			$script:file.ByteArray | Should Not BeNullOrEmpty
 			$script:file.Hash | Should Not Be $oldHash
@@ -561,7 +562,7 @@ Describe "$commandName - PowerUpFile tests" -Tag $commandName, UnitTests, PowerU
 		It "should test ExportToJson method" {
 			$j = $script:file.ExportToJson() | ConvertFrom-Json
 			$j.PackagePath | Should Be 'success\1.sql'
-			$j.Hash | Should Be $script:file.ToHashString([Security.Cryptography.HashAlgorithm]::Create( "MD5" ).ComputeHash($script:file.GetBinaryFile($script1)))
+			$j.Hash | Should Be ([PowerUpHelper]::ToHashString([Security.Cryptography.HashAlgorithm]::Create( "MD5" ).ComputeHash([PowerUpHelper]::GetBinaryFile($script1))))
 			$j.SourcePath | Should Be $script1
 		}
 		It "should test Save method" {
@@ -570,7 +571,7 @@ Describe "$commandName - PowerUpFile tests" -Tag $commandName, UnitTests, PowerU
 			#Sleep 2 seconds to ensure that modification date is changed
 			Start-Sleep -Seconds 2
 			#Modify file content
-			$script:file.SetContent($script:file.GetBinaryFile($script2))
+			$script:file.SetContent([PowerUpHelper]::GetBinaryFile($script2))
 			#Open zip file stream
 			$writeMode = [System.IO.FileMode]::Open
 			$stream = [FileStream]::new($packageName, $writeMode)
@@ -606,7 +607,7 @@ Describe "$commandName - PowerUpFile tests" -Tag $commandName, UnitTests, PowerU
 			#Sleep 2 seconds to ensure that modification date is changed
 			Start-Sleep -Seconds 2
 			#Modify file content
-			$script:file.SetContent($script:file.GetBinaryFile($script2))
+			$script:file.SetContent([PowerUpHelper]::GetBinaryFile($script2))
 			{ $script:file.Alter() } | Should Not Throw
 			$results = Get-ArchiveItem $packageName | ? Path -eq 'content\1.0\success\1.sql'
 			$oldResults.ModifyDate -lt ($results | ? Path -eq $oldResults.Path).ModifyDate | Should Be $true
