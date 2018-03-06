@@ -261,7 +261,7 @@ class PowerUpPackage : PowerUp {
 		if (!(Test-Path $fileName)) {
 			$this.ThrowArgumentException($this, "Path not found: $fileName")
 		}
-		$hash = [PowerUpHelper]::ToHashString([Security.Cryptography.HashAlgorithm]::Create( "MD5" ).ComputeHash([PowerUpHelper]::GetBinaryFile($fileName)))
+		$hash = [PowerUpHelper]::ToHexString([Security.Cryptography.HashAlgorithm]::Create( "MD5" ).ComputeHash([PowerUpHelper]::GetBinaryFile($fileName)))
 		foreach ($build in $this.builds) {
 			if ($build.HashExists($hash)) {
 				return $true
@@ -273,7 +273,7 @@ class PowerUpPackage : PowerUp {
 		if (!(Test-Path $fileName)) {
 			$this.ThrowArgumentException($this, "Path not found: $fileName")
 		}
-		$hash = [PowerUpHelper]::ToHashString([Security.Cryptography.HashAlgorithm]::Create( "MD5" ).ComputeHash([PowerUpHelper]::GetBinaryFile($fileName)))
+		$hash = [PowerUpHelper]::ToHexString([Security.Cryptography.HashAlgorithm]::Create( "MD5" ).ComputeHash([PowerUpHelper]::GetBinaryFile($fileName)))
 		foreach ($build in $this.builds) {
 			if ($build.SourcePathExists($sourcePath)) {
 				if (!$build.HashExists($hash, $sourcePath)) {
@@ -507,7 +507,7 @@ class PowerUpBuild : PowerUp {
 		if (!(Test-Path $fileName)) {
 			$this.ThrowArgumentException($this, "Path not found: $fileName")
 		}
-		$hash = [PowerUpHelper]::ToHashString([Security.Cryptography.HashAlgorithm]::Create( "MD5" ).ComputeHash([PowerUpHelper]::GetBinaryFile($fileName)))
+		$hash = [PowerUpHelper]::ToHexString([Security.Cryptography.HashAlgorithm]::Create( "MD5" ).ComputeHash([PowerUpHelper]::GetBinaryFile($fileName)))
 		return $this.HashExists($hash)
 	}
 	[bool] ScriptModified([string]$fileName, [string]$sourcePath) {
@@ -515,7 +515,7 @@ class PowerUpBuild : PowerUp {
 			$this.ThrowArgumentException($this, "Path not found: $fileName")
 		}
 		if ($this.SourcePathExists($sourcePath)) {
-			$hash = [PowerUpHelper]::ToHashString([Security.Cryptography.HashAlgorithm]::Create( "MD5" ).ComputeHash([PowerUpHelper]::GetBinaryFile($fileName)))
+			$hash = [PowerUpHelper]::ToHexString([Security.Cryptography.HashAlgorithm]::Create( "MD5" ).ComputeHash([PowerUpHelper]::GetBinaryFile($fileName)))
 			return -not $this.HashExists($hash, $sourcePath)
 		}
 		else {
@@ -627,7 +627,7 @@ class PowerUpFile : PowerUp {
 		}
 		$this.SourcePath = $SourcePath
 		$this.PackagePath = $PackagePath
-		$this.Hash = [PowerUpHelper]::ToHashString([Security.Cryptography.HashAlgorithm]::Create( "MD5" ).ComputeHash([PowerUpHelper]::GetBinaryFile($SourcePath)))
+		$this.Hash = [PowerUpHelper]::ToHexString([Security.Cryptography.HashAlgorithm]::Create( "MD5" ).ComputeHash([PowerUpHelper]::GetBinaryFile($SourcePath)))
 		$file = Get-Item $SourcePath
 		$this.Length = $file.Length
 		$this.Name = $file.Name
@@ -659,7 +659,7 @@ class PowerUpFile : PowerUp {
 			$stream.Dispose()
 		}
 
-		$fileHash = [PowerUpHelper]::ToHashString([Security.Cryptography.HashAlgorithm]::Create( "MD5" ).ComputeHash($this.ByteArray))
+		$fileHash = [PowerUpHelper]::ToHexString([Security.Cryptography.HashAlgorithm]::Create( "MD5" ).ComputeHash($this.ByteArray))
 		
 		if ($this.Hash -ne $fileHash) {
 			$this.ThrowArgumentException($fileDescription, "File cannot be loaded, hash mismatch: $($file.Name)")
@@ -738,7 +738,7 @@ class PowerUpFile : PowerUp {
 	#Updates package content
 	[void] SetContent([byte[]]$Array) {
 		$this.ByteArray = $Array
-		$this.Hash = [PowerUpHelper]::ToHashString([Security.Cryptography.HashAlgorithm]::Create( "MD5" ).ComputeHash($Array))
+		$this.Hash = [PowerUpHelper]::ToHexString([Security.Cryptography.HashAlgorithm]::Create( "MD5" ).ComputeHash($Array))
 	}
 	#Initiates package update saving the current file in the package
 	[void] Alter() {
