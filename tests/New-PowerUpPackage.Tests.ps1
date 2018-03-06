@@ -176,7 +176,7 @@ Describe "$commandName tests" {
 			catch {
 				$errorResult = $_
 			}
-			$errorResult.Exception.Message -join ';' | Should BeLike '*already exists inside this build*'
+			$errorResult.Exception.Message -join ';' | Should BeLike '*File * already exists in*'
 		}
 		It "returns error when path does not exist" {
 			try {

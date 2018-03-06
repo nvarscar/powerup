@@ -47,5 +47,51 @@
     </TableRowEntries>
   </TableControl>
 </View>
+<View>
+  <Name>PowerUpPackage</Name>
+  <ViewSelectedBy>
+    <TypeName>PowerUpPackage</TypeName>
+  </ViewSelectedBy>
+  <TableControl>
+    <TableHeaders>
+      <TableColumnHeader>
+        <Width>20</Width>
+      </TableColumnHeader>
+      <TableColumnHeader>
+        <Width>9</Width>
+      </TableColumnHeader>
+      <TableColumnHeader>
+        <Width>24</Width>
+      </TableColumnHeader>
+      <TableColumnHeader>
+        <Width>24</Width>
+      </TableColumnHeader>
+      <TableColumnHeader>
+        <Width>24</Width>
+      </TableColumnHeader>
+    </TableHeaders>
+    <TableRowEntries>
+      <TableRowEntry>
+        <TableColumnItems>
+          <TableColumnItem>
+            <PropertyName>Name</PropertyName>
+          </TableColumnItem>
+          <TableColumnItem>
+            <PropertyName>Version</PropertyName>
+          </TableColumnItem>
+          <TableColumnItem>
+            <PropertyName>LastWriteTime</PropertyName>
+          </TableColumnItem>
+          <TableColumnItem>
+            <PropertyName>Configuration</PropertyName>
+          </TableColumnItem>
+          <TableColumnItem>
+            <PropertyName>Builds</PropertyName>
+          </TableColumnItem>
+        </TableColumnItems>
+      </TableRowEntry>
+    </TableRowEntries>
+  </TableControl>
+</View>
 </ViewDefinitions>
 </Configuration>
