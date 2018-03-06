@@ -131,14 +131,9 @@ function New-PowerUpPackage {
 			
 			#Save package file
 			$package.SaveToFile($Path, $Force)
-		
-			#Preparing output object
-			$outputObject = [PowerUpPackageFile]::new((Get-Item $Path))
-			$outputObject.Config = $package.Configuration
-			$outputObject.Version = $package.GetVersion()
-			#$outputObject.ModuleVersion = $packageInfo.ModuleVersion
-			$outputObject.Builds = $package.Builds.ToString()
-			$outputObject
+
+			#Output the package object
+			$package
 		}
 		
 	}
