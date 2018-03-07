@@ -142,13 +142,16 @@ function Add-PowerUpBuild {
 			$currentBuild = $package.NewBuild($Build)
 
 			foreach ($buildScript in $scriptsToAdd) {
-				Write-Verbose "Adding file '$($buildScript.FullName)' to $currentBuild"
-				$currentBuild.NewScript($buildScript) 
+				$s = $currentBuild.NewScript($buildScript) 
+				Write-Verbose "Adding file '$($buildScript.FullName)' to $currentBuild as $($s.GetPackagePath())"
 			}
 
 			if ($pscmdlet.ShouldProcess($package, "Writing new build $currentBuild into the original package")) {
 				$currentBuild.Alter()
 			}
+		}
+		else {
+			Write-Warning "No scripts have been selected, the original file is unchanged."
 		}
 		$package
 	}

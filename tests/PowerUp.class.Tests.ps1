@@ -10,6 +10,7 @@ $packageName = "$here\etc\$commandName.zip"
 $script:pkg = $script:build = $script:file = $null
 $script1 = "$here\etc\install-tests\success\1.sql"
 $script2 = "$here\etc\install-tests\success\2.sql"
+$script3 = "$here\etc\install-tests\success\3.sql"
 
 Describe "$commandName - PowerUpPackage tests" -Tag $commandName, UnitTests, PowerUpPackage {
 	AfterAll {
@@ -452,9 +453,24 @@ Describe "$commandName - PowerUpBuild tests" -Tag $commandName, UnitTests, Power
 			$j.PackagePath | Should Be '1.0'
 			$j.CreatedDate | Should Not BeNullOrEmpty
 		}
+	}
+	Context "tests Save/Alter methods" {
+		AfterAll {
+			if (Test-Path $packageName) { Remove-Item $packageName }
+			if (Test-Path "$packageName.test.zip") { Remove-Item "$packageName.test.zip" }
+		}
 		It "should test Save method" {
-			#Add file to the build
-			$null = $script:build.NewScript($script2, 1)
+			#Generate new package file
+			$script:pkg = [PowerUpPackage]::new()
+			$script:pkg.SaveToFile($packageName)
+			if ( $script:pkg.GetBuild('1.0')) { $script:pkg.RemoveBuild('1.0') }
+			$b = $script:pkg.NewBuild('1.0')
+			$f = [PowerUpScriptFile]::new($script1, 'success\1.sql')
+			$b.AddScript($f)
+			$f = [PowerUpScriptFile]::new($script2, 'success\2.sql')
+			$b.AddScript($f)
+			$script:build = $b
+
 			#Open zip file stream
 			$writeMode = [System.IO.FileMode]::Open
 			$stream = [FileStream]::new($packageName, $writeMode)
@@ -490,13 +506,33 @@ Describe "$commandName - PowerUpBuild tests" -Tag $commandName, UnitTests, Power
 			'content\1.0\success\1.sql' | Should BeIn $results.Path
 			'content\1.0\success\2.sql' | Should BeIn $results.Path
 		}
-		$oldResults = Get-ArchiveItem $packageName | ? IsFolder -eq $false
+		It "Should load package successfully after saving it" {
+			$p = [PowerUpPackage]::new($packageName)
+			$p.Builds.Scripts.Name | Should Not Be @('1.sql','2.sql') #Build.Save method does not write to package file
+		}
+		It "Should save and reopen the package under a different name" {
+			#Generate new package file
+			$p1 = [PowerUpPackage]::new()
+			$p1.SaveToFile($packageName, $true)
+			$p2 = [PowerUpPackage]::new($packageName)
+			if ( $p2.GetBuild('1.0')) { $script:pkg.RemoveBuild('1.0') }
+			$b = $p2.NewBuild('1.0')
+			$f = [PowerUpScriptFile]::new($script1, 'success\1.sql')
+			$b.AddScript($f)
+			$f = [PowerUpScriptFile]::new($script2, 'success\2.sql')
+			$b.AddScript($f)
+			$p2.SaveToFile("$packageName.test.zip")
+			$script:pkg = [PowerUpPackage]::new("$packageName.test.zip")
+			$script:build = $script:pkg.GetBuild('1.0')
+		}
+		$oldResults = Get-ArchiveItem "$packageName.test.zip" | ? IsFolder -eq $false
 		#Sleep 1 second to ensure that modification date is changed
 		Start-Sleep -Seconds 2
 		It "should test Alter method" {
-			$null = $script:build.NewScript($script2, 1)
+			$f = [PowerUpScriptFile]::new($script3, 'success\3.sql')
+			$script:build.AddScript($f)
 			{ $script:build.Alter() } | Should Not Throw
-			$results = Get-ArchiveItem $packageName
+			$results = Get-ArchiveItem "$packageName.test.zip"
 			foreach ($file in (Get-PowerUpModuleFileList)) {
 				Join-Path 'Modules\PowerUp' $file.Path | Should BeIn $results.Path
 			}
@@ -506,8 +542,12 @@ Describe "$commandName - PowerUpBuild tests" -Tag $commandName, UnitTests, Power
 			'content\1.0\success\1.sql' | Should BeIn $results.Path
 			'content\1.0\success\2.sql' | Should BeIn $results.Path
 		}
+		It "Should load package successfully after saving it" {
+			$p = [PowerUpPackage]::new("$packageName.test.zip")
+			$p.Builds.Scripts.Name | Should Be @('1.sql', '2.sql', '3.sql')
+		}
 		# Testing file contents to be updated by the Save method
-		$results = Get-ArchiveItem $packageName | ? IsFolder -eq $false
+		$results = Get-ArchiveItem "$packageName.test.zip" | ? IsFolder -eq $false
 		$saveTestsErrors = 0
 		#should trigger file updates for build files and module files
 		foreach ($result in ($oldResults | ? { $_.Path -like 'content\1.0\success' -or $_.Path -like 'Modules\PowerUp\*'  } )) {
