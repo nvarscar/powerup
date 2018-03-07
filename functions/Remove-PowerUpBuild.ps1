@@ -40,8 +40,7 @@ Function Remove-PowerUpBuild {
 		[string]$Path,
 		[Parameter(Mandatory = $true,
 			Position = 2)]
-		[string[]]$Build,
-		[switch]$SkipValidation
+		[string[]]$Build
 	)
 	begin {
 		
