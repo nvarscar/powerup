@@ -29,7 +29,10 @@ class PowerUp {
 	# 	return $this.GetFile($relativePath, $CollectionName)
 	# }
 	hidden [PowerUpFile] NewFile ([string]$Name, [string]$PackagePath, [string]$CollectionName) {
-		$f = [PowerUpFile]::new($Name, $PackagePath)
+		return $this.NewFile($Name, $PackagePath, $CollectionName, [PowerUpFile])
+	} 
+	hidden [PowerUpFile] NewFile ([string]$Name, [string]$PackagePath, [string]$CollectionName, [type]$Type) {
+		$f = $Type::new($Name, $PackagePath)
 		$this.AddFile($f, $CollectionName)
 		return $this.GetFile($PackagePath, $CollectionName)
 	}
@@ -159,7 +162,7 @@ class PowerUpPackage : PowerUp {
 						if (!$scriptFile) {
 							$this.ThrowArgumentException($this, "File not found inside the package: $filePackagePath")
 						}
-						$newScript = [PowerUpFile]::new($script, $scriptFile)
+						$newScript = [PowerUpScriptFile]::new($script, $scriptFile)
 						$newBuild.AddScript($newScript, $true)
 					}
 				}
@@ -266,15 +269,7 @@ class PowerUpPackage : PowerUp {
 	[string] GetVersion () {
 		return $this.Version
 	}
-	<#
-	[int]GetLastBuildDeployOrder() {
-		if ($this.builds) {
-			return $this.builds[-1].deployOrder
-		}
-		else { return 0 }
-	}
-	#>
-
+	
 	[PowerUpBuild] GetBuild ([string]$build) {
 		if ($currentBuild = $this.builds | Where-Object { $_.build -eq $build }) {
 			return $currentBuild
@@ -535,7 +530,7 @@ class PowerUpBuild : PowerUp {
 				$sourcePath = $p.FullName
 			}
 			$relativePath = [PowerUpHelper]::SplitRelativePath($sourcePath, $depth)
-			$output += $this.NewFile($sourcePath, $relativePath, 'Scripts')
+			$output += $this.NewFile($sourcePath, $relativePath, 'Scripts', [PowerUpScriptFile])
 		}
 		return $output
 	}
@@ -544,7 +539,7 @@ class PowerUpBuild : PowerUp {
 		if ($this.SourcePathExists($relativePath)) {
 			$this.ThrowArgumentException($this, "External script $($relativePath) already exists.")
 		}
-		return $this.NewFile($FileName, $relativePath, 'Scripts')
+		return $this.NewFile($FileName, $relativePath, 'Scripts', [PowerUpScriptFile])
 	}
 	# Adds script to the current build
 	[void] AddScript ([PowerUpFile[]]$script) {
@@ -702,7 +697,6 @@ class PowerUpFile : PowerUp {
 		}
 		$this.SourcePath = $SourcePath
 		$this.PackagePath = $PackagePath
-		$this.Hash = [PowerUpHelper]::ToHexString([Security.Cryptography.HashAlgorithm]::Create( "MD5" ).ComputeHash([PowerUpHelper]::GetBinaryFile($SourcePath)))
 		$file = Get-Item $SourcePath
 		$this.Length = $file.Length
 		$this.Name = $file.Name
@@ -733,12 +727,6 @@ class PowerUpFile : PowerUp {
 		finally {
 			$stream.Dispose()
 		}
-
-		$fileHash = [PowerUpHelper]::ToHexString([Security.Cryptography.HashAlgorithm]::Create( "MD5" ).ComputeHash($this.ByteArray))
-		
-		if ($this.Hash -ne $fileHash) {
-			$this.ThrowArgumentException($fileDescription, "File cannot be loaded, hash mismatch: $($file.Name)")
-		}
 		
 		$this.Length = $this.ByteArray.Length
 	}
@@ -750,7 +738,6 @@ class PowerUpFile : PowerUp {
 		}
 		$this.SourcePath = $fileDescription.SourcePath
 		$this.PackagePath = $fileDescription.PackagePath
-		$this.Hash = $fileDescription.Hash
 	}
 	[string] ToString() {
 		return "$($this.PackagePath)"
@@ -776,7 +763,6 @@ class PowerUpFile : PowerUp {
 	#Updates package content
 	[void] SetContent([byte[]]$Array) {
 		$this.ByteArray = $Array
-		$this.Hash = [PowerUpHelper]::ToHexString([Security.Cryptography.HashAlgorithm]::Create( "MD5" ).ComputeHash($Array))
 	}
 	#Initiates package update saving the current file in the package
 	[void] Alter() {
@@ -786,7 +772,7 @@ class PowerUpFile : PowerUp {
 			$pkgObj = $this.Parent.Parent
 		}
 		elseif ($this.Parent -is [PowerUpPackage]) {
-			$pkgObj = $this.Parent.FileName
+			$pkgObj = $this.Parent
 		}
 		else {
 			$pkgObj = $null
@@ -819,6 +805,8 @@ class PowerUpFile : PowerUp {
 # PowerUpRootFile class #
 #########################
 
+#Ignores the parent package path
+
 class PowerUpRootFile : PowerUpFile {
 	#Mirroring base constructors
 	PowerUpRootFile () : base () { }
@@ -832,6 +820,38 @@ class PowerUpRootFile : PowerUpFile {
 	[string] GetPackagePath() {
 		return $this.PackagePath
 	}	
+}
+
+###########################
+# PowerUpScriptFile class #
+###########################
+
+#Keeps track of file hash and disallows its creation when hash does not match
+
+class PowerUpScriptFile : PowerUpFile {
+	#Mirroring base constructors
+	PowerUpScriptFile () : base () { }
+	PowerUpScriptFile ([string]$SourcePath, [string]$PackagePath) : base($SourcePath, $PackagePath) {
+		$this.Hash = [PowerUpHelper]::ToHexString([Security.Cryptography.HashAlgorithm]::Create( "MD5" ).ComputeHash([PowerUpHelper]::GetBinaryFile($SourcePath)))
+	}
+
+	PowerUpScriptFile ([psobject]$fileDescription) : base($fileDescription) {
+		$this.Hash = $fileDescription.Hash
+	}
+
+	PowerUpScriptFile ([psobject]$fileDescription, [ZipArchiveEntry]$file) : base($fileDescription, $file) {
+		$this.Hash = $fileDescription.Hash
+		$fileHash = [PowerUpHelper]::ToHexString([Security.Cryptography.HashAlgorithm]::Create( "MD5" ).ComputeHash($this.ByteArray))
+		
+		if ($this.Hash -ne $fileHash) {
+			$this.ThrowArgumentException($fileDescription, "File cannot be loaded, hash mismatch: $($file.Name)")
+		}
+	}	
+	#Updates file content - overloaded to handle Hashes
+	[void] SetContent([byte[]]$Array) {
+		$this.ByteArray = $Array
+		$this.Hash = [PowerUpHelper]::ToHexString([Security.Cryptography.HashAlgorithm]::Create( "MD5" ).ComputeHash($Array))
+	}
 }
 
 #######################
@@ -914,11 +934,13 @@ class PowerUpConfig : PowerUp {
 		$fileContent = $this.ExportToJson() | ConvertTo-Byte
 		if ($this.Parent.ConfigurationFile) {
 			$filePath = $this.Parent.ConfigurationFile.PackagePath
-			$this.Parent.ConfigurationFile.SetContent($fileContent)
 		}
 		else {
 			$filePath = [PowerUpConfig]::GetConfigurationFileName()
+			$newFile = [PowerUpRootFile]::new(@{PackagePath = $filePath})
+			$this.Parent.AddFile($newFile, 'ConfigurationFile')
 		}
+		$this.Parent.ConfigurationFile.SetContent($fileContent)
 		[PowerUpHelper]::WriteZipFile($zipFile, $filePath, $fileContent)
 	}
 
