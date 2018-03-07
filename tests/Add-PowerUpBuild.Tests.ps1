@@ -172,7 +172,7 @@ Describe "$commandName tests" {
 		}
 		It "should throw error when package data file does not exist" {
 			try {
-				$result = Add-PowerUpBuild -Name $packageNoPkgFile -ScriptPath $v2scripts -SkipValidation
+				$result = Add-PowerUpBuild -Name $packageNoPkgFile -ScriptPath $v2scripts
 			}
 			catch {
 				$errorResult = $_
