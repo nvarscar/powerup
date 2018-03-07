@@ -253,16 +253,17 @@ Describe "$commandName - PowerUpPackageFile tests" -Tag $commandName, UnitTests,
 			$p.ConfigurationFile.ToString() | Should Be 'PowerUp.config.json'
 			($p.ConfigurationFile.GetContent() | ConvertFrom-Json).SchemaVersionTable | Should Be 'dbo.SchemaVersions'
 			$p.Configuration.SchemaVersionTable | Should Be 'dbo.SchemaVersions'
-			$p.FileName | Should BeNullOrEmpty
+			$p.FileName | Should Be "$here\etc\LoadFromFile"
 			$p.PackagePath | Should Be "$here\etc\LoadFromFile"
 			$p.$Version | Should BeNullOrEmpty
 			$p.Builds.Build | Should Be @('1.0', '2.0')
 			$p.Builds.Scripts | Should Be @('success\1.sql', 'success\2.sql')
 		}
-		# It "should override GetPackagePath method" {
-		# 	$p = [PowerUpPackageFile]::new("$here\etc\LoadFromFile\PowerUp.package.json")
-		# 	$p.GetPackagePath() | Should Be "$here\etc\LoadFromFile\content"
-		# }
+		It "should override Save/Alter methods" {
+			$p = [PowerUpPackageFile]::new("$here\etc\LoadFromFile\PowerUp.package.json")
+			{ $p.Save() } | Should Throw
+			{ $p.Alter() } | Should Throw
+		}
 		It "should still save the package using SaveToFile method" {
 			$p = [PowerUpPackageFile]::new("$here\etc\LoadFromFile\PowerUp.package.json")
 			$p.SaveToFile($packageName, $true)
@@ -275,6 +276,30 @@ Describe "$commandName - PowerUpPackageFile tests" -Tag $commandName, UnitTests,
 			'Deploy.ps1' | Should BeIn $results.Path
 			'content\1.0\success\1.sql' | Should BeIn $results.Path
 			'content\2.0\success\2.sql' | Should BeIn $results.Path
+		}
+		It "Should test RefreshFileProperties method" {
+			$p = [PowerUpPackageFile]::new("$here\etc\LoadFromFile\PowerUp.package.json")
+			$p.RefreshFileProperties()
+			$FileObject = Get-Item "$here\etc\LoadFromFile"
+			$p.PSPath | Should Be $FileObject.PSPath.ToString()
+			$p.PSParentPath | Should Be $FileObject.PSParentPath.ToString()
+			$p.PSChildName | Should Be $FileObject.PSChildName.ToString()
+			$p.PSDrive | Should Be $FileObject.PSDrive.ToString()
+			$p.PSIsContainer | Should Be $FileObject.PSIsContainer
+			$p.Mode | Should Be $FileObject.Mode
+			$p.BaseName | Should Be $FileObject.BaseName
+			$p.Name | Should Be $FileObject.Name
+			$p.Length | Should Be $FileObject.Length
+			$p.Exists | Should Be $FileObject.Exists
+			$p.FullName | Should Be $FileObject.FullName
+			$p.Extension | Should Be $FileObject.Extension
+			$p.CreationTime | Should Be $FileObject.CreationTime
+			$p.CreationTimeUtc | Should Be $FileObject.CreationTimeUtc
+			$p.LastAccessTime | Should Be $FileObject.LastAccessTime
+			$p.LastAccessTimeUtc | Should Be $FileObject.LastAccessTimeUtc
+			$p.LastWriteTime | Should Be $FileObject.LastWriteTime
+			$p.LastWriteTimeUtc | Should Be $FileObject.LastWriteTimeUtc
+			$p.Attributes | Should Be $FileObject.Attributes
 		}
 	}
 
