@@ -126,7 +126,7 @@ Describe "$commandName - PowerUpPackage tests" -Tag $commandName, UnitTests, Pow
 		It "should test ScriptExists method" {
 			$b = $script:pkg.GetBuild('1.0')
 			$s = "$here\etc\install-tests\success\1.sql"
-			$f = [PowerUpFile]::new(@{SourcePath = $s; PackagePath = 'success\1.sql'})
+			$f = [PowerUpScriptFile]::new(@{SourcePath = $s; PackagePath = 'success\1.sql'})
 			$f.SetContent([PowerUpHelper]::GetBinaryFile($s))
 			$b.AddFile($f, 'Scripts')
 			$script:pkg.ScriptExists($s) | Should Be $true
@@ -321,7 +321,7 @@ Describe "$commandName - PowerUpBuild tests" -Tag $commandName, UnitTests, Power
 		BeforeEach {
 			if ( $script:pkg.GetBuild('1.0')) { $script:pkg.RemoveBuild('1.0') }
 			$b = $script:pkg.NewBuild('1.0')
-			$f = [PowerUpFile]::new($script1, 'success\1.sql')
+			$f = [PowerUpScriptFile]::new($script1, 'success\1.sql')
 			$b.AddScript($f)
 			$script:build = $b
 		}
@@ -336,7 +336,7 @@ Describe "$commandName - PowerUpBuild tests" -Tag $commandName, UnitTests, Power
             $script:build.ToString() | Should Be '[Build: 1.0; Scripts: @{1.sql}]'  
         }
         It "should test HashExists method" {
-            $f = [PowerUpFile]::new(@{PackagePath = '1.sql'; SourcePath = '.\1.sql'; Hash = 'MyHash'})
+            $f = [PowerUpScriptFile]::new(@{PackagePath = '1.sql'; SourcePath = '.\1.sql'; Hash = 'MyHash'})
             $script:build.AddScript($f, $true)
             $script:build.HashExists('MyHash') | Should Be $true
             $script:build.HashExists('MyHash2') | Should Be $false
@@ -480,7 +480,7 @@ Describe "$commandName - PowerUpFile tests" -Tag $commandName, UnitTests, PowerU
 			$f.Name | Should Be '1.sql'
 			$f.LastWriteTime | Should Not BeNullOrEmpty
 			$f.ByteArray | Should Not BeNullOrEmpty
-			$f.Hash | Should Not BeNullOrEmpty
+			$f.Hash | Should BeNullOrEmpty
 			$f.Parent | Should BeNullOrEmpty
 			#Negative tests
 			{ [PowerUpFile]::new('Nonexisting\path', '1.sql') } | Should Throw
@@ -501,7 +501,7 @@ Describe "$commandName - PowerUpFile tests" -Tag $commandName, UnitTests, PowerU
 			$f.Name | Should BeNullOrEmpty
 			$f.LastWriteTime | Should BeNullOrEmpty
 			$f.ByteArray | Should BeNullOrEmpty
-			$f.Hash | Should Be 'MyHash'
+			$f.Hash | Should BeNullOrEmpty
 			$f.Parent | Should BeNullOrEmpty
 
 			#Negative tests
@@ -525,8 +525,8 @@ Describe "$commandName - PowerUpFile tests" -Tag $commandName, UnitTests, PowerU
 						packagePath = '1.sql'
 						Hash        = 'MyHash'
 					}
-					{ [PowerUpFile]::new($obj, $zipEntry) } | Should Throw #hash is invalid
-					$obj.Hash = [PowerUpHelper]::ToHexString([Security.Cryptography.HashAlgorithm]::Create( "MD5" ).ComputeHash([PowerUpHelper]::GetBinaryFile($script1)))
+					# { [PowerUpFile]::new($obj, $zipEntry) } | Should Throw #hash is invalid
+					# $obj.Hash = [PowerUpHelper]::ToHexString([Security.Cryptography.HashAlgorithm]::Create( "MD5" ).ComputeHash([PowerUpHelper]::GetBinaryFile($script1)))
 					$f = [PowerUpFile]::new($obj, $zipEntry)
 					$f | Should Not BeNullOrEmpty
 					$f.SourcePath | Should Be $script1
@@ -535,7 +535,8 @@ Describe "$commandName - PowerUpFile tests" -Tag $commandName, UnitTests, PowerU
 					$f.Name | Should Be '1.sql'
 					$f.LastWriteTime | Should Not BeNullOrEmpty
 					$f.ByteArray | Should Not BeNullOrEmpty
-					$f.Hash | Should Be $obj.Hash
+					# $f.Hash | Should Be $obj.Hash
+					$f.Hash | Should BeNullOrEmpty
 					$f.Parent | Should BeNullOrEmpty
 				}
 				catch {
@@ -580,6 +581,194 @@ Describe "$commandName - PowerUpFile tests" -Tag $commandName, UnitTests, PowerU
 		It "should test GetContent method" {
 			$script:file.GetContent() | Should BeLike 'CREATE TABLE dbo.a (a int)*'
 			#ToDo: add files with different encodings
+		}
+		It "should test SetContent method" {
+			$oldData = $script:file.ByteArray
+			$oldHash = $script:file.Hash
+			$script:file.SetContent([PowerUpHelper]::GetBinaryFile($script2))
+			$script:file.ByteArray | Should Not Be $oldData
+			$script:file.ByteArray | Should Not BeNullOrEmpty
+			# $script:file.Hash | Should Not Be $oldHash
+			# $script:file.Hash | Should Not BeNullOrEmpty
+		}
+		It "should test ExportToJson method" {
+			$j = $script:file.ExportToJson() | ConvertFrom-Json
+			$j.PackagePath | Should Be 'success\1.sql'
+			# $j.Hash | Should Be ([PowerUpHelper]::ToHexString([Security.Cryptography.HashAlgorithm]::Create( "MD5" ).ComputeHash([PowerUpHelper]::GetBinaryFile($script1))))
+			$j.SourcePath | Should Be $script1
+		}
+		It "should test Save method" {
+			#Save old file parameters
+			$oldResults = Get-ArchiveItem $packageName | ? Path -eq 'content\1.0\success\1.sql'
+			#Sleep 2 seconds to ensure that modification date is changed
+			Start-Sleep -Seconds 2
+			#Modify file content
+			$script:file.SetContent([PowerUpHelper]::GetBinaryFile($script2))
+			#Open zip file stream
+			$writeMode = [System.IO.FileMode]::Open
+			$stream = [FileStream]::new($packageName, $writeMode)
+			try {
+				#Open zip file
+				$zip = [ZipArchive]::new($stream, [ZipArchiveMode]::Update)
+				try {
+					#Initiate saving
+					{ $script:file.Save($zip) } | Should Not Throw
+				}
+				catch {
+					throw $_
+				}
+				finally {
+					#Close archive
+					$zip.Dispose()
+				}
+			}
+			catch {
+				throw $_
+			}
+			finally {
+				#Close archive
+				$stream.Dispose()
+			}
+			$results = Get-ArchiveItem $packageName | ? Path -eq 'content\1.0\success\1.sql'
+			$oldResults.ModifyDate -lt ($results | ? Path -eq $oldResults.Path).ModifyDate | Should Be $true
+			# { $p = [PowerUpPackage]::new($packageName) } | Should Throw #Because of the hash mismatch - package file is not updated in Save()
+		}
+		It "should test Alter method" {
+			#Save old file parameters
+			$oldResults = Get-ArchiveItem $packageName | ? Path -eq 'content\1.0\success\1.sql'
+			#Sleep 2 seconds to ensure that modification date is changed
+			Start-Sleep -Seconds 2
+			#Modify file content
+			$script:file.SetContent([PowerUpHelper]::GetBinaryFile($script2))
+			{ $script:file.Alter() } | Should Not Throw
+			$results = Get-ArchiveItem $packageName | ? Path -eq 'content\1.0\success\1.sql'
+			$oldResults.ModifyDate -lt ($results | ? Path -eq $oldResults.Path).ModifyDate | Should Be $true
+		}
+	}
+}
+
+Describe "$commandName - PowerUpScriptFile tests" -Tag $commandName, UnitTests, PowerUpFile, PowerUpScriptFile {
+	AfterAll {
+		if (Test-Path $packageName) { Remove-Item $packageName }
+	}
+	Context "tests PowerUpScriptFile object creation" {
+		AfterAll {
+			if (Test-Path $packageName) { Remove-Item $packageName }
+		}
+		It "Should create new PowerUpScriptFile object" {
+			$f = [PowerUpScriptFile]::new()
+			# $f | Should Not BeNullOrEmpty
+			$f.SourcePath | Should BeNullOrEmpty
+			$f.PackagePath | Should BeNullOrEmpty
+			$f.Length | Should Be 0 
+			$f.Name | Should BeNullOrEmpty
+			$f.LastWriteTime | Should BeNullOrEmpty
+			$f.ByteArray | Should BeNullOrEmpty
+			$f.Hash | Should BeNullOrEmpty
+			$f.Parent | Should BeNullOrEmpty
+		}
+		It "Should create new PowerUpScriptFile object from path" {
+			$f = [PowerUpScriptFile]::new($script1, '1.sql')
+			$f | Should Not BeNullOrEmpty
+			$f.SourcePath | Should Be $script1
+			$f.PackagePath | Should Be '1.sql'
+			$f.Length -gt 0 | Should Be $true
+			$f.Name | Should Be '1.sql'
+			$f.LastWriteTime | Should Not BeNullOrEmpty
+			$f.ByteArray | Should Not BeNullOrEmpty
+			$f.Hash | Should Not BeNullOrEmpty
+			$f.Parent | Should BeNullOrEmpty
+			#Negative tests
+			{ [PowerUpScriptFile]::new('Nonexisting\path', '1.sql') } | Should Throw
+			{ [PowerUpScriptFile]::new($script1, '') } | Should Throw
+			{ [PowerUpScriptFile]::new('', '1.sql') } | Should Throw
+		}
+		It "Should create new PowerUpScriptFile object using custom object" {
+			$obj = @{
+				SourcePath  = $script1
+				packagePath = '1.sql'
+				Hash        = 'MyHash'
+			}
+			$f = [PowerUpScriptFile]::new($obj)
+			$f | Should Not BeNullOrEmpty
+			$f.SourcePath | Should Be $script1
+			$f.PackagePath | Should Be '1.sql'
+			$f.Length | Should Be 0
+			$f.Name | Should BeNullOrEmpty
+			$f.LastWriteTime | Should BeNullOrEmpty
+			$f.ByteArray | Should BeNullOrEmpty
+			$f.Hash | Should Be 'MyHash'
+			$f.Parent | Should BeNullOrEmpty
+
+			#Negative tests
+			$obj = @{ foo = 'bar'}
+			{ [PowerUpScriptFile]::new($obj) } | Should Throw
+		}
+		It "Should create new PowerUpScriptFile object from zipfile using custom object" {
+			$p = [PowerUpPackage]::new()
+			$null = $p.NewBuild('1.0').NewScript($script1, 1)
+			$p.SaveToFile($packageName)
+			#Open zip file stream
+			$writeMode = [System.IO.FileMode]::Open
+			try {
+				$stream = [FileStream]::new($packageName, $writeMode)
+				#Open zip file
+				$zip = [ZipArchive]::new($stream, [ZipArchiveMode]::Read)
+				try {
+					$zipEntry = $zip.Entries | ? FullName -eq 'content\1.0\success\1.sql'
+					$obj = @{
+						SourcePath  = $script1
+						packagePath = '1.sql'
+						Hash        = 'MyHash'
+					}
+					{ [PowerUpScriptFile]::new($obj, $zipEntry) } | Should Throw #hash is invalid
+					$obj.Hash = [PowerUpHelper]::ToHexString([Security.Cryptography.HashAlgorithm]::Create( "MD5" ).ComputeHash([PowerUpHelper]::GetBinaryFile($script1)))
+					$f = [PowerUpScriptFile]::new($obj, $zipEntry)
+					$f | Should Not BeNullOrEmpty
+					$f.SourcePath | Should Be $script1
+					$f.PackagePath | Should Be '1.sql'
+					$f.Length -gt 0 | Should Be $true
+					$f.Name | Should Be '1.sql'
+					$f.LastWriteTime | Should Not BeNullOrEmpty
+					$f.ByteArray | Should Not BeNullOrEmpty
+					$f.Hash | Should Be $obj.Hash
+					$f.Parent | Should BeNullOrEmpty
+				}
+				catch {
+					throw $_
+				}
+				finally {
+					#Close archive
+					$zip.Dispose()
+				}
+			}
+			catch {
+				throw $_
+			}
+			finally {
+				#Close archive
+				$stream.Dispose()
+			}
+
+			#Negative tests
+			$badobj = @{ foo = 'bar'}
+			{ [PowerUpScriptFile]::new($badobj, $zip) } | Should Throw #object is incorrect
+			{ [PowerUpScriptFile]::new($obj, $zip) } | Should Throw #zip stream has been disposed
+		}
+	}
+	Context "tests overloaded PowerUpScriptFile methods" {
+		BeforeEach {
+			if ( $script:build.GetFile('success\1.sql', 'Scripts')) { $script:build.RemoveFile('success\1.sql', 'Scripts') }
+			$script:file = $script:build.NewFile($script1, 'success\1.sql', 'Scripts', [PowerUpScriptFile])
+			$script:build.Alter()
+		}
+		AfterAll {
+			if (Test-Path $packageName) { Remove-Item $packageName }
+		}
+		BeforeAll {
+			$script:pkg = [PowerUpPackage]::new()
+			$script:build = $script:pkg.NewBuild('1.0')
+			$script:pkg.SaveToFile($packageName, $true)
 		}
 		It "should test SetContent method" {
 			$oldData = $script:file.ByteArray
@@ -644,6 +833,183 @@ Describe "$commandName - PowerUpFile tests" -Tag $commandName, UnitTests, PowerU
 			$oldResults.ModifyDate -lt ($results | ? Path -eq $oldResults.Path).ModifyDate | Should Be $true
 			$p = [PowerUpPackage]::new($packageName)
 			$p.Builds[0].Scripts[0].GetContent() | Should BeLike 'CREATE TABLE dbo.c (a int)*'
+		}
+	}
+}
+Describe "$commandName - PowerUpRootFile tests" -Tag $commandName, UnitTests, PowerUpFile, PowerUpRootFile {
+	AfterAll {
+		if (Test-Path $packageName) { Remove-Item $packageName }
+	}
+	Context "tests PowerUpFile object creation" {
+		AfterAll {
+			if (Test-Path $packageName) { Remove-Item $packageName }
+		}
+		It "Should create new PowerUpRootFile object" {
+			$f = [PowerUpRootFile]::new()
+			# $f | Should Not BeNullOrEmpty
+			$f.SourcePath | Should BeNullOrEmpty
+			$f.PackagePath | Should BeNullOrEmpty
+			$f.Length | Should Be 0 
+			$f.Name | Should BeNullOrEmpty
+			$f.LastWriteTime | Should BeNullOrEmpty
+			$f.ByteArray | Should BeNullOrEmpty
+			$f.Hash | Should BeNullOrEmpty
+			$f.Parent | Should BeNullOrEmpty
+		}
+		It "Should create new PowerUpRootFile object from path" {
+			$f = [PowerUpRootFile]::new($script1, '1.sql')
+			$f | Should Not BeNullOrEmpty
+			$f.SourcePath | Should Be $script1
+			$f.PackagePath | Should Be '1.sql'
+			$f.Length -gt 0 | Should Be $true
+			$f.Name | Should Be '1.sql'
+			$f.LastWriteTime | Should Not BeNullOrEmpty
+			$f.ByteArray | Should Not BeNullOrEmpty
+			$f.Hash | Should BeNullOrEmpty
+			$f.Parent | Should BeNullOrEmpty
+			#Negative tests
+			{ [PowerUpRootFile]::new('Nonexisting\path', '1.sql') } | Should Throw
+			{ [PowerUpRootFile]::new($script1, '') } | Should Throw
+			{ [PowerUpRootFile]::new('', '1.sql') } | Should Throw
+		}
+		It "Should create new PowerUpRootFile object using custom object" {
+			$obj = @{
+				SourcePath  = $script1
+				packagePath = '1.sql'
+				Hash        = 'MyHash'
+			}
+			$f = [PowerUpRootFile]::new($obj)
+			$f | Should Not BeNullOrEmpty
+			$f.SourcePath | Should Be $script1
+			$f.PackagePath | Should Be '1.sql'
+			$f.Length | Should Be 0
+			$f.Name | Should BeNullOrEmpty
+			$f.LastWriteTime | Should BeNullOrEmpty
+			$f.ByteArray | Should BeNullOrEmpty
+			$f.Hash | Should BeNullOrEmpty
+			$f.Parent | Should BeNullOrEmpty
+
+			#Negative tests
+			$obj = @{ foo = 'bar'}
+			{ [PowerUpFile]::new($obj) } | Should Throw
+		}
+		It "Should create new PowerUpRootFile object from zipfile using custom object" {
+			$p = [PowerUpPackage]::new()
+			$null = $p.NewBuild('1.0').NewScript($script1, 1)
+			$p.SaveToFile($packageName)
+			#Open zip file stream
+			$writeMode = [System.IO.FileMode]::Open
+			try {
+				$stream = [FileStream]::new($packageName, $writeMode)
+				#Open zip file
+				$zip = [ZipArchive]::new($stream, [ZipArchiveMode]::Read)
+				try {
+					$zipEntry = $zip.Entries | ? FullName -eq 'content\1.0\success\1.sql'
+					$obj = @{
+						SourcePath  = $script1
+						packagePath = '1.sql'
+						Hash        = 'MyHash'
+					}
+					$f = [PowerUpRootFile]::new($obj, $zipEntry)
+					$f | Should Not BeNullOrEmpty
+					$f.SourcePath | Should Be $script1
+					$f.PackagePath | Should Be '1.sql'
+					$f.Length -gt 0 | Should Be $true
+					$f.Name | Should Be '1.sql'
+					$f.LastWriteTime | Should Not BeNullOrEmpty
+					$f.ByteArray | Should Not BeNullOrEmpty
+					$f.Hash | Should BeNullOrEmpty
+					$f.Parent | Should BeNullOrEmpty
+				}
+				catch {
+					throw $_
+				}
+				finally {
+					#Close archive
+					$zip.Dispose()
+				}
+			}
+			catch {
+				throw $_
+			}
+			finally {
+				#Close archive
+				$stream.Dispose()
+			}
+
+			#Negative tests
+			$badobj = @{ foo = 'bar'}
+			{ [PowerUpRootFile]::new($badobj, $zip) } | Should Throw #object is incorrect
+			{ [PowerUpRootFile]::new($obj, $zip) } | Should Throw #zip stream has been disposed
+		}
+	}
+	Context "tests overloaded PowerUpRootFile methods" {
+		AfterAll {
+			if (Test-Path $packageName) { Remove-Item $packageName }
+		}
+		BeforeAll {
+			$script:pkg = [PowerUpPackage]::new()
+			$script:pkg.SaveToFile($packageName, $true)
+			$script:file = $script:pkg.GetFile('Deploy.ps1', 'DeployFile')
+		}
+		It "should test SetContent method" {
+			$oldData = $script:file.ByteArray
+			$oldHash = $script:file.Hash
+			$script:file.SetContent([PowerUpHelper]::GetBinaryFile($script2))
+			$script:file.ByteArray | Should Not Be $oldData
+			$script:file.ByteArray | Should Not BeNullOrEmpty
+			$script:file.Hash | Should BeNullOrEmpty
+		}
+		It "should test ExportToJson method" {
+			$j = $script:file.ExportToJson() | ConvertFrom-Json
+			$j.PackagePath | Should Be 'Deploy.ps1'
+			$j.SourcePath | Should Be (Get-PowerUpModuleFileList | Where-Object {$_.Type -eq 'Misc' -and $_.Name -eq 'Deploy.ps1'}).FullName
+		}
+		It "should test Save method" {
+			#Save old file parameters
+			$oldResults = Get-ArchiveItem $packageName | ? Path -eq 'Deploy.ps1'
+			#Sleep 2 seconds to ensure that modification date is changed
+			Start-Sleep -Seconds 2
+			#Modify file content
+			$script:file.SetContent([PowerUpHelper]::GetBinaryFile($script2))
+			#Open zip file stream
+			$writeMode = [System.IO.FileMode]::Open
+			$stream = [FileStream]::new($packageName, $writeMode)
+			try {
+				#Open zip file
+				$zip = [ZipArchive]::new($stream, [ZipArchiveMode]::Update)
+				try {
+					#Initiate saving
+					{ $script:file.Save($zip) } | Should Not Throw
+				}
+				catch {
+					throw $_
+				}
+				finally {
+					#Close archive
+					$zip.Dispose()
+				}
+			}
+			catch {
+				throw $_
+			}
+			finally {
+				#Close archive
+				$stream.Dispose()
+			}
+			$results = Get-ArchiveItem $packageName | ? Path -eq 'Deploy.ps1'
+			$oldResults.ModifyDate -lt ($results | ? Path -eq $oldResults.Path).ModifyDate | Should Be $true
+		}
+		It "should test Alter method" {
+			#Save old file parameters
+			$oldResults = Get-ArchiveItem $packageName | ? Path -eq 'Deploy.ps1'
+			#Sleep 2 seconds to ensure that modification date is changed
+			Start-Sleep -Seconds 2
+			#Modify file content
+			$script:file.SetContent([PowerUpHelper]::GetBinaryFile($script2))
+			{ $script:file.Alter() } | Should Not Throw
+			$results = Get-ArchiveItem $packageName | ? Path -eq 'Deploy.ps1'
+			$oldResults.ModifyDate -lt ($results | ? Path -eq $oldResults.Path).ModifyDate | Should Be $true
 		}
 	}
 }
