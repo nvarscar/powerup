@@ -66,13 +66,13 @@ Describe "$commandName tests" {
 			$results = Add-PowerUpBuild -ScriptPath $scriptFolder -Name $packageNameTest -Build 2.0 -Type 'New'
 			$results | Should Not Be $null
 			$results.Name | Should Be (Split-Path $packageNameTest -Leaf)
-			$results.Config | Should Not Be $null
+			$results.Configuration | Should Not Be $null
 			$results.Version | Should Be '2.0'
 			$results.ModuleVersion | Should Be (Get-Module PowerUp).Version
 			$results.Builds | Where-Object Build -eq '1.0' | Should Not Be $null
 			$results.Builds | Where-Object Build -eq '2.0' | Should Not Be $null
-			$results.Path | Should Be $packageNameTest
-			$results.Size -gt 0 | Should Be $true
+			$results.FullName | Should Be $packageNameTest
+			$results.Length -gt 0 | Should Be $true
 			Test-Path $packageNameTest | Should Be $true
 		}
 		$results = Get-ArchiveItem $packageNameTest
@@ -106,13 +106,13 @@ Describe "$commandName tests" {
 			$results = Add-PowerUpBuild -ScriptPath $scriptFolder, "$workFolder\Test.sql" -Name $packageNameTest -Build 2.0 -Type 'Unique'
 			$results | Should Not Be $null
 			$results.Name | Should Be (Split-Path $packageNameTest -Leaf)
-			$results.Config | Should Not Be $null
+			$results.Configuration | Should Not Be $null
 			$results.Version | Should Be '2.0'
 			$results.ModuleVersion | Should Be (Get-Module PowerUp).Version
 			'1.0' | Should BeIn $results.Builds.Build
 			'2.0' | Should BeIn $results.Builds.Build
-			$results.Path | Should Be $packageNameTest
-			$results.Size -gt 0 | Should Be $true
+			$results.FullName | Should Be $packageNameTest
+			$results.Length -gt 0 | Should Be $true
 			Test-Path $packageNameTest | Should Be $true
 		}
 		It "should add new build to existing package based on changes in the file" {
@@ -121,15 +121,15 @@ Describe "$commandName tests" {
 			$results = Add-PowerUpBuild -ScriptPath $scriptFolder, "$workFolder\Test.sql" -Name $packageNameTest -Build 3.0 -Type 'Modified'
 			$results | Should Not Be $null
 			$results.Name | Should Be (Split-Path $packageNameTest -Leaf)
-			$results.Config | Should Not Be $null
+			$results.Configuration | Should Not Be $null
 			$results.Version | Should Be '3.0'
 			$results.ModuleVersion | Should Be (Get-Module PowerUp).Version
 			'1.0' | Should BeIn $results.Builds.Build
 			'2.0' | Should BeIn $results.Builds.Build
 			'2.1' | Should BeIn $results.Builds.Build
 			'3.0' | Should BeIn $results.Builds.Build
-			$results.Path | Should Be $packageNameTest
-			$results.Size -gt 0 | Should Be $true
+			$results.FullName | Should Be $packageNameTest
+			$results.Length -gt 0 | Should Be $true
 			Test-Path $packageNameTest | Should Be $true
 		}
 		$results = Get-ArchiveItem $packageNameTest
@@ -156,40 +156,6 @@ Describe "$commandName tests" {
 			'PowerUp.package.json' | Should BeIn $results.Path
 		}
 	}
-	Context "unpacked package tests" {
-		BeforeAll {
-			$null = New-PowerUpPackage -Name $packageNameTest -Build 1.0 -ScriptPath $scriptFolder
-			Expand-Archive $packageNameTest $unpackedFolder
-		}
-		AfterAll {
-			Remove-Item -Path (Join-Path $unpackedFolder *) -Recurse
-			Remove-Item $packageNameTest
-		}
-		It "Should add a build to unpacked folder" {
-			$results = Add-PowerUpBuild -ScriptPath "$scriptFolder\*" -Name $unpackedFolder -Unpacked -Build 2.0
-			$results | Should Not Be $null
-			$results.Name | Should Be (Split-Path $unpackedFolder -Leaf)
-			$results.Config | Should Not Be $null
-			$results.Version | Should Be '2.0'
-			$results.ModuleVersion | Should Be (Get-Module PowerUp).Version
-			'1.0' | Should BeIn $results.Builds.Build
-			'2.0' | Should BeIn $results.Builds.Build
-			$results.Path | Should Be $unpackedFolder.FullName
-			$results.Size | Should Be 0
-			Test-Path "$unpackedFolder\content\2.0" | Should Be $true
-			Get-ChildItem "$scriptFolder" | ForEach-Object {
-				Test-Path "$unpackedFolder\content\2.0\$($_.Name)" | Should Be $true
-			}
-		}
-		It "should contain module files" {
-			Test-Path "$unpackedFolder\Modules\PowerUp\PowerUp.psd1" | Should Be $true
-			Test-Path "$unpackedFolder\Modules\PowerUp\bin\DbUp.dll" | Should Be $true
-		}
-		It "should contain config files" {
-			Test-Path "$unpackedFolder\PowerUp.config.json" | Should Be $true
-			Test-Path "$unpackedFolder\PowerUp.package.json" | Should Be $true
-		}
-	}
 	Context "negative tests" {
 		BeforeAll {
 			$null = Copy-Item $packageName $packageNameTest
@@ -211,16 +177,10 @@ Describe "$commandName tests" {
 			catch {
 				$errorResult = $_
 			}
-			$errorResult.Exception.Message -join ';' | Should BeLike '*Package file * not found*'
+			$errorResult.Exception.Message -join ';' | Should BeLike '*Incorrect package format*'
 		}
 		It "should throw error when package zip does not exist" {
-			try {
-				$result = Add-PowerUpBuild -Name ".\nonexistingpackage.zip" -ScriptPath $v1scripts
-			}
-			catch {
-				$errorResult = $_
-			}
-			$errorResult.Exception.Message -join ';' | Should BeLike '*Package * not found. Aborting build*'
+			{ Add-PowerUpBuild -Name ".\nonexistingpackage.zip" -ScriptPath $v1scripts -ErrorAction Stop} | Should Throw
 		}
 		It "should throw error when path cannot be resolved" {
 			try {
@@ -238,7 +198,7 @@ Describe "$commandName tests" {
 			catch {
 				$errorResult = $_
 			}
-			$errorResult.Exception.Message -join ';' | Should BeLike '*already exists inside this build*'
+			$errorResult.Exception.Message -join ';' | Should BeLike '*File * already exists in*'
 		}
 	}
 }

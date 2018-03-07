@@ -139,7 +139,7 @@ class PowerUpPackageBase : PowerUp {
 	}
 	[void] RefreshFileProperties() {
 		if ($this.FileName) {
-			$FileObject = Get-Item $this.FileName
+			$FileObject = Get-Item $this.FileName -ErrorAction Stop
 			$this.PSPath = $FileObject.PSPath.ToString()
 			$this.PSParentPath = $FileObject.PSParentPath.ToString()
 			$this.PSChildName = $FileObject.PSChildName.ToString()
@@ -291,7 +291,7 @@ class PowerUpPackageBase : PowerUp {
 			if ($this.$type -is [PowerUp]) {
 				$exportObject.$type = $this.$type.ExportToJson() | ConvertFrom-Json
 			}
-			elseif ($this.$type -is [System.Array] -or $this.$type -is [System.Collections.ArrayList]) {
+			elseif (($this.PsObject.Properties | Where-Object Name -eq $type).TypeNameOfValue -like '*`[`]') {
 				$collection = @()
 				foreach ($collectionItem in $this.$type) {
 					if ($collectionItem -is [PowerUp]) {
@@ -308,7 +308,7 @@ class PowerUpPackageBase : PowerUp {
 			}
 			
 		}
-		return $exportObject | ConvertTo-Json -Depth 3
+		return $exportObject | ConvertTo-Json -Depth 4
 	}
 	hidden [void] SavePackageFile([ZipArchive]$zipFile) {
 		$pkgFileContent = $this.ExportToJson() | ConvertTo-Byte
@@ -522,7 +522,7 @@ class PowerUpPackageFile : PowerUpPackageBase {
 					if (!(Test-Path $filePackagePath)) {
 						$this.ThrowArgumentException($this, "File not found inside the package: $filePackagePath")
 					}
-					$newScript = [PowerUpScriptFile]::new($script, (Get-Item -Path $filePackagePath))
+					$newScript = [PowerUpScriptFile]::new($script, (Get-Item -Path $filePackagePath -ErrorAction Stop))
 					$newBuild.AddScript($newScript, $true)
 				}
 			}
@@ -534,7 +534,7 @@ class PowerUpPackageFile : PowerUpPackageBase {
 					if (!(Test-Path $filePackagePath)) {
 						$this.ThrowArgumentException($this, "File not found inside the package: $filePackagePath")
 					}
-					$newFile = [PowerUpRootFile]::new($jsonFileObject, (Get-Item -Path $filePackagePath))
+					$newFile = [PowerUpRootFile]::new($jsonFileObject, (Get-Item -Path $filePackagePath -ErrorAction Stop))
 					$this.AddFile($newFile, $fileType)
 				}
 			}
@@ -724,9 +724,10 @@ class PowerUpBuild : PowerUp {
 			'Build'
 			'CreatedDate'
 			'PackagePath'
-			@{ Name = 'Scripts'; Expression = { $scriptCollection }}
 		)
-		return $this | Select-Object -Property $fields | ConvertTo-Json -Depth 2
+		$output = $this | Select-Object -Property $fields
+		$output | Add-Member -MemberType NoteProperty -Name Scripts -Value $scriptCollection
+		return $output | ConvertTo-Json -Depth 2
 	}
 	#Writes current build into the archive file
 	hidden [void] Save([ZipArchive]$zipFile) {
@@ -789,7 +790,7 @@ class PowerUpFile : PowerUp {
 		}
 		$this.SourcePath = $SourcePath
 		$this.PackagePath = $PackagePath
-		$file = Get-Item $SourcePath
+		$file = Get-Item $SourcePath -ErrorAction Stop
 		$this.Length = $file.Length
 		$this.Name = $file.Name
 		$this.LastWriteTime = $file.LastWriteTime
