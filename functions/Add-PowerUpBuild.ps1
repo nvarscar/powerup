@@ -80,7 +80,7 @@ function Add-PowerUpBuild {
 			$Build = Get-NewBuildNumber
 		}
 		$scriptCollection = @()
-		Write-Verbose "Loading package information from $pFile"
+		Write-Verbose "Loading package information from $Path"
 		$package = Get-PowerUpPackage -Path $Path
 	}
 	process {
