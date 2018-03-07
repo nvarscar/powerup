@@ -63,6 +63,7 @@ Describe "$commandName - PowerUpPackage tests" -Tag $commandName, UnitTests, Pow
 			$script:pkg.Configuration.SchemaVersionTable | Should Be 'dbo.SchemaVersions'
 			$script:pkg.FileName | Should Be $packageName
 			$script:pkg.$Version | Should BeNullOrEmpty
+			$script:pkg.PackagePath | Should BeNullOrEmpty
 		}
 	}
 	Context "should validate PowerUpPackage methods" {
@@ -195,7 +196,7 @@ Describe "$commandName - PowerUpPackage tests" -Tag $commandName, UnitTests, Pow
 		#Sleep 1 second to ensure that modification date is changed
 		Start-Sleep -Seconds 2
 		It "should test Save*/Alter methods" {
-			{ $script:pkg.SaveToFile($packageName) } | Should Throw
+			{ $script:pkg.SaveToFile($packageName) } | Should Throw #File already exists
 			{ $script:pkg.Alter() } | Should Not Throw
 			$results = Get-ArchiveItem $packageName
 			foreach ($file in (Get-PowerUpModuleFileList)) {
@@ -222,13 +223,61 @@ Describe "$commandName - PowerUpPackage tests" -Tag $commandName, UnitTests, Pow
 				$saveTestsErrors | Should be 0
 			}
 		}
-		It "Should test static GetDeployFile method" {
-			$f = [PowerUpPackage]::GetDeployFile()
-			$f.Type | Should Be 'Misc'
-			$f.Path | Should BeLike '*\Deploy.ps1'
-			$f.Name | Should Be 'Deploy.ps1'
+	}
+}
+
+Describe "$commandName - PowerUpPackageFile tests" -Tag $commandName, UnitTests, PowerUpPackage, PowerUpPackageFile {
+	AfterAll {
+		if (Test-Path $packageName) { Remove-Item $packageName }
+	}
+	Context "validate PowerUpPackageFile being loaded from file" {
+		AfterAll {
+			if (Test-Path $packageName) { Remove-Item $packageName }
+			if (Test-Path "$here\etc\LoadFromFile") { Remove-Item "$here\etc\LoadFromFile" -Recurse}
+		}
+		BeforeAll {
+			$p = [PowerUpPackage]::new()
+			$b1 = $p.NewBuild('1.0')
+			$s1 = $b1.NewScript($script1, 1)
+			$b2 = $p.NewBuild('2.0')
+			$s1 = $b2.NewScript($script2, 1)
+			$p.SaveToFile($packageName)
+			$expandFolder = New-Item "$here\etc\LoadFromFile" -ItemType Directory
+			Expand-Archive $p.FullName "$here\etc\LoadFromFile"
+		}
+		It "should load package from file" {
+			$p = [PowerUpPackageFile]::new("$here\etc\LoadFromFile\PowerUp.package.json")
+			$p.ScriptDirectory | Should Be 'content'
+			$p.DeployFile.ToString() | Should Be 'Deploy.ps1'
+			$p.DeployFile.GetContent() | Should BeLike '*Invoke-PowerUpDeployment @params*'
+			$p.ConfigurationFile.ToString() | Should Be 'PowerUp.config.json'
+			($p.ConfigurationFile.GetContent() | ConvertFrom-Json).SchemaVersionTable | Should Be 'dbo.SchemaVersions'
+			$p.Configuration.SchemaVersionTable | Should Be 'dbo.SchemaVersions'
+			$p.FileName | Should BeNullOrEmpty
+			$p.PackagePath | Should Be "$here\etc\LoadFromFile"
+			$p.$Version | Should BeNullOrEmpty
+			$p.Builds.Build | Should Be @('1.0', '2.0')
+			$p.Builds.Scripts | Should Be @('success\1.sql', 'success\2.sql')
+		}
+		# It "should override GetPackagePath method" {
+		# 	$p = [PowerUpPackageFile]::new("$here\etc\LoadFromFile\PowerUp.package.json")
+		# 	$p.GetPackagePath() | Should Be "$here\etc\LoadFromFile\content"
+		# }
+		It "should still save the package using SaveToFile method" {
+			$p = [PowerUpPackageFile]::new("$here\etc\LoadFromFile\PowerUp.package.json")
+			$p.SaveToFile($packageName, $true)
+			$results = Get-ArchiveItem $packageName
+			foreach ($file in (Get-PowerUpModuleFileList)) {
+				Join-Path 'Modules\PowerUp' $file.Path | Should BeIn $results.Path
+			}
+			'PowerUp.config.json' | Should BeIn $results.Path
+			'PowerUp.package.json' | Should BeIn $results.Path
+			'Deploy.ps1' | Should BeIn $results.Path
+			'content\1.0\success\1.sql' | Should BeIn $results.Path
+			'content\2.0\success\2.sql' | Should BeIn $results.Path
 		}
 	}
+
 }
 
 Describe "$commandName - PowerUpBuild tests" -Tag $commandName, UnitTests, PowerUpBuild {
@@ -451,6 +500,7 @@ Describe "$commandName - PowerUpBuild tests" -Tag $commandName, UnitTests, Power
 		}
     }
 }
+
 Describe "$commandName - PowerUpFile tests" -Tag $commandName, UnitTests, PowerUpFile {
 	AfterAll {
 		if (Test-Path $packageName) { Remove-Item $packageName }
@@ -1010,6 +1060,17 @@ Describe "$commandName - PowerUpRootFile tests" -Tag $commandName, UnitTests, Po
 			{ $script:file.Alter() } | Should Not Throw
 			$results = Get-ArchiveItem $packageName | ? Path -eq 'Deploy.ps1'
 			$oldResults.ModifyDate -lt ($results | ? Path -eq $oldResults.Path).ModifyDate | Should Be $true
+		}
+	}
+}
+
+Describe "$commandName - PowerUpConfig tests" -Tag $commandName, UnitTests, PowerUpConfig {
+	Context "tests static methods of PowerUpConfig" {
+		It "Should test static GetDeployFile method" {
+			$f = [PowerUpConfig]::GetDeployFile()
+			$f.Type | Should Be 'Misc'
+			$f.Path | Should BeLike '*\Deploy.ps1'
+			$f.Name | Should Be 'Deploy.ps1'
 		}
 	}
 }

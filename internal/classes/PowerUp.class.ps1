@@ -44,7 +44,7 @@ class PowerUp {
 			}
 			foreach ($collectionItem in $this.$CollectionName) {
 				if ($collectionItem.PackagePath -eq $file.PackagePath) {
-					$this.ThrowArgumentException($this, "File $($file.PackagePath) already exists in $($this.ToString()).")
+					$this.ThrowArgumentException($this, "File $($file.PackagePath) already exists in $this.$CollectionName.")
 				}
 			}
 			if (($this.PsObject.Properties | Where-Object Name -eq $CollectionName).TypeNameOfValue -like '*`[`]') {
@@ -79,11 +79,11 @@ class PowerUp {
 	}
 }
 
-########################
-# PowerUpPackage class #
-########################
+############################
+# PowerUpPackageBase class #
+############################
 
-class PowerUpPackage : PowerUp {
+class PowerUpPackageBase : PowerUp {
 	#Public properties
 	[PowerUpBuild[]]$Builds
 	[string]$ScriptDirectory
@@ -100,7 +100,7 @@ class PowerUpPackage : PowerUp {
 	[string]$PSParentPath
 	[string]$PSChildName
 	[string]$PSDrive
-	[bool]  $PSIsContainer
+	[bool]$PSIsContainer
 	[string]$Mode
 	[string]$BaseName
 	[string]$Name
@@ -119,92 +119,17 @@ class PowerUpPackage : PowerUp {
 	[datetime]$LastWriteTimeUtc
 	[System.IO.FileAttributes]$Attributes
 
+	#hidden properties
 	hidden [string]$FileName
+	hidden [string]$PackagePath
 	
-	#Constructors
-	PowerUpPackage () {
-		$this.Init()
-		# Processing deploy file
-		$file = [PowerUpPackage]::GetDeployFile()
-		# Adding root deploy file
-		$this.AddFile([PowerUpRootFile]::new($file.FullName, $file.Name), 'DeployFile')
-		# Adding configuration file default contents
-		$configFile = [PowerUpRootFile]::new()
-		$configContent = $this.Configuration.ExportToJson() | ConvertTo-Byte
-		$configFile.SetContent($configContent)
-		$configFile.PackagePath = [PowerUpConfig]::GetConfigurationFileName()
-		$this.AddFile($configFile, 'ConfigurationFile')
-	}
-
-	PowerUpPackage ([string]$fileName) {
-		if (!(Test-Path $fileName -PathType Leaf)) {
-			throw "File $fileName not found. Aborting."
-		}
-		$this.FileName = $fileName
-		# Setting regular file properties
-		$this.RefreshFileProperties()
-		# Reading zip file contents into memory
-		$zip = [Zipfile]::OpenRead($fileName)
-		try { 
-			# Processing package file
-			$pkgFile = $zip.Entries | Where-Object FullName -eq ([PowerUpConfig]::GetPackageFileName())
-			if ($pkgFile) {
-				$pFile = [PowerUpFile]::new()
-				$pFile.SetContent([PowerUpHelper]::ReadDeflateStream($pkgFile.Open()).ToArray())
-				$jsonObject = ConvertFrom-Json $pFile.GetContent() -ErrorAction Stop
-				$this.Init($jsonObject)
-				# Processing builds
-				foreach ($build in $jsonObject.builds) {
-					$newBuild = $this.NewBuild($build.build)
-					foreach ($script in $build.Scripts) {
-						$filePackagePath = Join-Path $newBuild.GetPackagePath() $script.packagePath
-						$scriptFile = $zip.Entries | Where-Object FullName -eq $filePackagePath
-						if (!$scriptFile) {
-							$this.ThrowArgumentException($this, "File not found inside the package: $filePackagePath")
-						}
-						$newScript = [PowerUpScriptFile]::new($script, $scriptFile)
-						$newBuild.AddScript($newScript, $true)
-					}
-				}
-				# Processing root files
-				foreach ($file in @('DeployFile', 'PreDeployFile', 'PostDeployFile', 'ConfigurationFile')) {
-					$jsonFileObject = $jsonObject.$file
-					if ($jsonFileObject) {
-						$fileBinary = $zip.Entries | Where-Object FullName -eq $jsonFileObject.packagePath
-						if ($fileBinary) {
-							$newFile = [PowerUpRootFile]::new($jsonFileObject, $fileBinary)
-							$this.AddFile($newFile, $file)
-						}
-						else {
-							$this.ThrowException('Exception', "File $($jsonFileObject.packagePath) not found in the package", $this, 'InvalidData')
-						}
-					}
-				}
-			}
-			else {
-				$this.ThrowArgumentException($this, "Incorrect package format: $fileName")
-			}
-
-			# Processing configuration file
-			if ($this.ConfigurationFile) {
-				$this.Configuration = [PowerUpConfig]::new($this.ConfigurationFile.GetContent())
-				$this.Configuration.Parent = $this
-			}
-		}
-		catch { throw $_ }
-		finally {
-			# Dispose of the reader
-			$zip.Dispose()
-		}
-	}
 	
 	#Methods
 	[void] Init () {
 		$this.ScriptDirectory = 'content'
-		# $this.DeploySource = ".\bin\Deploy.ps1"
-		# $this.ConfigurationFile = 'PowerUp.config.json'
 		$this.Configuration = [PowerUpConfig]::new()
 		$this.Configuration.Parent = $this
+		$this.PackagePath = ""
 	}
 	[void] Init ([object]$jsonObject) {
 		$this.Init()
@@ -215,17 +140,17 @@ class PowerUpPackage : PowerUp {
 	[void] RefreshFileProperties() {
 		if ($this.FileName) {
 			$FileObject = Get-Item $this.FileName
-			$this.PSPath = $FileObject.PSPath
-			$this.PSParentPath = $FileObject.PSParentPath
-			$this.PSChildName = $FileObject.PSChildName
-			$this.PSDrive = $FileObject.PSDrive
+			$this.PSPath = $FileObject.PSPath.ToString()
+			$this.PSParentPath = $FileObject.PSParentPath.ToString()
+			$this.PSChildName = $FileObject.PSChildName.ToString()
+			$this.PSDrive = $FileObject.PSDrive.ToString()
 			$this.PSIsContainer = $FileObject.PSIsContainer
 			$this.Mode = $FileObject.Mode
 			$this.BaseName = $FileObject.BaseName
 			$this.Name = $FileObject.Name
 			$this.Length = $FileObject.Length
 			$this.DirectoryName = $FileObject.DirectoryName
-			$this.Directory = $FileObject.Directory
+			$this.Directory = $FileObject.Directory.ToString()
 			$this.IsReadOnly = $FileObject.IsReadOnly
 			$this.Exists = $FileObject.Exists
 			$this.FullName = $FileObject.FullName
@@ -275,7 +200,6 @@ class PowerUpPackage : PowerUp {
 			return $currentBuild
 		}
 		else {
-			# $this.ThrowArgumentException($this, 'Build not found.')
 			return $null
 		}
 	}
@@ -448,8 +372,8 @@ class PowerUpPackage : PowerUp {
 	#Refresh module version from the module file inside the package
 	[void] RefreshModuleVersion() {
 		if ($this.FileName) {
-			$packagePath = 'Modules\PowerUp\PowerUp.psd1'
-			$contents = ([PowerUpHelper]::GetArchiveItem($this.FileName, $packagePath)).ByteArray
+			$manifestPackagePath = 'Modules\PowerUp\PowerUp.psd1'
+			$contents = ([PowerUpHelper]::GetArchiveItem($this.FileName, $manifestPackagePath)).ByteArray
 			if ([PowerUpHelper]::DecodeBinaryText($contents) -match "[\s+]ModuleVersion[\s+]\=[\s+]\'(.*)\'") {
 				$this.ModuleVersion = [System.Version]$Matches[1]
 			}
@@ -462,7 +386,7 @@ class PowerUpPackage : PowerUp {
 			return $this.FullName
 		}
 		else {
-			return "PowerUpPackage"
+			return "[PowerUpPackage]"
 		}
 	}
 
@@ -472,11 +396,157 @@ class PowerUpPackage : PowerUp {
 		$config.Parent = $this
 	}
 
-	#Static methods
-	#Returns deploy file name
-	static [object]GetDeployFile() {
-		return (Get-PowerUpModuleFileList | Where-Object { $_.Type -eq 'Misc' -and $_.Name -eq "Deploy.ps1"})
+}
+########################
+# PowerUpPackage class #
+########################
+
+# Supports creating a package object from a zip file, working around a shared default constructor in a base class
+
+class PowerUpPackage : PowerUpPackageBase {
+	#Constructors
+	PowerUpPackage () {
+		
+		$this.Init()
+		# Processing deploy file
+		$file = [PowerUpConfig]::GetDeployFile()
+		# Adding root deploy file
+		$this.AddFile([PowerUpRootFile]::new($file.FullName, $file.Name), 'DeployFile')
+		# Adding configuration file default contents
+		$configFile = [PowerUpRootFile]::new()
+		$configContent = $this.Configuration.ExportToJson() | ConvertTo-Byte
+		$configFile.SetContent($configContent)
+		$configFile.PackagePath = [PowerUpConfig]::GetConfigurationFileName()
+		$this.AddFile($configFile, 'ConfigurationFile')
 	}
+
+	PowerUpPackage ([string]$fileName) {
+		
+		if (!(Test-Path $fileName -PathType Leaf)) {
+			throw "File $fileName not found. Aborting."
+		}
+		$this.FileName = $fileName
+		# Setting regular file properties
+		$this.RefreshFileProperties()
+		# Reading zip file contents into memory
+		$zip = [Zipfile]::OpenRead($fileName)
+		try { 
+			# Processing package file
+			$pkgFile = $zip.Entries | Where-Object FullName -eq ([PowerUpConfig]::GetPackageFileName())
+			if ($pkgFile) {
+				$pkgFileBin = [PowerUpHelper]::ReadDeflateStream($pkgFile.Open()).ToArray()
+				$jsonObject = ConvertFrom-Json ([PowerUpHelper]::DecodeBinaryText($pkgFileBin)) -ErrorAction Stop
+				$this.Init($jsonObject)
+				# Processing builds
+				foreach ($build in $jsonObject.builds) {
+					$newBuild = $this.NewBuild($build.build)
+					foreach ($script in $build.Scripts) {
+						$filePackagePath = Join-Path $newBuild.GetPackagePath() $script.packagePath
+						$scriptFile = $zip.Entries | Where-Object FullName -eq $filePackagePath
+						if (!$scriptFile) {
+							$this.ThrowArgumentException($this, "File not found inside the package: $filePackagePath")
+						}
+						$newScript = [PowerUpScriptFile]::new($script, $scriptFile)
+						$newBuild.AddScript($newScript, $true)
+					}
+				}
+				# Processing root files
+				foreach ($file in @('DeployFile', 'PreDeployFile', 'PostDeployFile', 'ConfigurationFile')) {
+					$jsonFileObject = $jsonObject.$file
+					if ($jsonFileObject) {
+						$fileBinary = $zip.Entries | Where-Object FullName -eq $jsonFileObject.packagePath
+						if ($fileBinary) {
+							$newFile = [PowerUpRootFile]::new($jsonFileObject, $fileBinary)
+							$this.AddFile($newFile, $file)
+						}
+						else {
+							$this.ThrowException('Exception', "File $($jsonFileObject.packagePath) not found in the package", $this, 'InvalidData')
+						}
+					}
+				}
+			}
+			else {
+				$this.ThrowArgumentException($this, "Incorrect package format: $fileName")
+			}
+
+			# Processing configuration file
+			if ($this.ConfigurationFile) {
+				$this.Configuration = [PowerUpConfig]::new($this.ConfigurationFile.GetContent())
+				$this.Configuration.Parent = $this
+			}
+		}
+		catch { throw $_ }
+		finally {
+			# Dispose of the reader
+			$zip.Dispose()
+		}
+	}
+	
+}
+
+############################
+# PowerUpPackageFile class #
+############################
+
+# Supports creating a package object from an extracted zip - basically from a json file
+class PowerUpPackageFile : PowerUpPackageBase {
+
+	#Apparently, inheriting a class will run a default constructor anyways, PowerUpPackageBase is a new class that has no constructor
+
+	PowerUpPackageFile ([string]$fileName) {
+		if (!(Test-Path $fileName -PathType Leaf)) {
+			throw "File $fileName not found. Aborting."
+		}
+		# Processing package file
+		$pkgFileBin = [PowerUpHelper]::GetBinaryFile($fileName)
+		if ($pkgFileBin) {
+			$jsonObject = ConvertFrom-Json ([PowerUpHelper]::DecodeBinaryText($pkgFileBin)) -ErrorAction Stop
+			$this.Init($jsonObject)
+			#Defining package path as a parent folder of the package file
+			$folderPath = Split-Path $fileName -Parent
+			$this.PackagePath = $folderPath
+			# Processing builds
+			foreach ($build in $jsonObject.builds) {
+				$newBuild = $this.NewBuild($build.build)
+				foreach ($script in $build.Scripts) {
+					$contentPath = Join-Path $folderPath $newBuild.GetPackagePath()
+					$filePackagePath = Join-Path $contentPath $script.packagePath
+					if (!(Test-Path $filePackagePath)) {
+						$this.ThrowArgumentException($this, "File not found inside the package: $filePackagePath")
+					}
+					$newScript = [PowerUpScriptFile]::new($script, (Get-Item -Path $filePackagePath))
+					$newBuild.AddScript($newScript, $true)
+				}
+			}
+			# Processing root files
+			foreach ($fileType in @('DeployFile', 'PreDeployFile', 'PostDeployFile', 'ConfigurationFile')) {
+				$jsonFileObject = $jsonObject.$fileType
+				if ($jsonFileObject) {
+					$filePackagePath = Join-Path $folderPath $jsonFileObject.packagePath
+					if (!(Test-Path $filePackagePath)) {
+						$this.ThrowArgumentException($this, "File not found inside the package: $filePackagePath")
+					}
+					$newFile = [PowerUpRootFile]::new($jsonFileObject, (Get-Item -Path $filePackagePath))
+					$this.AddFile($newFile, $fileType)
+				}
+			}
+		}
+		else {
+			$this.ThrowArgumentException($this, "Incorrect package format: $fileName")
+		}
+
+		# Processing configuration file
+		if ($this.ConfigurationFile) {
+			$this.Configuration = [PowerUpConfig]::new($this.ConfigurationFile.GetContent())
+			$this.Configuration.Parent = $this
+		}
+	
+	}
+
+	# #Returns absolute path of the content folder
+	# [string] GetPackageFilePath() {
+	# 	return Join-Path (Get-Item $this.PackagePath).FullName  ([PowerUpPackageBase]$this).GetPackagePath()
+	# }
 
 }
 
@@ -490,7 +560,7 @@ class PowerUpBuild : PowerUp {
 	[PowerUpFile[]]$Scripts
 	[string]$CreatedDate
 	
-	hidden [PowerUpPackage]$Parent
+	hidden [PowerUpPackageBase]$Parent
 	hidden [string]$PackagePath
 	
 	#Constructors
@@ -730,6 +800,17 @@ class PowerUpFile : PowerUp {
 		
 		$this.Length = $this.ByteArray.Length
 	}
+	PowerUpFile ([psobject]$fileDescription, [System.IO.FileInfo]$file) {
+		#Set properties imported from package file
+		$this.Init($fileDescription)
+
+		#Set properties from the file
+		$this.Name = $file.Name
+		$this.LastWriteTime = $file.LastWriteTime
+
+		$this.ByteArray = [PowerUpHelper]::GetBinaryFile($file.FullName)
+		$this.Length = $this.ByteArray.Length
+	}
 
 	#Methods 
 	[void] Init ([psobject]$fileDescription) {
@@ -816,6 +897,8 @@ class PowerUpRootFile : PowerUpFile {
 
 	PowerUpRootFile ([psobject]$fileDescription, [ZipArchiveEntry]$file) : base($fileDescription, $file) { }	
 
+	PowerUpRootFile ([psobject]$fileDescription, [System.IO.FileInfo]$file) : base($fileDescription, $file) { }
+
 	#Overloading GetPackagePath to ignore folders of the parent objects
 	[string] GetPackagePath() {
 		return $this.PackagePath
@@ -829,7 +912,7 @@ class PowerUpRootFile : PowerUpFile {
 #Keeps track of file hash and disallows its creation when hash does not match
 
 class PowerUpScriptFile : PowerUpFile {
-	#Mirroring base constructors
+	#Mirroring base constructors adding Hash control pieces
 	PowerUpScriptFile () : base () { }
 	PowerUpScriptFile ([string]$SourcePath, [string]$PackagePath) : base($SourcePath, $PackagePath) {
 		$this.Hash = [PowerUpHelper]::ToHexString([Security.Cryptography.HashAlgorithm]::Create( "MD5" ).ComputeHash([PowerUpHelper]::GetBinaryFile($SourcePath)))
@@ -842,15 +925,25 @@ class PowerUpScriptFile : PowerUpFile {
 	PowerUpScriptFile ([psobject]$fileDescription, [ZipArchiveEntry]$file) : base($fileDescription, $file) {
 		$this.Hash = $fileDescription.Hash
 		$fileHash = [PowerUpHelper]::ToHexString([Security.Cryptography.HashAlgorithm]::Create( "MD5" ).ComputeHash($this.ByteArray))
-		
-		if ($this.Hash -ne $fileHash) {
-			$this.ThrowArgumentException($fileDescription, "File cannot be loaded, hash mismatch: $($file.Name)")
-		}
+		# Verify file hash and throw an error if it doesn't match
+		$this.VerifyHash($fileHash)
 	}	
+
+	PowerUpScriptFile ([psobject]$fileDescription, [System.IO.FileInfo]$file) : base($fileDescription, $file) {
+		$this.Hash = $fileDescription.Hash
+		$fileHash = [PowerUpHelper]::ToHexString([Security.Cryptography.HashAlgorithm]::Create( "MD5" ).ComputeHash($this.ByteArray))
+		# Verify file hash and throw an error if it doesn't match
+		$this.VerifyHash($fileHash)
+	}
 	#Updates file content - overloaded to handle Hashes
 	[void] SetContent([byte[]]$Array) {
 		$this.ByteArray = $Array
 		$this.Hash = [PowerUpHelper]::ToHexString([Security.Cryptography.HashAlgorithm]::Create( "MD5" ).ComputeHash($Array))
+	}
+	[void] VerifyHash([string]$Hash) {
+		if ($this.Hash -ne $Hash) {
+			$this.ThrowArgumentException($this, "File cannot be loaded, hash mismatch: $($this.Name)")
+		}
 	}
 }
 
@@ -874,7 +967,7 @@ class PowerUpConfig : PowerUp {
 	[System.Nullable[bool]]$Silent
 	[psobject]$Variables
 
-	hidden [PowerUpPackage]$Parent
+	hidden [PowerUpPackageBase]$Parent
 
 	#Constructors
 	PowerUpConfig () {
@@ -968,5 +1061,10 @@ class PowerUpConfig : PowerUp {
 			'ConnectionTimeout', 'ExecutionTimeout', 'Encrypt', 'Credential', 'Username',
 			'Password', 'SchemaVersionTable', 'Silent', 'Variables'
 		)
+	}
+
+	#Returns deploy file name
+	static [object]GetDeployFile() {
+		return (Get-PowerUpModuleFileList | Where-Object { $_.Type -eq 'Misc' -and $_.Name -eq "Deploy.ps1"})
 	}
 }
