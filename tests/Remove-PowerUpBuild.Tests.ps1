@@ -142,7 +142,7 @@ Describe "$commandName tests" {
 		}
 		It "should throw error when package data file does not exist" {
 			try {
-				$result = Remove-PowerUpBuild -Name $packageNoPkgFile -Build 2.0 -SkipValidation
+				$result = Remove-PowerUpBuild -Name $packageNoPkgFile -Build 2.0
 			}
 			catch {
 				$errorResult = $_
