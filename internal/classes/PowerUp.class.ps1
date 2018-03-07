@@ -150,7 +150,9 @@ class PowerUpPackageBase : PowerUp {
 			$this.Name = $FileObject.Name
 			$this.Length = $FileObject.Length
 			$this.DirectoryName = $FileObject.DirectoryName
-			$this.Directory = $FileObject.Directory.ToString()
+			if ($FileObject.Directory) {
+				$this.Directory = $FileObject.Directory.ToString()
+			}
 			$this.IsReadOnly = $FileObject.IsReadOnly
 			$this.Exists = $FileObject.Exists
 			$this.FullName = $FileObject.FullName
@@ -332,8 +334,10 @@ class PowerUpPackageBase : PowerUp {
 			#Create zip file
 			$zip = [ZipArchive]::new($stream, [ZipArchiveMode]::Create)
 			try {
-				#Change package file name in the object
-				$this.FileName = $fileName
+				#Change package file name in the object if it wasn't set before
+				if (!$this.FileName) {
+					$this.FileName = $fileName
+				}
 				#Write package file
 				$this.SavePackageFile($zip)
 				#Write files
@@ -504,6 +508,10 @@ class PowerUpPackageFile : PowerUpPackageBase {
 			$this.Init($jsonObject)
 			#Defining package path as a parent folder of the package file
 			$folderPath = Split-Path $fileName -Parent
+			$this.FileName = $folderPath
+			# Setting regular file properties
+			$this.RefreshFileProperties()
+
 			$this.PackagePath = $folderPath
 			# Processing builds
 			foreach ($build in $jsonObject.builds) {
@@ -543,10 +551,24 @@ class PowerUpPackageFile : PowerUpPackageBase {
 	
 	}
 
-	# #Returns absolute path of the content folder
-	# [string] GetPackageFilePath() {
-	# 	return Join-Path (Get-Item $this.PackagePath).FullName  ([PowerUpPackageBase]$this).GetPackagePath()
-	# }
+	#overloads to prefent unpacked packages from being saved
+	[void] Alter() {
+		$this.ThrowArgumentException($this, "Unpacked package cannot be saved without compressing it first. Use SaveToFile('myfile') instead.")
+	}
+	[void] Save() {
+		$this.Alter()
+	}
+
+	#Overload to read module file from the folder
+	[void] RefreshModuleVersion() {
+		if ($this.FileName) {
+			$manifestPackagePath = Join-Path $this.FileName 'Modules\PowerUp\PowerUp.psd1'
+			$contents = ([PowerUpHelper]::GetBinaryFile($manifestPackagePath))
+			if ([PowerUpHelper]::DecodeBinaryText($contents) -match "[\s+]ModuleVersion[\s+]\=[\s+]\'(.*)\'") {
+				$this.ModuleVersion = [System.Version]$Matches[1]
+			}
+		}
+	}
 
 }
 

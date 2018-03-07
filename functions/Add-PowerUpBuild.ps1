@@ -84,9 +84,7 @@ function Add-PowerUpBuild {
 		[string]$Build,
 		[switch]$SkipValidation,
 		[ValidateSet('New', 'Modified', 'Unique', 'All')]
-		[string[]]$Type = 'All',
-		[Parameter(DontShow)]
-		[switch]$Unpacked
+		[string[]]$Type = 'All'
 	)
 	
 	begin {
@@ -94,13 +92,8 @@ function Add-PowerUpBuild {
 			$Build = Get-NewBuildNumber
 		}
 		$scriptCollection = @()
-		if ($Path -and (Test-Path $Path)) {
-			$pFile = Get-Item $Path
-		}
-		else {
-			throw "Package $Path not found. Aborting build."
-			return
-		}		
+		Write-Verbose "Loading package information from $pFile"
+		$package = Get-PowerUpPackage -Path $Path
 	}
 	process {
 		foreach ($scriptItem in $ScriptPath) {
@@ -109,135 +102,54 @@ function Add-PowerUpBuild {
 		}
 	}
 	end {
-		#Create a temp folder
-		if ($Unpacked) {
-			$workFolder = $pFile
-		}
-		else {
-			$workFolder = New-TempWorkspaceFolder
-		}
-		
-		#Ensure that temp workspace is always cleaned up
-		try {
-			if (!$Unpacked) {
-				#Extract package
-				Write-Verbose "Extracting package $pFile to $workFolder"
-				Expand-Archive -Path $pFile -DestinationPath $workFolder
+		#Prepare the scripts that's going to be added to the build
+		$scriptsToAdd = @()
+		foreach ($childScript in $scriptCollection) { 
+			# Include file by default
+			$includeFile = $Type -contains 'All'
+			if ($Type -contains 'New') {
+				#Check if the script path was already added in one of the previous builds
+				if (!$package.SourcePathExists($childScript.SourcePath)) {
+					$includeFile = $true
+					Write-Verbose "File $($childScript.SourcePath) was not found among the package source files, adding to the list."
+				}
 			}
-
-			#Validate package
-			if (!$SkipValidation) {
-				$validation = Test-PowerUpPackage -Path $workFolder -Unpacked
-				if ($validation.IsValid -eq $false) {
-					$throwMessage = "The following package items have failed validation: "
-					$throwMessage += ($validation.ValidationTests | Where-Object { $_.Result -eq $false }).Item -join ", "
-					throw $throwMessage
+			if ($Type -contains 'Modified') {
+				#Check if the file was modified in the previous build
+				if ($package.ScriptModified($childScript.FullName, $childScript.SourcePath)) {
+					$includeFile = $true
+					Write-Verbose "Hash of the file $($childScript.FullName) was modified since last deployment, adding to the list."
 				}
-				$moduleVersion = $validation.ModuleVersion
 			}
-			
-			#Load package object
-			Write-Verbose "Loading package information from $pFile"
-			$package = [PowerUpPackage]::FromFile((Join-Path $workFolder "PowerUp.package.json"))
-			
-			$scriptsToAdd = @()
-			foreach ($childScript in $scriptCollection) { 
-				# Include file by default
-				$includeFile = $Type -contains 'All'
-				if ($Type -contains 'New') {
-					#Check if the script path was already added in one of the previous builds
-					if (!$package.SourcePathExists($childScript.SourcePath)) {
-						$includeFile = $true
-						Write-Verbose "File $($childScript.SourcePath) was not found among the package source files, adding to the list."
-					}
+			if ($Type -contains 'Unique') {
+				#Check if the script hash was already added in one of the previous builds
+				if (!$package.ScriptExists($childScript.FullName)) {
+					$includeFile = $true
+					Write-Verbose "Hash of the file $($childScript.FullName) was not found among the package scripts, adding to the list.."
 				}
-				if ($Type -contains 'Modified') {
-					#Check if the file was modified in the previous build
-					if ($package.ScriptModified($childScript.FullName, $childScript.SourcePath)) {
-						$includeFile = $true
-						Write-Verbose "Hash of the file $($childScript.FullName) was modified since last deployment, adding to the list."
-					}
-				}
-				if ($Type -contains 'Unique') {
-					#Check if the script hash was already added in one of the previous builds
-					if (!$package.ScriptExists($childScript.FullName)) {
-						$includeFile = $true
-						Write-Verbose "Hash of the file $($childScript.FullName) was not found among the package scripts, adding to the list.."
-					}
-				}
-				if ($includeFile) {
-					$scriptsToAdd += $childScript
-				}
-				else {
-					Write-Verbose "File $($childScript.FullName) was not added to the current build due to -Type restrictions: $($Type -join ',')"
-				}
-			}	
-
-			if ($scriptsToAdd) {
-
-				#Create new build object
-				$currentBuild = [PowerUpBuild]::new($Build)
-
-				foreach ($buildScript in $scriptsToAdd) {
-					Write-Verbose "Adding file '$($buildScript.FullName)' to $currentBuild"
-					$currentBuild.NewScript($buildScript) 
-				}
-
-				Write-Verbose "Adding $currentBuild to the package object"
-				$package.AddBuild($currentBuild)
-		
-				$scriptDir = Join-Path $workFolder $package.ScriptDirectory
-				if (!(Test-Path $scriptDir)) {
-					$null = New-Item $scriptDir -ItemType Directory
-				}
-
-				if ($pscmdlet.ShouldProcess($pFile, "Copying build files")) {
-					Copy-FilesToBuildFolder $currentBuild $scriptDir
-				}
-			
-				$packagePath = Join-Path $workFolder $package.PackageFile
-				if ($pscmdlet.ShouldProcess($pFile, "Writing package file $packagePath")) {
-					$package.SaveToFile($packagePath, $true)
-				}
-
-				if ($moduleVersion -and (Test-ModuleManifest -Path "$workfolder\Modules\PowerUp\PowerUp.psd1").Version.CompareTo($moduleVersion) -lt 0) {
-					if ($pscmdlet.ShouldProcess($pFile, "Updating inner module version to $moduleVersion")) {
-						Copy-ModuleFiles -Path $workFolder
-					}
-				}
-
-				#Storing package details in a variable
-				$packageInfo = Get-PowerUpPackage -Path $workFolder -Unpacked
-				
-				if (!$Unpacked) {
-					if ($pscmdlet.ShouldProcess($pFile, "Repackaging original package")) {
-						Compress-Archive "$workFolder\*" -DestinationPath $pFile -Force
-					}
-				}
-
-				#Preparing output object
-				$outputObject = [PowerUpPackageFile]::new((Get-Item $pFile))
-				$outputObject.Config = $packageInfo.Config
-				$outputObject.Version = $packageInfo.Version
-				$outputObject.ModuleVersion = $packageInfo.ModuleVersion
-				$outputObject.Builds = $packageInfo.Builds	
-
+			}
+			if ($includeFile) {
+				$scriptsToAdd += $childScript
 			}
 			else {
-				Write-Warning "No scripts have been selected, the original file is unchanged."
-				$outputObject = Get-PowerUpPackage -Path $pFile
+				Write-Verbose "File $($childScript.FullName) was not added to the current build due to -Type restrictions: $($Type -join ',')"
+			}
+		}	
+
+		if ($scriptsToAdd) {
+
+			#Create new build object
+			$currentBuild = $package.NewBuild($Build)
+
+			foreach ($buildScript in $scriptsToAdd) {
+				Write-Verbose "Adding file '$($buildScript.FullName)' to $currentBuild"
+				$currentBuild.NewScript($buildScript) 
 			}
 
-			$outputObject
-		}
-		catch {
-			throw $_
-		}
-		finally {
-			if (!$Unpacked -and $workFolder.Name -like 'PowerUpWorkspace*') {
-				Write-Verbose "Removing temporary folder $workFolder"
-				Remove-Item $workFolder -Recurse -Force
+			if ($pscmdlet.ShouldProcess($package, "Writing new build $currentBuild into the original package")) {
+				$currentBuild.Alter()
 			}
 		}
+		$package
 	}
 }

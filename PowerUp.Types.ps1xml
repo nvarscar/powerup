@@ -11,9 +11,9 @@
 			<ReferencedProperties>
 				<Name>Name</Name>
 				<Name>Version</Name>
-				<Name>ModuleVersion</Name>
-				<Name>Size</Name>
 				<Name>LastWriteTime</Name>
+				<Name>Configuration</Name>
+				<Name>Builds</Name>
 			</ReferencedProperties>
 			</PropertySet>
 		</Members>

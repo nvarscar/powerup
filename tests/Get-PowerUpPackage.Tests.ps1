@@ -33,47 +33,54 @@ Describe "$commandName tests" {
 		It "returns existing builds" {
 			$result = Get-PowerUpPackage -Path $packageName
 			$result.Builds.Build | Should Be @('1.0', '2.0', '3.0')
-			$result.Builds.Scripts.Name | Should Be @('1.0\1.sql', '2.0\2.sql', '3.0\3.sql')
+			$result.Builds.Scripts.Name | Should Be @('1.sql', '2.sql', '3.sql')
 			$result.Builds.Scripts.SourcePath | Should Be @((Get-Item $v1scripts).FullName, (Get-Item $v2scripts).FullName, (Get-Item $v3scripts).FullName)
-		}
-		It "should return specific build" {
-			$result = Get-PowerUpPackage -Path $packageName -Build '1.0'
-			$result.Builds.Build | Should Be '1.0'
-			$result.Builds.Scripts.Name | Should Be '1.0\1.sql'
-			$result.Builds.Scripts.SourcePath | Should Be (Get-Item $v1scripts).FullName
-		}
-		It "should return specific build and not return non-existing builds" {
-			$result = Get-PowerUpPackage -Path $packageName -Build '1.0', '2.0', '4.0'
-			$result.Builds.Build | Where-Object { $_ -eq '1.0'} | Should Not Be $null
-			$result.Builds.Build | Where-Object { $_ -eq '2.0'} | Should Not Be $null
-			$result.Builds.Build | Where-Object { $_ -eq '3.0'} | Should Be $null
-			$result.Builds.Build | Where-Object { $_ -eq '4.0'} | Should Be $null
 		}
 		It "should return package info" {
 			$result = Get-PowerUpPackage -Path $packageName
-			$result.Name | Should Be 'TempDeployment.zip'
-			$result.Path | Should Be $packageName
-			$result.CreationTime | Should Not Be $null
-			$result.Size | Should Not Be $null
 			$result.Version | Should Be '3.0'
 			$result.ModuleVersion | Should Be (Get-Module PowerUp).Version
+
+			$FileObject = Get-Item $packageName
+			$result.PSPath | Should Be $FileObject.PSPath.ToString()
+			$result.PSParentPath | Should Be $FileObject.PSParentPath.ToString()
+			$result.PSChildName | Should Be $FileObject.PSChildName.ToString()
+			$result.PSDrive | Should Be $FileObject.PSDrive.ToString()
+			$result.PSIsContainer | Should Be $FileObject.PSIsContainer
+			$result.Mode | Should Be $FileObject.Mode
+			$result.BaseName | Should Be $FileObject.BaseName
+			$result.Name | Should Be $FileObject.Name
+			$result.Length | Should Be $FileObject.Length
+			$result.DirectoryName | Should Be $FileObject.DirectoryName
+			$result.Directory | Should Be $FileObject.Directory.ToString()
+			$result.IsReadOnly | Should Be $FileObject.IsReadOnly
+			$result.Exists | Should Be $FileObject.Exists
+			$result.FullName | Should Be $FileObject.FullName
+			$result.Extension | Should Be $FileObject.Extension
+			$result.CreationTime | Should Be $FileObject.CreationTime
+			$result.CreationTimeUtc | Should Be $FileObject.CreationTimeUtc
+			$result.LastAccessTime | Should Be $FileObject.LastAccessTime
+			$result.LastAccessTimeUtc | Should Be $FileObject.LastAccessTimeUtc
+			$result.LastWriteTime | Should Be $FileObject.LastWriteTime
+			$result.LastWriteTimeUtc | Should Be $FileObject.LastWriteTimeUtc
+			$result.Attributes | Should Be $FileObject.Attributes
 
 		}
 		It "should return package config" {
 			$result = Get-PowerUpPackage -Path $packageName
-			$result.Config | Should Not Be $null
-			$result.Config.ApplicationName | Should Be "MyTestApp"
-			$result.Config.SqlInstance | Should Be "TestServer"
-			$result.Config.Database | Should Be "MyTestDB"
-			$result.Config.DeploymentMethod | Should Be "SingleTransaction"
-			$result.Config.ConnectionTimeout | Should Be 40
-			$result.Config.Encrypt | Should Be $null
-			$result.Config.Credential | Should Be $null
-			$result.Config.Username | Should Be "TestUser"
-			$result.Config.Password | Should Be "TestPassword"
-			$result.Config.SchemaVersionTable | Should Be "test.Table"
-			$result.Config.Silent | Should Be $true
-			$result.Config.Variables | Should Be $null
+			$result.Configuration | Should Not Be $null
+			$result.Configuration.ApplicationName | Should Be "MyTestApp"
+			$result.Configuration.SqlInstance | Should Be "TestServer"
+			$result.Configuration.Database | Should Be "MyTestDB"
+			$result.Configuration.DeploymentMethod | Should Be "SingleTransaction"
+			$result.Configuration.ConnectionTimeout | Should Be 40
+			$result.Configuration.Encrypt | Should Be $null
+			$result.Configuration.Credential | Should Be $null
+			$result.Configuration.Username | Should Be "TestUser"
+			$result.Configuration.Password | Should Be "TestPassword"
+			$result.Configuration.SchemaVersionTable | Should Be "test.Table"
+			$result.Configuration.Silent | Should Be $true
+			$result.Configuration.Variables | Should Be $null
 		}
 	}
 	Context "Returns unpacked package properties" {
@@ -87,46 +94,32 @@ Describe "$commandName tests" {
 		It "returns existing builds" {
 			$result = Get-PowerUpPackage -Path $unpackedFolder -Unpacked
 			$result.Builds.Build | Should Be @('1.0', '2.0', '3.0')
-			$result.Builds.Scripts.Name | Should Be @('1.0\1.sql', '2.0\2.sql', '3.0\3.sql')
+			$result.Builds.Scripts.Name | Should Be @('1.sql', '2.sql', '3.sql')
 			$result.Builds.Scripts.SourcePath | Should Be @((Get-Item $v1scripts).FullName, (Get-Item $v2scripts).FullName, (Get-Item $v3scripts).FullName)
-		}
-		It "should return specific build" {
-			$result = Get-PowerUpPackage -Path $unpackedFolder -Build '1.0' -Unpacked
-			$result.Builds.Build | Should Be '1.0'
-			$result.Builds.Scripts.Name | Should Be '1.0\1.sql'
-			$result.Builds.Scripts.SourcePath | Should Be (Get-Item $v1scripts).FullName
-		}
-		It "should return specific build and not return non-existing builds" {
-			$result = Get-PowerUpPackage -Path $unpackedFolder -Build '1.0', '2.0', '4.0' -Unpacked
-			$result.Builds.Build | Where-Object { $_ -eq '1.0'} | Should Not Be $null
-			$result.Builds.Build | Where-Object { $_ -eq '2.0'} | Should Not Be $null
-			$result.Builds.Build | Where-Object { $_ -eq '3.0'} | Should Be $null
-			$result.Builds.Build | Where-Object { $_ -eq '4.0'} | Should Be $null
 		}
 		It "should return package info" {
 			$result = Get-PowerUpPackage -Path $unpackedFolder -Unpacked
 			$result.Name | Should Be 'Unpacked'
-			$result.Path | Should Be $unpackedFolder
+			$result.FullName | Should Be $unpackedFolder
 			$result.CreationTime | Should Not Be $null
 			$result.Version | Should Be '3.0'
 			$result.ModuleVersion | Should Be (Get-Module PowerUp).Version
-
 		}
 		It "should return package config" {
 			$result = Get-PowerUpPackage -Path $unpackedFolder -Unpacked
-			$result.Config | Should Not Be $null
-			$result.Config.ApplicationName | Should Be "MyTestApp"
-			$result.Config.SqlInstance | Should Be "TestServer"
-			$result.Config.Database | Should Be "MyTestDB"
-			$result.Config.DeploymentMethod | Should Be "SingleTransaction"
-			$result.Config.ConnectionTimeout | Should Be 40
-			$result.Config.Encrypt | Should Be $null
-			$result.Config.Credential | Should Be $null
-			$result.Config.Username | Should Be "TestUser"
-			$result.Config.Password | Should Be "TestPassword"
-			$result.Config.SchemaVersionTable | Should Be "test.Table"
-			$result.Config.Silent | Should Be $true
-			$result.Config.Variables | Should Be $null
+			$result.Configuration | Should Not Be $null
+			$result.Configuration.ApplicationName | Should Be "MyTestApp"
+			$result.Configuration.SqlInstance | Should Be "TestServer"
+			$result.Configuration.Database | Should Be "MyTestDB"
+			$result.Configuration.DeploymentMethod | Should Be "SingleTransaction"
+			$result.Configuration.ConnectionTimeout | Should Be 40
+			$result.Configuration.Encrypt | Should Be $null
+			$result.Configuration.Credential | Should Be $null
+			$result.Configuration.Username | Should Be "TestUser"
+			$result.Configuration.Password | Should Be "TestPassword"
+			$result.Configuration.SchemaVersionTable | Should Be "test.Table"
+			$result.Configuration.Silent | Should Be $true
+			$result.Configuration.Variables | Should Be $null
 		}
 	}
 }

@@ -12,16 +12,16 @@
         <Width>20</Width>
       </TableColumnHeader>
       <TableColumnHeader>
-        <Width>20</Width>
-      </TableColumnHeader>
-      <TableColumnHeader>
-        <Width>10</Width>
+        <Width>9</Width>
       </TableColumnHeader>
       <TableColumnHeader>
         <Width>24</Width>
       </TableColumnHeader>
       <TableColumnHeader>
-        <Width>13</Width>
+        <Width>24</Width>
+      </TableColumnHeader>
+      <TableColumnHeader>
+        <Width>24</Width>
       </TableColumnHeader>
     </TableHeaders>
     <TableRowEntries>
@@ -34,13 +34,13 @@
             <PropertyName>Version</PropertyName>
           </TableColumnItem>
           <TableColumnItem>
-            <PropertyName>Size</PropertyName>
-          </TableColumnItem>
-          <TableColumnItem>
             <PropertyName>LastWriteTime</PropertyName>
           </TableColumnItem>
           <TableColumnItem>
-            <PropertyName>ModuleVersion</PropertyName>
+            <PropertyName>Configuration</PropertyName>
+          </TableColumnItem>
+          <TableColumnItem>
+            <PropertyName>Builds</PropertyName>
           </TableColumnItem>
         </TableColumnItems>
       </TableRowEntry>
