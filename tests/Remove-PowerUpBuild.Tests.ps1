@@ -112,7 +112,7 @@ Describe "$commandName tests" {
 			$null = Remove-Item $packageNameTest
 		}
 		It "should remove build from existing package" {
-			{ '2.0' | Remove-PowerUpBuild -Path $packageNameTest } | Should Not Throw
+			{ $packageNameTest | Remove-PowerUpBuild -Build '2.0' } | Should Not Throw
 			Test-Path $packageNameTest | Should Be $true
 		}
 		$results = Get-ArchiveItem $packageNameTest
@@ -147,16 +147,10 @@ Describe "$commandName tests" {
 			catch {
 				$errorResult = $_
 			}
-			$errorResult.Exception.Message -join ';' | Should BeLike '*Package file * not found*'
+			$errorResult.Exception.Message -join ';' | Should BeLike '*Incorrect package format*'
 		}
 		It "should throw error when package zip does not exist" {
-			try {
-				$result = Remove-PowerUpBuild -Name ".\nonexistingpackage.zip" -Build 2.0
-			}
-			catch {
-				$errorResult = $_
-			}
-			$errorResult.Exception.Message -join ';' | Should BeLike '*Package * not found. Aborting build*'
+			{ Remove-PowerUpBuild -Name ".\nonexistingpackage.zip" -Build 2.0 -ErrorAction Stop } | Should Throw
 		}
 		It "should output warning when build does not exist" {
 			$result = Remove-PowerUpBuild -Name $packageNameTest -Build 3.0 -WarningVariable errorResult 3>$null
