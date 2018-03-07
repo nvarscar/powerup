@@ -10,10 +10,7 @@ Function Get-PowerUpPackage {
 	Path to the PowerUp package
 
 	Aliases: Name, FileName, Package
-	
-	.PARAMETER Build
-	If you only want details about a specific builds inside the package
-		
+
 	.PARAMETER Unpacked
 	Mostly intended for internal use. Gets package information from extracted package.
 
