@@ -25,10 +25,7 @@ function Add-PowerUpBuild {
 		A string that would be representing a build number of this particular build. 
 		Optional - can be genarated automatically.
 		Can only contain characters that will be valid on the filesystem.
-	
-	.PARAMETER SkipValidation
-		Skip package validation step when attempting to add build to the package.
-	
+
 	.PARAMETER Type
 		Adds only files that were not added to the package yet. The following options are available:
 		* New: add new files based on their source path (can be relative)
@@ -39,14 +36,6 @@ function Add-PowerUpBuild {
 		More than one value can be specified at the same time.
 		
 		Default value: All
-	
-	.PARAMETER UniqueOnly
-		Out of all specified script files, only add new/modified files that have not been added to any of the package builds yet. 
-		Compares file hash against all the file hashes from the existing builds to determine eligibility.
-		Moving file into different folder will NOT make it a new file, as it would still have the same hash value.
-	
-	.PARAMETER Unpacked
-		Intended for internal usage. Allows to work with unpacked package structures (basically, folders).
 	
 	.PARAMETER Confirm
         Prompts to confirm certain actions
@@ -82,7 +71,6 @@ function Add-PowerUpBuild {
 		[Alias('SourcePath')]
 		[object[]]$ScriptPath,
 		[string]$Build,
-		[switch]$SkipValidation,
 		[ValidateSet('New', 'Modified', 'Unique', 'All')]
 		[string[]]$Type = 'All'
 	)
