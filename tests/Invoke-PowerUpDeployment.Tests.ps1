@@ -9,6 +9,7 @@ if (!$Batch) {
 	# Is not a part of the global batch => import module
 	#Explicitly import the module for testing
 	Import-Module "$here\..\PowerUp.psd1" -Force
+	Import-Module "$here\etc\modules\ZipHelper" -Force
 }
 else {
 	# Is a part of a batch, output some eye-catching happiness
@@ -16,9 +17,6 @@ else {
 }
 
 . "$here\constants.ps1"
-
-. "$here\..\internal\functions\Get-ArchiveItem.ps1"
-. "$here\..\internal\functions\New-TempWorkspaceFolder.ps1"
 . "$here\etc\Invoke-SqlCmd2.ps1"
 
 $workFolder = Join-Path "$here\etc" "$commandName.Tests.PowerUp"
@@ -63,7 +61,7 @@ Describe "Invoke-PowerUpDeployment integration tests" -Tag $commandName, Integra
 			'c' | Should Not BeIn $results.name
 			'd' | Should Not BeIn $results.name
 		}
-		
+
 	}
 	Context "testing non transactional deployment of extracted package" {
 		It "Should return errors and create one object" {

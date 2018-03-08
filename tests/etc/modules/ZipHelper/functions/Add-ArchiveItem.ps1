@@ -55,7 +55,7 @@ Function Add-ArchiveItem {
 				foreach ($currentItem in $itemCollection) {
 					$fileName = Split-Path $currentItem -Leaf
 					$innerPath = (Join-Path $InnerFolder $fileName).TrimStart('.\')
-					[PowerUpHelper]::WriteZipFile($zip, $innerPath, [PowerUpHelper]::GetBinaryFile($currentItem.FullName))
+					[ZipHelper]::WriteZipFile($zip, $innerPath, [ZipHelper]::GetBinaryFile($currentItem.FullName))
 				}
 				
 			}

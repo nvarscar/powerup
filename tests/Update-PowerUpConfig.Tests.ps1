@@ -9,13 +9,14 @@ if (!$Batch) {
 	# Is not a part of the global batch => import module
 	#Explicitly import the module for testing
 	Import-Module "$here\..\PowerUp.psd1" -Force
+	Import-Module "$here\etc\modules\ZipHelper" -Force
 }
 else {
 	# Is a part of a batch, output some eye-catching happiness
 	Write-Host "Running $commandName tests" -ForegroundColor Cyan
 }
 
-. "$here\..\internal\functions\Get-ArchiveItem.ps1"
+
 
 $workFolder = Join-Path "$here\etc" "$commandName.Tests.PowerUp"
 $unpackedFolder = Join-Path $workFolder 'unpacked'

@@ -43,11 +43,12 @@ param (
 # Move to the project root
 Set-Location $ModuleBase
 #removes previously imported module, if any
-Remove-Module powerup -ErrorAction Ignore
-#imports the psm1 to be able to use internal functions in tests
-#Import-Module "$ModuleBase\powerup.psm1"
+Remove-Module PowerUp -ErrorAction Ignore
+Remove-Module ZipHelper -ErrorAction Ignore
 #imports the module making sure DLL is loaded ok
-Import-Module "$ModuleBase\powerup.psd1"
+Import-Module "$ModuleBase\PowerUp.psd1"
+#Import ZipHelper
+Import-Module "$PSScriptRoot\etc\modules\ZipHelper" -Force
 
 
 function Get-CoverageIndications($Path, $ModuleBase) {

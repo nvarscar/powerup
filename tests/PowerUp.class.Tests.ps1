@@ -9,6 +9,7 @@ if (!$Batch) {
 	# Is not a part of the global batch => import module
 	#Explicitly import the module for testing
 	Import-Module "$here\..\PowerUp.psd1" -Force
+	Import-Module "$here\etc\modules\ZipHelper" -Force
 }
 else {
 	# Is a part of a batch, output some eye-catching happiness
@@ -19,7 +20,7 @@ Add-Type -AssemblyName System.IO.Compression
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 . "$here\..\internal\classes\PowerUpHelper.class.ps1"
 . "$here\..\internal\classes\PowerUp.class.ps1"
-. "$here\..\internal\functions\Get-ArchiveItem.ps1"
+
 $packageName = "$here\etc\$commandName.zip"
 $script:pkg = $script:build = $script:file = $null
 $script1 = "$here\etc\install-tests\success\1.sql"

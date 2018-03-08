@@ -28,10 +28,10 @@
 		[string[]]$Item
 	)
 	if ($Item) {
-		$result = [PowerUpHelper]::GetArchiveItem((Resolve-Path $Path), $Item) 
+		$result = [ZipHelper]::GetArchiveItem((Resolve-Path $Path), $Item) 
 	}
 	else {
-		$result = [PowerUpHelper]::GetArchiveItems((Resolve-Path $Path))
+		$result = [ZipHelper]::GetArchiveItems((Resolve-Path $Path))
 	}
 	$result | Add-Member -MemberType AliasProperty -Name Path -Value FullName -PassThru | `
 		Add-Member -MemberType AliasProperty -Name Size -Value Length -PassThru 
