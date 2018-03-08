@@ -226,9 +226,9 @@ Describe "PowerUpPackage class tests" -Tag $commandName, UnitTests, PowerUpPacka
 		$results = Get-ArchiveItem $packageName | Where-Object IsFolder -eq $false
 		$saveTestsErrors = 0
 		foreach ($result in $oldResults) {
-			if ($result.ModifyDate -ge ($results | Where-Object Path -eq $result.Path).ModifyDate) {
+			if ($result.LastWriteTime -ge ($results | Where-Object Path -eq $result.Path).LastWriteTime) {
 				It "Should have updated Modified date for file $($result.Path)" {
-					$result.ModifyDate -lt ($results | Where-Object Path -eq $result.Path).ModifyDate | Should Be $true
+					$result.LastWriteTime -lt ($results | Where-Object Path -eq $result.Path).LastWriteTime | Should Be $true
 				}
 				$saveTestsErrors++
 			}
@@ -565,9 +565,9 @@ Describe "PowerUpBuild class tests" -Tag $commandName, UnitTests, PowerUpBuild {
 		$saveTestsErrors = 0
 		#should trigger file updates for build files and module files
 		foreach ($result in ($oldResults | Where-Object { $_.Path -like 'content\1.0\success' -or $_.Path -like 'Modules\PowerUp\*'  } )) {
-			if ($result.ModifyDate -ge ($results | Where-Object Path -eq $result.Path).ModifyDate) {
+			if ($result.LastWriteTime -ge ($results | Where-Object Path -eq $result.Path).LastWriteTime) {
 				It "Should have updated Modified date for file $($result.Path)" {
-					$result.ModifyDate -lt ($results | Where-Object Path -eq $result.Path).ModifyDate | Should Be $true
+					$result.LastWriteTime -lt ($results | Where-Object Path -eq $result.Path).LastWriteTime | Should Be $true
 				}
 				$saveTestsErrors++
 			}
@@ -756,7 +756,7 @@ Describe "PowerUpFile class tests" -Tag $commandName, UnitTests, PowerUpFile {
 				$stream.Dispose()
 			}
 			$results = Get-ArchiveItem $packageName | Where-Object Path -eq 'content\1.0\success\1.sql'
-			$oldResults.ModifyDate -lt ($results | Where-Object Path -eq $oldResults.Path).ModifyDate | Should Be $true
+			$oldResults.LastWriteTime -lt ($results | Where-Object Path -eq $oldResults.Path).LastWriteTime | Should Be $true
 			# { $p = [PowerUpPackage]::new($packageName) } | Should Throw #Because of the hash mismatch - package file is not updated in Save()
 		}
 		It "should test Alter method" {
@@ -768,7 +768,7 @@ Describe "PowerUpFile class tests" -Tag $commandName, UnitTests, PowerUpFile {
 			$script:file.SetContent([PowerUpHelper]::GetBinaryFile($script2))
 			{ $script:file.Alter() } | Should Not Throw
 			$results = Get-ArchiveItem $packageName | Where-Object Path -eq 'content\1.0\success\1.sql'
-			$oldResults.ModifyDate -lt ($results | Where-Object Path -eq $oldResults.Path).ModifyDate | Should Be $true
+			$oldResults.LastWriteTime -lt ($results | Where-Object Path -eq $oldResults.Path).LastWriteTime | Should Be $true
 		}
 	}
 }
@@ -944,7 +944,7 @@ Describe "PowerUpScriptFile class tests" -Tag $commandName, UnitTests, PowerUpFi
 				$stream.Dispose()
 			}
 			$results = Get-ArchiveItem $packageName | Where-Object Path -eq 'content\1.0\success\1.sql'
-			$oldResults.ModifyDate -lt ($results | Where-Object Path -eq $oldResults.Path).ModifyDate | Should Be $true
+			$oldResults.LastWriteTime -lt ($results | Where-Object Path -eq $oldResults.Path).LastWriteTime | Should Be $true
 			{ [PowerUpPackage]::new($packageName) } | Should Throw #Because of the hash mismatch - package file is not updated in Save()
 		}
 		It "should test Alter method" {
@@ -956,7 +956,7 @@ Describe "PowerUpScriptFile class tests" -Tag $commandName, UnitTests, PowerUpFi
 			$script:file.SetContent([PowerUpHelper]::GetBinaryFile($script2))
 			{ $script:file.Alter() } | Should Not Throw
 			$results = Get-ArchiveItem $packageName | Where-Object Path -eq 'content\1.0\success\1.sql'
-			$oldResults.ModifyDate -lt ($results | Where-Object Path -eq $oldResults.Path).ModifyDate | Should Be $true
+			$oldResults.LastWriteTime -lt ($results | Where-Object Path -eq $oldResults.Path).LastWriteTime | Should Be $true
 			$p = [PowerUpPackage]::new($packageName)
 			$p.Builds[0].Scripts[0].GetContent() | Should BeLike 'CREATE TABLE dbo.c (a int)*'
 		}
@@ -1123,7 +1123,7 @@ Describe "PowerUpRootFile class tests" -Tag $commandName, UnitTests, PowerUpFile
 				$stream.Dispose()
 			}
 			$results = Get-ArchiveItem $packageName | Where-Object Path -eq 'Deploy.ps1'
-			$oldResults.ModifyDate -lt ($results | Where-Object Path -eq $oldResults.Path).ModifyDate | Should Be $true
+			$oldResults.LastWriteTime -lt ($results | Where-Object Path -eq $oldResults.Path).LastWriteTime | Should Be $true
 		}
 		It "should test Alter method" {
 			#Save old file parameters
@@ -1134,7 +1134,7 @@ Describe "PowerUpRootFile class tests" -Tag $commandName, UnitTests, PowerUpFile
 			$script:file.SetContent([PowerUpHelper]::GetBinaryFile($script2))
 			{ $script:file.Alter() } | Should Not Throw
 			$results = Get-ArchiveItem $packageName | Where-Object Path -eq 'Deploy.ps1'
-			$oldResults.ModifyDate -lt ($results | Where-Object Path -eq $oldResults.Path).ModifyDate | Should Be $true
+			$oldResults.LastWriteTime -lt ($results | Where-Object Path -eq $oldResults.Path).LastWriteTime | Should Be $true
 		}
 	}
 }
