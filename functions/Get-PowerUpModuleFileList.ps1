@@ -4,13 +4,11 @@ Function Get-PowerUpModuleFileList {
 Returns all module files based on json file in the module root
 
 .DESCRIPTION
-Returns objects from PowerUp.json
+Returns objects from PowerUp.json. Is used internally to load files into the package.
 
 .EXAMPLE
+# Returns module files
 Get-PowerUpModuleFileList
-
-.NOTES
-Nothing here
 #>	
 	Param ()
 	Function ModuleFile {
