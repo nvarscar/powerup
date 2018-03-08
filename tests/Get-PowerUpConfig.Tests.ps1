@@ -1,10 +1,23 @@
-﻿$commandName = $MyInvocation.MyCommand.Name.Replace(".Tests.ps1", "")
-$here = if ($PSScriptRoot) { $PSScriptRoot } else {	(Get-Item . ).FullName }
-$sut = (Split-Path -Leaf $MyInvocation.MyCommand.Path) -replace '\.Tests\.', '.'
+﻿Param (
+	[switch]$Batch
+)
 
-Describe "$commandName tests" {
+if ($PSScriptRoot) { $commandName = $MyInvocation.MyCommand.Name.Replace(".Tests.ps1", ""); $here = $PSScriptRoot }
+else { $commandName = "_ManualExecution"; $here = (Get-Item . ).FullName }
+
+if (!$Batch) {
+	# Is not a part of the global batch => import module
+	#Explicitly import the module for testing
+	Import-Module "$PSScriptRoot\..\PowerUp.psd1" -Force
+}
+else {
+	# Is a part of a batch, output some eye-catching happiness
+	Write-Host "Running $commandName tests" -ForegroundColor Cyan
+}
+
+Describe "Get-PowerUpConfig tests" -Tag $commandName, UnitTests {
 	It "Should throw when path does not exist" {
-		{ $result = Get-PowerUpConfig 'asdqweqsdfwer' } | Should throw
+		{ Get-PowerUpConfig 'asdqweqsdfwer' } | Should throw
 	}
 
 	It "Should return an empty config by default" {

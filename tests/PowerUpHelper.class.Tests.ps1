@@ -1,5 +1,19 @@
-$here = if ($PSScriptRoot) { $PSScriptRoot } else {	(Get-Item . ).FullName }
+Param (
+	[switch]$Batch
+)
+
 $commandName = $MyInvocation.MyCommand.Name.Replace(".Tests.ps1", "")
+$here = if ($PSScriptRoot) { $PSScriptRoot } else {	(Get-Item . ).FullName }
+
+if (!$Batch) {
+	# Is not a part of the global batch => import module
+	#Explicitly import the module for testing
+	Import-Module "$PSScriptRoot\..\PowerUp.psd1" -Force
+}
+else {
+	# Is a part of a batch, output some eye-catching happiness
+	Write-Host "Running $commandName tests" -ForegroundColor Cyan
+}
 
 Add-Type -AssemblyName System.IO.Compression
 Add-Type -AssemblyName System.IO.Compression.FileSystem
@@ -8,7 +22,7 @@ $script1 = "$here\etc\install-tests\success\1.sql"
 $script2 = "$here\etc\install-tests\success\2.sql"
 $archiveName = "$here\etc\PowerUpHelper.zip"
 
-Describe "$commandName tests" -Tag $commandName, UnitTests, PowerUpHelper {
+Describe "PowerUpHelper class tests" -Tag $commandName, UnitTests, PowerUpHelper {
 	Context "tests SplitRelativePath method" {
 		It "should validate positive tests" {
 			[PowerUpHelper]::SplitRelativePath('3\2\1\file.txt', 0) | Should Be 'file.txt'
@@ -77,7 +91,7 @@ Describe "$commandName tests" -Tag $commandName, UnitTests, PowerUpHelper {
 			'2.sql' | Should BeIn $results.FullName
 			
 			#Verifying that the threads are closed
-			{ $results = [PowerUpHelper]::GetArchiveItems($archiveName) } | Should Not Throw
+			{ [PowerUpHelper]::GetArchiveItems($archiveName) } | Should Not Throw
 		}
 		It "should validate negative tests" {
 			{ [PowerUpHelper]::GetArchiveItems($null) } | Should Throw

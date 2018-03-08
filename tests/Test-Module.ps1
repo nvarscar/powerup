@@ -39,7 +39,12 @@ Import-Module "$PSScriptRoot\..\PowerUp.psd1" -Force
 
 #Run each module function
 $params = @{
-	Path = $Path
+	Script = @{
+		Path = $Path
+		Parameters = @{
+			Batch = $true
+		}
+	}
 }
 if ($Tag) {
 	$params += @{ Tag = $Tag}

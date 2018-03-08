@@ -1,13 +1,25 @@
-﻿$commandName = $MyInvocation.MyCommand.Name.Replace(".Tests.ps1", "")
-$here = if ($PSScriptRoot) { $PSScriptRoot } else {	(Get-Item . ).FullName }
-$sut = (Split-Path -Leaf $MyInvocation.MyCommand.Path) -replace '\.Tests\.', '.'
+﻿Param (
+	[switch]$Batch
+)
+
+if ($PSScriptRoot) { $commandName = $MyInvocation.MyCommand.Name.Replace(".Tests.ps1", ""); $here = $PSScriptRoot }
+else { $commandName = "_ManualExecution"; $here = (Get-Item . ).FullName }
+
+if (!$Batch) {
+	# Is not a part of the global batch => import module
+	#Explicitly import the module for testing
+	Import-Module "$PSScriptRoot\..\PowerUp.psd1" -Force
+}
+else {
+	# Is a part of a batch, output some eye-catching happiness
+	Write-Host "Running $commandName tests" -ForegroundColor Cyan
+}
 
 . "$here\..\internal\Get-ArchiveItem.ps1"
-. "$here\..\internal\New-TempWorkspaceFolder.ps1"
 . "$here\..\internal\Remove-ArchiveItem.ps1"
 
-$workFolder = New-TempWorkspaceFolder
-$unpackedFolder = New-TempWorkspaceFolder
+$workFolder = Join-Path "$here\etc" "$commandName.Tests.PowerUp"
+$unpackedFolder = Join-Path $workFolder 'unpacked'
 
 $scriptFolder = "$here\etc\install-tests\success"
 $v1scripts = Join-Path $scriptFolder '1.sql'
@@ -16,13 +28,14 @@ $packageName = Join-Path $workFolder 'TempDeployment.zip'
 $packageNameTest = "$packageName.test.zip"
 $packageNoPkgFile = Join-Path $workFolder "pkg_nopkgfile.zip"
 
-Describe "$commandName tests" {
+Describe "Add-PowerUpBuild tests" -Tag $commandName, UnitTests {
 	BeforeAll {
+		$null = New-Item $workFolder -ItemType Directory
+		$null = New-Item $unpackedFolder -ItemType Directory
 		$null = New-PowerUpPackage -ScriptPath $v1scripts -Name $packageName -Build 1.0 -Force
 	}
 	AfterAll {
-		if ($workFolder.Name -like 'PowerUpWorkspace*') { Remove-Item $workFolder -Recurse }
-		if ($unpackedFolder.Name -like 'PowerUpWorkspace*') { Remove-Item $unpackedFolder -Recurse }
+		if ((Test-Path $workFolder) -and $workFolder -like '*.Tests.PowerUp') { Remove-Item $workFolder -Recurse }
 	}
 	Context "adding version 2.0 to existing package" {
 		BeforeAll {
@@ -167,12 +180,12 @@ Describe "$commandName tests" {
 			Remove-Item $packageNoPkgFile
 		}
 		It "should show warning when there are no new files" {
-			$result = Add-PowerUpBuild -Name $packageNameTest -ScriptPath $v1scripts -Type 'Unique' -WarningVariable warningResult 3>$null
+			$null= Add-PowerUpBuild -Name $packageNameTest -ScriptPath $v1scripts -Type 'Unique' -WarningVariable warningResult 3>$null
 			$warningResult.Message -join ';' | Should BeLike '*No scripts have been selected, the original file is unchanged.*'
 		}
 		It "should throw error when package data file does not exist" {
 			try {
-				$result = Add-PowerUpBuild -Name $packageNoPkgFile -ScriptPath $v2scripts
+				$null = Add-PowerUpBuild -Name $packageNoPkgFile -ScriptPath $v2scripts
 			}
 			catch {
 				$errorResult = $_
@@ -184,7 +197,7 @@ Describe "$commandName tests" {
 		}
 		It "should throw error when path cannot be resolved" {
 			try {
-				$result = Add-PowerUpBuild -Name $packageNameTest -ScriptPath ".\nonexistingsourcefiles.sql"
+				$null = Add-PowerUpBuild -Name $packageNameTest -ScriptPath ".\nonexistingsourcefiles.sql"
 			}
 			catch {
 				$errorResult = $_
@@ -193,7 +206,7 @@ Describe "$commandName tests" {
 		}
 		It "should throw error when scripts with the same relative path is being added" {
 			try {
-				$result = Add-PowerUpBuild -Name $packageNameTest -ScriptPath "$scriptFolder\*", "$scriptFolder\..\transactional-failure\*"
+				$null = Add-PowerUpBuild -Name $packageNameTest -ScriptPath "$scriptFolder\*", "$scriptFolder\..\transactional-failure\*"
 			}
 			catch {
 				$errorResult = $_
