@@ -72,9 +72,6 @@
 		Can also be provided as a part of Configuration hashtable: -Configuration @{ Variables = @{ Var1 = ...; Var2 = ...}}
 		Will augment and/or overwrite Variables defined inside the package.
 	
-	.PARAMETER Force
-		Will overwrite contents of -WorkSpace folder if it is not empty.
-	
 	.PARAMETER SkipValidation
 		Skip validation of the package that ensures the integrity of all the files and builds.
 	
@@ -148,7 +145,6 @@
 		[switch]$Silent,
 		[Alias('ArgumentList')]
 		[hashtable]$Variables,
-		[switch]$Force,
 		[switch]$SkipValidation,
 		[string]$OutputFile,
 		[switch]$Append,

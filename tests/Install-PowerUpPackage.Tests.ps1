@@ -16,8 +16,7 @@ $v1scripts = "$here\etc\install-tests\success\1.sql"
 $v2scripts = "$here\etc\install-tests\success\2.sql"
 $verificationScript = "$here\etc\install-tests\verification\select.sql"
 $packageName = Join-Path $workFolder "TempDeployment.zip"
-$cleanupPackageName = "$here\etc\TempCleanup.zip"
-$outFile = "$here\etc\outLog.txt"
+$packageNamev1 = Join-Path $workFolder "TempDeployment_v1.zip"
 
 
 Describe "$commandName tests" {
@@ -133,12 +132,12 @@ Describe "$commandName tests" {
 	}
 	Context  "$commandName whatif tests" {
 		BeforeAll {
-			$null = New-PowerUpPackage -ScriptPath $v1scripts -Name "pv1.zip" -Build 1.0
+			$null = New-PowerUpPackage -ScriptPath $v1scripts -Name $packageNamev1 -Build 1.0
 			$null = Invoke-SqlCmd2 -ServerInstance $script:instance1 -Database $script:database1 -InputFile $cleanupScript
 		}
 		AfterAll {
 			$null = Invoke-SqlCmd2 -ServerInstance $script:instance1 -Database $script:database1 -InputFile $cleanupScript
-			Remove-Item "pv1.zip"
+			Remove-Item $packageNamev1
 		}
 		It "should deploy nothing" {
 			$results = Install-PowerUpPackage "pv1.zip" -SqlInstance $script:instance1 -Database $script:database1 -SchemaVersionTable $logTable -Silent -WhatIf
