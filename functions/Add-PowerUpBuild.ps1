@@ -80,8 +80,6 @@ function Add-PowerUpBuild {
 			$Build = Get-NewBuildNumber
 		}
 		$scriptCollection = @()
-		Write-Verbose "Loading package information from $Path"
-		$package = Get-PowerUpPackage -Path $Path
 	}
 	process {
 		foreach ($scriptItem in $ScriptPath) {
@@ -90,57 +88,60 @@ function Add-PowerUpBuild {
 		}
 	}
 	end {
-		#Prepare the scripts that's going to be added to the build
-		$scriptsToAdd = @()
-		foreach ($childScript in $scriptCollection) { 
-			# Include file by default
-			$includeFile = $Type -contains 'All'
-			if ($Type -contains 'New') {
-				#Check if the script path was already added in one of the previous builds
-				if (!$package.SourcePathExists($childScript.SourcePath)) {
-					$includeFile = $true
-					Write-Verbose "File $($childScript.SourcePath) was not found among the package source files, adding to the list."
+		Write-Verbose "Loading package information from $Path"
+		if ($package = Get-PowerUpPackage -Path $Path) {
+			#Prepare the scripts that's going to be added to the build
+			$scriptsToAdd = @()
+			foreach ($childScript in $scriptCollection) { 
+				# Include file by default
+				$includeFile = $Type -contains 'All'
+				if ($Type -contains 'New') {
+					#Check if the script path was already added in one of the previous builds
+					if (!$package.SourcePathExists($childScript.SourcePath)) {
+						$includeFile = $true
+						Write-Verbose "File $($childScript.SourcePath) was not found among the package source files, adding to the list."
+					}
 				}
-			}
-			if ($Type -contains 'Modified') {
-				#Check if the file was modified in the previous build
-				if ($package.ScriptModified($childScript.FullName, $childScript.SourcePath)) {
-					$includeFile = $true
-					Write-Verbose "Hash of the file $($childScript.FullName) was modified since last deployment, adding to the list."
+				if ($Type -contains 'Modified') {
+					#Check if the file was modified in the previous build
+					if ($package.ScriptModified($childScript.FullName, $childScript.SourcePath)) {
+						$includeFile = $true
+						Write-Verbose "Hash of the file $($childScript.FullName) was modified since last deployment, adding to the list."
+					}
 				}
-			}
-			if ($Type -contains 'Unique') {
-				#Check if the script hash was already added in one of the previous builds
-				if (!$package.ScriptExists($childScript.FullName)) {
-					$includeFile = $true
-					Write-Verbose "Hash of the file $($childScript.FullName) was not found among the package scripts, adding to the list.."
+				if ($Type -contains 'Unique') {
+					#Check if the script hash was already added in one of the previous builds
+					if (!$package.ScriptExists($childScript.FullName)) {
+						$includeFile = $true
+						Write-Verbose "Hash of the file $($childScript.FullName) was not found among the package scripts, adding to the list.."
+					}
 				}
-			}
-			if ($includeFile) {
-				$scriptsToAdd += $childScript
+				if ($includeFile) {
+					$scriptsToAdd += $childScript
+				}
+				else {
+					Write-Verbose "File $($childScript.FullName) was not added to the current build due to -Type restrictions: $($Type -join ',')"
+				}
+			}	
+
+			if ($scriptsToAdd) {
+
+				#Create new build object
+				$currentBuild = $package.NewBuild($Build)
+
+				foreach ($buildScript in $scriptsToAdd) {
+					$s = $currentBuild.NewScript($buildScript) 
+					Write-Verbose "Adding file '$($buildScript.FullName)' to $currentBuild as $($s.GetPackagePath())"
+				}
+
+				if ($pscmdlet.ShouldProcess($package, "Writing new build $currentBuild into the original package")) {
+					$currentBuild.Alter()
+				}
 			}
 			else {
-				Write-Verbose "File $($childScript.FullName) was not added to the current build due to -Type restrictions: $($Type -join ',')"
+				Write-Warning "No scripts have been selected, the original file is unchanged."
 			}
-		}	
-
-		if ($scriptsToAdd) {
-
-			#Create new build object
-			$currentBuild = $package.NewBuild($Build)
-
-			foreach ($buildScript in $scriptsToAdd) {
-				$s = $currentBuild.NewScript($buildScript) 
-				Write-Verbose "Adding file '$($buildScript.FullName)' to $currentBuild as $($s.GetPackagePath())"
-			}
-
-			if ($pscmdlet.ShouldProcess($package, "Writing new build $currentBuild into the original package")) {
-				$currentBuild.Alter()
-			}
+			$package
 		}
-		else {
-			Write-Warning "No scripts have been selected, the original file is unchanged."
-		}
-		$package
 	}
 }
