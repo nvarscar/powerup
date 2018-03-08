@@ -27,8 +27,6 @@ Function Remove-ArchiveItem {
 			ValueFromPipeline = $true,
 			Position = 2)]
 		[string[]]$Item
-		# [switch]$Force,
-		# [switch]$Recurse
 	)
 	begin {
 		$itemCollection = @()
@@ -39,34 +37,25 @@ Function Remove-ArchiveItem {
 		}
 	}
 	end {
-		$workFolder = New-TempWorkspaceFolder
+		#Open new file stream
+		$writeMode = [System.IO.FileMode]::Open
+		$stream = [FileStream]::new((Resolve-Path $Path), $writeMode)
 		try {
-			#Extract package
-			Write-Verbose "Extracting archive $Path to $workFolder"
-			Expand-Archive -Path $Path -DestinationPath $workFolder
-
-			#Remove items
-			foreach ($currentItem in $itemCollection) {
-				$currentItemPath = Join-Path $workFolder $currentItem
-				If (Test-Path $currentItemPath) {
-					Remove-Item $currentItemPath -Recurse -Force
+			#Open zip file
+			$zip = [ZipArchive]::new($stream, [ZipArchiveMode]::Update)
+			try {
+				#Write files
+				foreach ($currentItem in $itemCollection) {
+					if ($e = $zip.GetEntry($currentItem)) {
+						$e.Delete()
+					}
 				}
-				else {
-					Write-Warning -Message "Item $currentItem was not found in $Path"
-				}
+				
 			}
-
-			#Re-compress archive
-			Write-Verbose "Repackaging original archive $Path"
-			Compress-Archive "$workFolder\*" -DestinationPath $Path -Force
+			catch { throw $_ }
+			finally { $zip.Dispose() }	
 		}
-		catch {
-			throw $_
-		}
-		finally {
-			if ($workFolder.Name -like 'PowerUpWorkspace*') {
-				Remove-Item $workFolder -Recurse -Force
-			}
-		}
+		catch { throw $_ }
+		finally { $stream.Dispose()	}
 	}
 }

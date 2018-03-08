@@ -1,24 +1,38 @@
 ﻿function Get-ArchiveItem {
-	param ([Parameter(Mandatory)]
-		[string]$Archive)
-	function recurse-items {
-		param ([object]$items)
-		
-		foreach ($item in $items) {
-			$item
-			$folder = $item.GetFolder
-			if ($folder) {
-				recurse-items $folder.Items()
-			}
-		}
-	}
+	<#
+	.SYNOPSIS
+	Returns archive items from the archive file
 	
-	$Archive = Resolve-Path $Archive
-	$shellApp = New-Object -ComObject shell.application
-	$zipFile = $shellApp.NameSpace($Archive)
-	recurse-items $zipFile.Items() | ForEach-Object {
-		$zipPath = $_.Path.Replace($Archive + [System.IO.Path]::DirectorySeparatorChar, '')
-		$level = ($zipPath.Split([string][System.IO.Path]::DirectorySeparatorChar)).Count
-		$_ | Add-Member @{ Archive = $Archive; Level = $level; Path = $zipPath } -PassThru -Force
-	} | Sort-Object Level, Name | Select-Object * -ExcludeProperty Application, Parent, GetLink, GetFolder, Level
+	.DESCRIPTION
+	Returns a list of archive files from the archive. Returns item contents as a byte array when specific items are provided.
+	
+	.PARAMETER Path
+	Archive Path
+	
+	.PARAMETER Item
+	Path to existing items inside the archive
+	
+	.EXAMPLE
+	# Return an archive file list
+	Get-ArchiveItem .\asd.zip 
+	
+	.EXAMPLE
+	# Return an archive file with binary contents
+	Get-ArchiveItem .\asd.zip asd\file1.txt
+	
+	.NOTES
+	General notes
+	#>
+	param ([Parameter(Mandatory)]
+		[string]$Path,
+		[string[]]$Item
+	)
+	if ($Item) {
+		$result = [PowerUpHelper]::GetArchiveItem((Resolve-Path $Path), $Item) 
+	}
+	else {
+		$result = [PowerUpHelper]::GetArchiveItems((Resolve-Path $Path))
+	}
+	$result | Add-Member -MemberType AliasProperty -Name Path -Value FullName -PassThru | `
+		Add-Member -MemberType AliasProperty -Name Size -Value Length -PassThru 
 }

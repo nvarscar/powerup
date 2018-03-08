@@ -13,6 +13,7 @@ Function Add-ArchiveItem {
 	Archived item: file or folder
 	
 	.EXAMPLE
+	# Put two txt files into archive.zip\inner_folder\path\
 	Add-ArchiveItem -Path c:\temp\myarchive.zip -Item MyFile.txt, Myfile2.txt -InnerFolder inner_folder\path
 	
 	.NOTES
@@ -39,43 +40,30 @@ Function Add-ArchiveItem {
 	}
 	process {
 		foreach ($currentItem in $Item) {
-			$itemCollection += $currentItem
+			$itemCollection += Get-Item $currentItem
 		}
 	}
 	end {
-		$workFolder = New-TempWorkspaceFolder
+		#Open new file stream
+		$writeMode = [System.IO.FileMode]::Open
+		$stream = [FileStream]::new((Resolve-Path $Path), $writeMode)
 		try {
-			#Extract package
-			Write-Verbose "Extracting archive $Path to $workFolder"
-			Expand-Archive -Path $Path -DestinationPath $workFolder
-
-			#Create inner folder if needed
-			$innerFolderPath = Join-Path $workFolder $InnerFolder
-			if (!(Test-Path $innerFolderPath)) {
-				$null = New-Item -Path $innerFolderPath -ItemType Directory
-			}
-
-			#Add items
-			foreach ($currentItem in $itemCollection) {
-				If (Test-Path $currentItem) {
-					Copy-Item $currentItem $innerFolderPath
+			#Open zip file
+			$zip = [ZipArchive]::new($stream, [ZipArchiveMode]::Update)
+			try {
+				#Write files
+				foreach ($currentItem in $itemCollection) {
+					$fileName = Split-Path $currentItem -Leaf
+					$innerPath = (Join-Path $InnerFolder $fileName).TrimStart('.\')
+					[PowerUpHelper]::WriteZipFile($zip, $innerPath, [PowerUpHelper]::GetBinaryFile($currentItem.FullName))
 				}
-				else {
-					Write-Warning -Message "Item $currentItem was not found"
-				}
+				
 			}
-
-			#Re-compress archive
-			Write-Verbose "Repackaging original archive $Path"
-			Compress-Archive "$workFolder\*" -DestinationPath $Path -Force
+			catch { throw $_ }
+			finally { $zip.Dispose() }	
 		}
-		catch {
-			throw $_
-		}
-		finally {
-			if ($workFolder.Name -like 'PowerUpWorkspace*') {
-				Remove-Item $workFolder -Recurse -Force
-			}
-		}
+		catch { throw $_ }
+		finally { $stream.Dispose()	}
+		
 	}
 }
