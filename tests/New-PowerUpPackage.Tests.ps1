@@ -8,7 +8,7 @@ else { $commandName = "_ManualExecution"; $here = (Get-Item . ).FullName }
 if (!$Batch) {
 	# Is not a part of the global batch => import module
 	#Explicitly import the module for testing
-	Import-Module "$PSScriptRoot\..\PowerUp.psd1" -Force
+	Import-Module "$here\..\PowerUp.psd1" -Force
 }
 else {
 	# Is a part of a batch, output some eye-catching happiness
@@ -34,6 +34,9 @@ Describe "New-PowerUpPackage tests" -Tag $commandName, UnitTests {
 		if ((Test-Path $workFolder) -and $workFolder -like '*.Tests.PowerUp') { Remove-Item $workFolder -Recurse }
 	}
 	Context "testing package contents" {
+		AfterAll {
+			if (Test-Path $packagePath.TrimEnd('.zip')) { Remove-Item $packagePath.TrimEnd('.zip') }
+		}
 		It "should create a package file" {
 			$results = New-PowerUpPackage -ScriptPath "$here\etc\query1.sql" -Name $packagePath
 			$results | Should Not Be $null
@@ -59,6 +62,14 @@ Describe "New-PowerUpPackage tests" -Tag $commandName, UnitTests {
 		It "should contain deploy files" {
 			$results = Get-ArchiveItem $packagePath
 			'Deploy.ps1' | Should BeIn $results.Path
+		}
+		It "should create a zip package based on name without extension" {
+			$results = New-PowerUpPackage -ScriptPath "$here\etc\query1.sql" -Name $packagePath.TrimEnd('.zip') -Force
+			$results | Should Not Be $null
+			$results.Name | Should Be (Split-Path $packagePath -Leaf)
+			$results.FullName | Should Be (Get-Item $packagePath).FullName
+			$results.ModuleVersion | Should Be (Get-Module PowerUp).Version
+			Test-Path $packagePath | Should Be $true
 		}
 	}
 	Context "testing configurations" {
@@ -186,7 +197,7 @@ Describe "New-PowerUpPackage tests" -Tag $commandName, UnitTests {
 	Context "runs negative tests" {
 		It "should throw error when scripts with the same relative path is being added" {
 			try {
-				$null = New-PowerUpPackage -Name $packageNameTest -ScriptPath "$scriptFolder\*", "$scriptFolder\..\transactional-failure\*"
+				$null = New-PowerUpPackage -Name $packageName -ScriptPath "$scriptFolder\*", "$scriptFolder\..\transactional-failure\*"
 			}
 			catch {
 				$errorResult = $_

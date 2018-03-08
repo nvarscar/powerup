@@ -88,8 +88,10 @@ function New-PowerUpPackage {
 	
 	begin {
 		#Set package extension if there is none
-		if ($Path.IndexOf('.') -eq -1) {
-			$Path = "$Path.zip"
+		$packagePath = $Path
+		$fileName = Split-Path $packagePath -Leaf
+		if ($fileName.IndexOf('.') -eq -1) {
+			$packagePath = "$packagePath.zip"
 		}
 		
 		#Combine Variables and Configuration into a single object
@@ -130,7 +132,7 @@ function New-PowerUpPackage {
 		if ($pscmdlet.ShouldProcess($package, "Generate a package file")) {
 			
 			#Save package file
-			$package.SaveToFile($Path, $Force)
+			$package.SaveToFile($packagePath, $Force)
 
 			#Output the package object
 			$package

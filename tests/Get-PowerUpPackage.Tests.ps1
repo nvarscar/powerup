@@ -8,7 +8,7 @@ else { $commandName = "_ManualExecution"; $here = (Get-Item . ).FullName }
 if (!$Batch) {
 	# Is not a part of the global batch => import module
 	#Explicitly import the module for testing
-	Import-Module "$PSScriptRoot\..\PowerUp.psd1" -Force
+	Import-Module "$here\..\PowerUp.psd1" -Force
 }
 else {
 	# Is a part of a batch, output some eye-catching happiness
