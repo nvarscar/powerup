@@ -15,9 +15,11 @@ else {
 	Write-Host "Running $commandName tests" -ForegroundColor Cyan
 }
 
-. "$here\..\internal\Get-ArchiveItem.ps1"
+. "$here\..\internal\functions\Get-ArchiveItem.ps1"
 
-$unpackedFolder = Join-Path $workFolder "Unpacked"
+$workFolder = Join-Path "$here\etc" "$commandName.Tests.PowerUp"
+$unpackedFolder = Join-Path $workFolder 'unpacked'
+
 $packageName = Join-Path $workFolder 'TempDeployment.zip'
 $v1scripts = "$here\etc\install-tests\success"
 

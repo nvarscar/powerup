@@ -19,7 +19,7 @@ Add-Type -AssemblyName System.IO.Compression
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 . "$here\..\internal\classes\PowerUpHelper.class.ps1"
 . "$here\..\internal\classes\PowerUp.class.ps1"
-. "$here\..\internal\Get-ArchiveItem.ps1"
+. "$here\..\internal\functions\Get-ArchiveItem.ps1"
 $packageName = "$here\etc\$commandName.zip"
 $script:pkg = $script:build = $script:file = $null
 $script1 = "$here\etc\install-tests\success\1.sql"

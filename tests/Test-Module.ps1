@@ -35,7 +35,7 @@ param
 )
 
 #Explicitly import the module for testing
-Import-Module "$here\..\PowerUp.psd1" -Force
+Import-Module "$PSScriptRoot\..\PowerUp.psd1" -Force
 
 #Run each module function
 $params = @{

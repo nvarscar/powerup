@@ -17,8 +17,8 @@ else {
 
 . "$here\constants.ps1"
 
-. "$here\..\internal\Get-ArchiveItem.ps1"
-. "$here\..\internal\New-TempWorkspaceFolder.ps1"
+. "$here\..\internal\functions\Get-ArchiveItem.ps1"
+. "$here\..\internal\functions\New-TempWorkspaceFolder.ps1"
 . "$here\etc\Invoke-SqlCmd2.ps1"
 
 $workFolder = Join-Path "$here\etc" "$commandName.Tests.PowerUp"

@@ -16,8 +16,8 @@ else {
 }
 
 
-. "$here\..\internal\Get-ArchiveItem.ps1"
-. "$here\..\internal\Expand-ArchiveItem.ps1"
+. "$here\..\internal\functions\Get-ArchiveItem.ps1"
+. "$here\..\internal\functions\Expand-ArchiveItem.ps1"
 
 $workFolder = Join-Path "$here\etc" "$commandName.Tests.PowerUp"
 $unpackedFolder = Join-Path $workFolder 'unpacked'
