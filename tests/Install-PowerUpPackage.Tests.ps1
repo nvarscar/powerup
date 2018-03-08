@@ -17,8 +17,7 @@ else {
 }
 
 . "$here\constants.ps1"
-
-
+. "$here\etc\Invoke-SqlCmd2.ps1"
 
 $workFolder = Join-Path "$here\etc" "$commandName.Tests.PowerUp"
 $unpackedFolder = Join-Path $workFolder 'unpacked'
