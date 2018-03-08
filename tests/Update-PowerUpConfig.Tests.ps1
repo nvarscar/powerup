@@ -1,32 +1,45 @@
-﻿$commandName = $MyInvocation.MyCommand.Name.Replace(".Tests.ps1", "")
+﻿Param (
+	[switch]$Batch
+)
 
-$here = if ($PSScriptRoot) { $PSScriptRoot } else {	(Get-Item . ).FullName }
-$sut = (Split-Path -Leaf $MyInvocation.MyCommand.Path) -replace '\.Tests\.', '.'
+if ($PSScriptRoot) { $commandName = $MyInvocation.MyCommand.Name.Replace(".Tests.ps1", ""); $here = $PSScriptRoot }
+else { $commandName = "_ManualExecution"; $here = (Get-Item . ).FullName }
+
+if (!$Batch) {
+	# Is not a part of the global batch => import module
+	#Explicitly import the module for testing
+	Import-Module "$here\..\PowerUp.psd1" -Force
+}
+else {
+	# Is a part of a batch, output some eye-catching happiness
+	Write-Host "Running $commandName tests" -ForegroundColor Cyan
+}
 
 . "$here\..\internal\Get-ArchiveItem.ps1"
-. "$here\..\internal\New-TempWorkspaceFolder.ps1"
 
-$workFolder = New-TempWorkspaceFolder
 $unpackedFolder = Join-Path $workFolder "Unpacked"
 $packageName = Join-Path $workFolder 'TempDeployment.zip'
 $v1scripts = "$here\etc\install-tests\success"
 
-Describe "Update-PowerUpConfig tests" {
+Describe "Update-PowerUpConfig tests" -Tag $commandName, UnitTests {
 	BeforeAll {
+		if ((Test-Path $workFolder) -and $workFolder -like '*.Tests.PowerUp') { Remove-Item $workFolder -Recurse }
+		$null = New-Item $workFolder -ItemType Directory -Force
+		$null = New-Item $unpackedFolder -ItemType Directory -Force
 		$null = New-PowerUpPackage -ScriptPath $v1scripts -Name $packageName -Build 1.0 -Force -ConfigurationFile "$here\etc\full_config.json"
 	}
 	AfterAll {
-		if ($workFolder.Name -like 'PowerUpWorkspace*') { Remove-Item $workFolder -Recurse }
+		if ((Test-Path $workFolder) -and $workFolder -like '*.Tests.PowerUp') { Remove-Item $workFolder -Recurse }
     }
 	Context "Updating single config item (config/value pairs)" {
 		It "updates config item with new value" {
-			{ Update-PowerUpConfig -Path $packageName -ConfigName ApplicationName -Value 'MyNewApplication' } | Should Not throw
-            $results = (Get-PowerUpPackage -Path $packageName).Config
+			Update-PowerUpConfig -Path $packageName -ConfigName ApplicationName -Value 'MyNewApplication'
+            $results = (Get-PowerUpPackage -Path $packageName).Configuration
             $results.ApplicationName | Should Be 'MyNewApplication'
         }
 		It "updates config item with null value" {
-			{ Update-PowerUpConfig -Path $packageName -ConfigName ApplicationName -Value $null } | Should Not throw
-			$results = (Get-PowerUpPackage -Path $packageName).Config
+			Update-PowerUpConfig -Path $packageName -ConfigName ApplicationName -Value $null
+			$results = (Get-PowerUpPackage -Path $packageName).Configuration
 			$results.ApplicationName | Should Be $null
         }
 		It "should throw when config item is not specified" {
@@ -38,14 +51,14 @@ Describe "Update-PowerUpConfig tests" {
     }
 	Context "Updating config items using hashtable (values)" {
 		It "updates config items with new values" {
-			{ Update-PowerUpConfig -Path $packageName -Configuration @{ApplicationName = 'MyHashApplication'; Database = 'MyNewDb'} } | Should Not throw
-            $results = (Get-PowerUpPackage -Path $packageName).Config
+			Update-PowerUpConfig -Path $packageName -Configuration @{ApplicationName = 'MyHashApplication'; Database = 'MyNewDb'}
+            $results = (Get-PowerUpPackage -Path $packageName).Configuration
             $results.ApplicationName | Should Be 'MyHashApplication'
             $results.Database | Should Be 'MyNewDb'
         }
 		It "updates config items with a null value" {
-			{ Update-PowerUpConfig -Path $packageName -Configuration @{ApplicationName = $null; Database = $null} } | Should Not throw
-            $results = (Get-PowerUpPackage -Path $packageName).Config
+			Update-PowerUpConfig -Path $packageName -Configuration @{ApplicationName = $null; Database = $null}
+            $results = (Get-PowerUpPackage -Path $packageName).Configuration
             $results.ApplicationName | Should Be $null
             $results.Database | Should Be $null
         }
@@ -58,8 +71,8 @@ Describe "Update-PowerUpConfig tests" {
     }
     Context "Updating config items using a file template" {
 		It "updates config items with an empty config file" {
-			{ Update-PowerUpConfig -Path $packageName -ConfigurationFile "$here\etc\empty_config.json"} | Should Not throw
-            $results = (Get-PowerUpPackage -Path $packageName).Config
+			Update-PowerUpConfig -Path $packageName -ConfigurationFile "$here\etc\empty_config.json"
+            $results = (Get-PowerUpPackage -Path $packageName).Configuration
             $results.ApplicationName | Should Be $null
             $results.SqlInstance | Should Be $null
             $results.Database | Should Be $null
@@ -74,8 +87,8 @@ Describe "Update-PowerUpConfig tests" {
             $results.Variables | Should Be $null
         }
 		It "updates config items with a proper config file" {
-			{ Update-PowerUpConfig -Path $packageName -ConfigurationFile "$here\etc\full_config.json"} | Should Not throw
-            $results = (Get-PowerUpPackage -Path $packageName).Config
+			Update-PowerUpConfig -Path $packageName -ConfigurationFile "$here\etc\full_config.json"
+            $results = (Get-PowerUpPackage -Path $packageName).Configuration
             $results.ApplicationName | Should Be "MyTestApp"
             $results.SqlInstance | Should Be "TestServer"
             $results.Database | Should Be "MyTestDB"
@@ -101,13 +114,13 @@ Describe "Update-PowerUpConfig tests" {
     }
     Context "Updating variables" {
 		It "updates config variables with new hashtable" {
-			{ Update-PowerUpConfig -Path $packageName -Variables @{foo='bar'} } | Should Not throw
-            $results = (Get-PowerUpPackage -Path $packageName).Config
+			Update-PowerUpConfig -Path $packageName -Variables @{foo='bar'} 
+            $results = (Get-PowerUpPackage -Path $packageName).Configuration
             $results.Variables.foo | Should Be 'bar'
         }
 		It "overrides specified config with a value from -Variables" {
-			{ Update-PowerUpConfig -Path $packageName -Configuration @{Variables = @{ foo = 'bar'}} -Variables @{foo = 'bar2'} } | Should Not throw
-			$results = (Get-PowerUpPackage -Path $packageName).Config
+			Update-PowerUpConfig -Path $packageName -Configuration @{Variables = @{ foo = 'bar'}} -Variables @{foo = 'bar2'}
+			$results = (Get-PowerUpPackage -Path $packageName).Configuration
 			$results.Variables.foo | Should Be 'bar2'
         }
     }
