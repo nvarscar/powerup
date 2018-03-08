@@ -15,7 +15,7 @@
 		$buildFolder = Join-Path $ScriptPath $Build.build
 		if (-not (Test-Path $buildFolder)) {
 			Write-Verbose "Creating folder $buildFolder"
-			$null = New-Item -Path $buildFolder -ItemType Directory
+			$null = New-Item -Path $buildFolder -ItemType Directory -Force
 		}
 	}
 
@@ -25,7 +25,7 @@
 			$destFolder = Split-Path $destination -Parent
 			if (-not (Test-Path $destFolder)) {
 				Write-Verbose "Creating folder $destFolder"
-				$null = New-Item -Path $destFolder -ItemType Directory
+				$null = New-Item -Path $destFolder -ItemType Directory -Force
 			}
 			Write-Verbose "Copying file $($script.sourcePath) to $destination"
 			Copy-Item -Path $script.sourcePath -Destination $destination
