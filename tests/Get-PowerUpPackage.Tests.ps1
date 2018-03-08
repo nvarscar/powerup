@@ -28,8 +28,8 @@ $v3scripts = Join-Path $scriptFolder '3.sql'
 Describe "Get-PowerUpPackage tests" -Tag $commandName, UnitTests {	
 	
 	BeforeAll {
-		$null = New-Item $workFolder -ItemType Directory
-		$null = New-Item $unpackedFolder -ItemType Directory
+		$null = New-Item $workFolder -ItemType Directory -Force
+		$null = New-Item $unpackedFolder -ItemType Directory -Force
 		$null = New-PowerUpPackage -ScriptPath $v1scripts -Name $packageName -Build 1.0 -Force -ConfigurationFile "$here\etc\full_config.json"
 		$null = Add-PowerUpBuild -ScriptPath $v2scripts -Path $packageName -Build 2.0
 		$null = Add-PowerUpBuild -ScriptPath $v3scripts -Path $packageName -Build 3.0
@@ -98,7 +98,7 @@ Describe "Get-PowerUpPackage tests" -Tag $commandName, UnitTests {
 	}
 	Context "Returns unpacked package properties" {
 		BeforeAll {
-			$null = New-Item $unpackedFolder -ItemType Directory
+			$null = New-Item $unpackedFolder -ItemType Directory -Force
 			Expand-Archive $packageName $unpackedFolder
 		}
 		AfterAll {

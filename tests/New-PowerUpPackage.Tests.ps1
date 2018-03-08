@@ -27,8 +27,8 @@ $scriptFolder = "$here\etc\install-tests\success"
 Describe "New-PowerUpPackage tests" -Tag $commandName, UnitTests {	
 	BeforeAll {
 		if ((Test-Path $workFolder) -and $workFolder -like '*.Tests.PowerUp') { Remove-Item $workFolder -Recurse }
-		$null = New-Item $workFolder -ItemType Directory
-		$null = New-Item $unpackedFolder -ItemType Directory
+		$null = New-Item $workFolder -ItemType Directory -Force
+		$null = New-Item $unpackedFolder -ItemType Directory -Force
 	}
 	AfterAll {
 		if ((Test-Path $workFolder) -and $workFolder -like '*.Tests.PowerUp') { Remove-Item $workFolder -Recurse }

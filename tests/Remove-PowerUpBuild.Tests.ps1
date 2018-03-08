@@ -33,8 +33,8 @@ $packageNoPkgFile = Join-Path $workFolder "pkg_nopkgfile.zip"
 Describe "Remove-PowerUpBuild tests" -Tag $commandName, UnitTests {
 	BeforeAll {
 		if ((Test-Path $workFolder) -and $workFolder -like '*.Tests.PowerUp') { Remove-Item $workFolder -Recurse }
-		$null = New-Item $workFolder -ItemType Directory
-		$null = New-Item $unpackedFolder -ItemType Directory
+		$null = New-Item $workFolder -ItemType Directory -Force
+		$null = New-Item $unpackedFolder -ItemType Directory -Force
 		$null = New-PowerUpPackage -ScriptPath $v1scripts -Name $packageName -Build 1.0 -Force
 		$null = Add-PowerUpBuild -ScriptPath $v2scripts -Path $packageName -Build 2.0
 	}
