@@ -1140,12 +1140,258 @@ Describe "PowerUpRootFile class tests" -Tag $commandName, UnitTests, PowerUpFile
 }
 
 Describe "PowerUpConfig class tests" -Tag $commandName, UnitTests, PowerUpConfig {
+	Context "tests PowerUpConfig constructors" {
+		It "Should return an empty config by default" {
+			$result = [PowerUpConfig]::new()
+			$result.ApplicationName | Should Be $null
+			$result.SqlInstance | Should Be $null
+			$result.Database | Should Be $null
+			$result.DeploymentMethod | Should Be $null
+			$result.ConnectionTimeout | Should Be $null
+			$result.ExecutionTimeout | Should Be $null
+			$result.Encrypt | Should Be $null
+			$result.Credential | Should Be $null
+			$result.Username | Should Be $null
+			$result.Password | Should Be $null
+			$result.SchemaVersionTable | Should Be 'dbo.SchemaVersions'
+			$result.Silent | Should Be $null
+			$result.Variables | Should Be $null
+		}
+		It "Should return empty configuration from empty config file" {
+			$result = [PowerUpConfig]::new((Get-Content "$here\etc\empty_config.json" -Raw))
+			$result.ApplicationName | Should Be $null
+			$result.SqlInstance | Should Be $null
+			$result.Database | Should Be $null
+			$result.DeploymentMethod | Should Be $null
+			$result.ConnectionTimeout | Should Be $null
+			$result.ExecutionTimeout | Should Be $null
+			$result.Encrypt | Should Be $null
+			$result.Credential | Should Be $null
+			$result.Username | Should Be $null
+			$result.Password | Should Be $null
+			$result.SchemaVersionTable | Should Be $null
+			$result.Silent | Should Be $null
+			$result.Variables | Should Be $null
+		}
+		It "Should return all configurations from the config file" {
+			$result = [PowerUpConfig]::new((Get-Content "$here\etc\full_config.json" -Raw))
+			$result.ApplicationName | Should Be "MyTestApp"
+			$result.SqlInstance | Should Be "TestServer"
+			$result.Database | Should Be "MyTestDB"
+			$result.DeploymentMethod | Should Be "SingleTransaction"
+			$result.ConnectionTimeout | Should Be 40
+			$result.ExecutionTimeout | Should Be $null
+			$result.Encrypt | Should Be $null
+			$result.Credential | Should Be $null
+			$result.Username | Should Be "TestUser"
+			$result.Password | Should Be "TestPassword"
+			$result.SchemaVersionTable | Should Be "test.Table"
+			$result.Silent | Should Be $true
+			$result.Variables | Should Be $null
+		}
+	}
+	Context "tests other methods of PowerUpConfig" {
+		It "should test AsHashtable method" {
+			$result = [PowerUpConfig]::new((Get-Content "$here\etc\full_config.json" -Raw)).AsHashtable()
+			$result.GetType().Name | Should Be 'hashtable'
+			$result.ApplicationName | Should Be "MyTestApp"
+			$result.SqlInstance | Should Be "TestServer"
+			$result.Database | Should Be "MyTestDB"
+			$result.DeploymentMethod | Should Be "SingleTransaction"
+			$result.ConnectionTimeout | Should Be 40
+			$result.ExecutionTimeout | Should Be $null
+			$result.Encrypt | Should Be $null
+			$result.Credential | Should Be $null
+			$result.Username | Should Be "TestUser"
+			$result.Password | Should Be "TestPassword"
+			$result.SchemaVersionTable | Should Be "test.Table"
+			$result.Silent | Should Be $true
+			$result.Variables | Should Be $null
+		}
+		It "should test SetValue method" {
+			$config = [PowerUpConfig]::new((Get-Content "$here\etc\full_config.json" -Raw))
+			#String property
+			$config.SetValue('ApplicationName', 'MyApp2')
+			$config.ApplicationName | Should Be 'MyApp2'
+			$config.SetValue('ApplicationName', $null)
+			$config.ApplicationName | Should Be $null
+			$config.SetValue('ApplicationName', 123)
+			$config.ApplicationName | Should Be '123'
+			#Int property
+			$config.SetValue('ConnectionTimeout', 11)
+			$config.ConnectionTimeout | Should Be 11
+			$config.SetValue('ConnectionTimeout', $null)
+			$config.ConnectionTimeout | Should Be $null
+			$config.SetValue('ConnectionTimeout', '123')
+			$config.ConnectionTimeout | Should Be 123
+			{ $config.SetValue('ConnectionTimeout', 'string') } | Should Throw
+			#Bool property
+			$config.SetValue('Silent', $false)
+			$config.Silent | Should Be $false
+			$config.SetValue('Silent', $null)
+			$config.Silent | Should Be $null
+			$config.SetValue('Silent', 2)
+			$config.Silent | Should Be $true
+			$config.SetValue('Silent', 0)
+			$config.Silent | Should Be $false
+			$config.SetValue('Silent', 'string')
+			$config.Silent | Should Be $true
+			#Negatives
+			{ $config.SetValue('AppplicationName', 'MyApp3') } | Should Throw
+		}
+		It "should test ExportToJson method" {
+			$result = [PowerUpConfig]::new((Get-Content "$here\etc\full_config.json" -Raw)).ExportToJson() | ConvertFrom-Json -ErrorAction Stop
+			$result.ApplicationName | Should Be "MyTestApp"
+			$result.SqlInstance | Should Be "TestServer"
+			$result.Database | Should Be "MyTestDB"
+			$result.DeploymentMethod | Should Be "SingleTransaction"
+			$result.ConnectionTimeout | Should Be 40
+			$result.ExecutionTimeout | Should Be $null
+			$result.Encrypt | Should Be $null
+			$result.Credential | Should Be $null
+			$result.Username | Should Be "TestUser"
+			$result.Password | Should Be "TestPassword"
+			$result.SchemaVersionTable | Should Be "test.Table"
+			$result.Silent | Should Be $true
+			$result.Variables | Should Be $null
+		}
+		It "should test Merge method" {
+			$config = [PowerUpConfig]::new((Get-Content "$here\etc\full_config.json" -Raw))
+			$hashtable = @{
+				ApplicationName = 'MyTestApp2'
+				ConnectionTimeout = 0
+				SqlInstance = $null
+				Silent = $false
+				ExecutionTimeout = 20
+			}
+			$config.Merge($hashtable)
+			$config.ApplicationName | Should Be "MyTestApp2"
+			$config.SqlInstance | Should Be $null
+			$config.Database | Should Be "MyTestDB"
+			$config.DeploymentMethod | Should Be "SingleTransaction"
+			$config.ConnectionTimeout | Should Be 0
+			$config.ExecutionTimeout | Should Be 20
+			$config.Encrypt | Should Be $null
+			$config.Credential | Should Be $null
+			$config.Username | Should Be "TestUser"
+			$config.Password | Should Be "TestPassword"
+			$config.SchemaVersionTable | Should Be "test.Table"
+			$config.Silent | Should Be $false
+			$config.Variables | Should Be $null
+			#negative
+			{ $config.Merge(@{foo = 'bar'}) } | Should Throw
+			{ $config.Merge($null) } | Should Throw
+		}
+	}
+	Context "tests Save/Alter methods" {
+		AfterAll {
+			if (Test-Path $packageName) { Remove-Item $packageName }
+		}
+		It "should test Save method" {
+			#Generate new package file
+			$script:pkg = [PowerUpPackage]::new()
+			$script:pkg.Configuration.ApplicationName = 'TestApp2'
+			$script:pkg.SaveToFile($packageName)
+
+			#Open zip file stream
+			$writeMode = [System.IO.FileMode]::Open
+			$stream = [FileStream]::new($packageName, $writeMode)
+			try {
+				#Open zip file
+				$zip = [ZipArchive]::new($stream, [ZipArchiveMode]::Update)
+				try {
+					#Initiate saving
+					$script:pkg.Configuration.Save($zip)
+				}
+				catch {
+					throw $_
+				}
+				finally {
+					#Close archive
+					$zip.Dispose()
+				}
+			}
+			catch {
+				throw $_
+			}
+			finally {
+				#Close archive
+				$stream.Dispose()
+			}
+			$results = Get-ArchiveItem $packageName
+			foreach ($file in (Get-PowerUpModuleFileList)) {
+				Join-Path 'Modules\PowerUp' $file.Path | Should BeIn $results.Path
+			}
+			'PowerUp.config.json' | Should BeIn $results.Path
+			'PowerUp.package.json' | Should BeIn $results.Path
+			'Deploy.ps1' | Should BeIn $results.Path
+		}
+		It "Should load package successfully after saving it" {
+			$script:pkg = [PowerUpPackage]::new($packageName)
+			$script:pkg.Configuration.ApplicationName | Should Be 'TestApp2'
+		}
+		It "should test Alter method" {
+			$script:pkg.Configuration.ApplicationName = 'TestApp3'
+			$script:pkg.Configuration.Alter()
+			$results = Get-ArchiveItem "$packageName"
+			foreach ($file in (Get-PowerUpModuleFileList)) {
+				Join-Path 'Modules\PowerUp' $file.Path | Should BeIn $results.Path
+			}
+			'PowerUp.config.json' | Should BeIn $results.Path
+			'PowerUp.package.json' | Should BeIn $results.Path
+			'Deploy.ps1' | Should BeIn $results.Path
+		}
+		It "Should load package successfully after saving it" {
+			$p = [PowerUpPackage]::new($packageName)
+			$p.Configuration.ApplicationName | Should Be 'TestApp3'
+		}
+	}
 	Context "tests static methods of PowerUpConfig" {
-		It "Should test static GetDeployFile method" {
+		It "should test static GetDeployFile method" {
 			$f = [PowerUpConfig]::GetDeployFile()
 			$f.Type | Should Be 'Misc'
 			$f.Path | Should BeLike '*\Deploy.ps1'
 			$f.Name | Should Be 'Deploy.ps1'
+		}
+		It "should test static FromFile method" {
+			$result = [PowerUpConfig]::FromFile("$here\etc\full_config.json")
+			$result.ApplicationName | Should Be "MyTestApp"
+			$result.SqlInstance | Should Be "TestServer"
+			$result.Database | Should Be "MyTestDB"
+			$result.DeploymentMethod | Should Be "SingleTransaction"
+			$result.ConnectionTimeout | Should Be 40
+			$result.ExecutionTimeout | Should Be $null
+			$result.Encrypt | Should Be $null
+			$result.Credential | Should Be $null
+			$result.Username | Should Be "TestUser"
+			$result.Password | Should Be "TestPassword"
+			$result.SchemaVersionTable | Should Be "test.Table"
+			$result.Silent | Should Be $true
+			$result.Variables | Should Be $null
+			#negatives
+			{ [PowerUpConfig]::FromFile("$here\etc\notajsonfile.json") } | Should Throw
+			{ [PowerUpConfig]::FromFile("nonexisting\file") } | Should Throw
+			{ [PowerUpConfig]::FromFile($null) } | Should Throw
+		}
+		It "should test static FromJsonString method" {
+			$result = [PowerUpConfig]::FromJsonString((Get-Content "$here\etc\full_config.json" -Raw))
+			$result.ApplicationName | Should Be "MyTestApp"
+			$result.SqlInstance | Should Be "TestServer"
+			$result.Database | Should Be "MyTestDB"
+			$result.DeploymentMethod | Should Be "SingleTransaction"
+			$result.ConnectionTimeout | Should Be 40
+			$result.ExecutionTimeout | Should Be $null
+			$result.Encrypt | Should Be $null
+			$result.Credential | Should Be $null
+			$result.Username | Should Be "TestUser"
+			$result.Password | Should Be "TestPassword"
+			$result.SchemaVersionTable | Should Be "test.Table"
+			$result.Silent | Should Be $true
+			$result.Variables | Should Be $null
+			#negatives
+			{ [PowerUpConfig]::FromJsonString((Get-Content "$here\etc\notajsonfile.json" -Raw)) } | Should Throw
+			{ [PowerUpConfig]::FromJsonString($null) } | Should Throw
+			{ [PowerUpConfig]::FromJsonString('') } | Should Throw
 		}
 	}
 }

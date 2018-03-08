@@ -997,6 +997,9 @@ class PowerUpConfig : PowerUp {
 		$this.Init()
 	}
 	PowerUpConfig ([string]$jsonString) {
+		if (!$jsonString) {
+			$this.ThrowArgumentException($this, "Input string has not been defined")
+		}
 		$this.Init()
 
 		$jsonConfig = $jsonString | ConvertFrom-Json -ErrorAction Stop
@@ -1035,7 +1038,8 @@ class PowerUpConfig : PowerUp {
 		if ([PowerUpConfig]::EnumProperties() -notcontains $Property) {
 			$this.ThrowArgumentException($this, "$Property is not a valid configuration item")
 		}
-		if ($Value -eq $null -and $Property -in @('ApplicationName', 'SqlInstance', 'Database', 'DeploymentMethod', 'Username', 'Password', 'SchemaVersionTable')) {
+		#set proper NullString for String properties
+		if ($Value -eq $null -and $Property -in ($this.PsObject.Properties | Where-Object TypeNameOfValue -like 'System.String*').Name) {
 			$this.$Property = [NullString]::Value
 		}
 		else {
@@ -1046,6 +1050,7 @@ class PowerUpConfig : PowerUp {
 	[string] ExportToJson() {
 		return $this | Select-Object -Property ([PowerUpConfig]::EnumProperties()) | ConvertTo-Json -Depth 2
 	}
+	# Save package to an opened zip file
 	[void] Save([ZipArchive]$zipFile) {
 		$fileContent = [Text.Encoding]::ASCII.GetBytes($this.ExportToJson())
 		if ($this.Parent.ConfigurationFile) {
@@ -1059,6 +1064,40 @@ class PowerUpConfig : PowerUp {
 		$this.Parent.ConfigurationFile.SetContent($fileContent)
 		[PowerUpHelper]::WriteZipFile($zipFile, $filePath, $fileContent)
 	}
+	#Initiates package update saving the configuration file in the package
+	[void] Alter() {
+		#only do something if it's a part of a package
+		if ($this.Parent -is [PowerUpPackageBase]) {
+			#Open new file stream
+			$writeMode = [System.IO.FileMode]::Open
+			$stream = [FileStream]::new($this.Parent.FileName, $writeMode, [System.IO.FileAccess]::ReadWrite)
+			try {
+				#Open zip file
+				$zip = [ZipArchive]::new($stream, [ZipArchiveMode]::Update)
+				try {
+					#Write file
+					$this.Save($zip)
+				}
+				catch { throw $_ }
+				finally { $zip.Dispose() }	
+			}
+			catch { throw $_ }
+			finally { $stream.Dispose()	}
+
+			# Refreshing regular file properties for parent object
+			$this.Parent.RefreshFileProperties()
+		}
+	}
+	#Merge two configurations
+	[void] Merge([PowerUpConfig]$config) {
+		$this.Merge($config.AsHashtable())
+	}
+	[void] Merge([hashtable]$config) {
+		foreach ($key in $config.Keys) {
+			$this.SetValue($key, $config.$key)
+		}
+	}
+	
 
 	#Static Methods
 	static [PowerUpConfig] FromJsonString ([string]$jsonString) {
