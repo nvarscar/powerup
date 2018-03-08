@@ -9,11 +9,12 @@
 		Will deploy all the builds from the package that previously have not been deployed.
 	
 	.PARAMETER Path
-		Path to the existing PowerUpPackage.
+		Path to the existing PowerUpPackage. 
 		Aliases: Name, FileName, Package
-	
-	.PARAMETER WorkSpace
-		Optional folder to unzip the package to. Will hold the extracted package after completion.
+
+	.PARAMETER InputObject
+		Pipeline implementation of Path. Can also be a PowerUpPackage object.
+		Aliases: Name, FileName, Package
 	
 	.PARAMETER SqlInstance
 		Database server to connect to. SQL Server only for now.
@@ -116,15 +117,19 @@
 		.\MyPackage.zip | Install-PowerUpPackage -SqlInstance '#{server}' -Database '#{db}' -Variables @{server = 'myserver\instance1'; db = 'MyDb'}
 #>
 	
-	[CmdletBinding(SupportsShouldProcess = $true)]
+	[CmdletBinding(SupportsShouldProcess = $true, DefaultParameterSetName = 'Default')]
 	param
 	(
 		[Parameter(Mandatory = $true,
-			ValueFromPipeline = $true,
-			Position = 1)]
+			Position = 1,
+			ParameterSetName = 'Default')]
 		[Alias('Name', 'Package', 'Filename')]
 		[string]$Path,
-		[string]$WorkSpace,
+		[Parameter(Mandatory = $true,
+			Position = 1,
+			ValueFromPipeline = $true,
+			ParameterSetName = 'Pipeline')]
+		[object]$InputObject,
 		[Parameter(Position = 2)]
 		[Alias('Server', 'SqlServer', 'DBServer', 'Instance')]
 		[string]$SqlInstance,
@@ -155,67 +160,19 @@
 	begin {
 	}
 	process {
-		if (!(Test-Path $Path)) {
-			throw "Package $Path not found. Aborting deployment."
-			return
-		}
-		else {
-			$pFile = Get-Item $Path
-		}
-		
-		#Create workspace folder
-		if (!$Workspace) {
-			$noWorkspace = $true
-			if ($PSCmdlet.ShouldProcess("Creating temporary folder")) {
-				$workFolder = New-TempWorkspaceFolder
-			}
-			else {
-				$workFolder = "NonexistingPath"
-			}
-		}
-		elseif (!(Test-Path $WorkSpace -PathType Container)) {
-			if ($PSCmdlet.ShouldProcess("Creating workspace folder $WorkSpace")) {
-				$workFolder = New-Item -Path $WorkSpace -ItemType Directory -ErrorAction Stop
-			}
-			else {
-				$workFolder = "NonexistingPath123456743452345"
-			}
-		}
-		else {
-			$workFolder = Get-Item -Path $WorkSpace
-		}
-
-		#Ensure that temporary workspace is removed
-		try {
-			#Extract package
-			if ($PSCmdlet.ShouldProcess($pFile, "Extracting package to $workFolder")) {
-				Expand-Archive -Path $pFile -DestinationPath $workFolder -Force:$Force
-			}
-		
-			#Validate package
-			if (!$SkipValidation) {
-				if ($PSCmdlet.ShouldProcess($pFile, "Validating package in $workFolder")) {
-					$validation = Test-PowerUpPackage -Path $workFolder -Unpacked
-					if ($validation.IsValid -eq $false) {
-						$throwMessage = "The following package items have failed validation: "
-						$throwMessage += ($validation.ValidationTests | Where-Object { $_.Result -eq $false }).Item -join ", "
-						throw $throwMessage
-					}
-				}
-			}
+		if ($package = Get-PowerUpPackage -Path $Path) {
 
 			#Overwrite config file if specified
 			if ($ConfigurationFile) {
-				Update-PowerUpConfig -Path $workFolder -ConfigurationFile $ConfigurationFile -Variables $Variables -Unpacked
+				$config = Get-PowerUpConfig -Path $ConfigurationFile -Configuration $Configuration
+				$package.Configuration.Merge($config)
 			}
 			if ($Configuration) {
-				Update-PowerUpConfig -Path $workFolder -Configuration $Configuration -Variables $Variables -Unpacked
-			} 
-			
+				$package.Configuration.Merge($Configuration)
+			}
 			
 			#Start deployment
-			$packageFileName = Join-Path $workFolder ([PowerUpConfig]::GetPackageFileName())
-			$params = @{ PackageFile = $packageFileName }
+			$params = @{ InputObject = $package }
 			foreach ($key in ($PSBoundParameters.Keys)) {
 				#If any custom properties were specified
 				if ($key -in @('OutputFile','Append') -or $key -in [PowerUpConfig]::EnumProperties()) {
@@ -225,18 +182,6 @@
 			Write-Verbose "Preparing to start the deployment with custom parameters: $($params.Keys -join ', ')"
 			if ($PSCmdlet.ShouldProcess($params.PackageFile, "Initiating the deployment of the package")) {
 				Invoke-PowerUpDeployment @params
-			}
-		}
-		catch {
-			throw $_
-		}
-		finally {
-			if ($noWorkspace) {
-				if ($workFolder.Name -like 'PowerUpWorkspace*') {
-					if ($PSCmdlet.ShouldProcess($workFolder, "Removing temporary folder")) {
-						Remove-Item $workFolder -Recurse -Force
-					}
-				}
 			}
 		}
 	}
