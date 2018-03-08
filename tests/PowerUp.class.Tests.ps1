@@ -1,5 +1,19 @@
-$here = if ($PSScriptRoot) { $PSScriptRoot } else {	(Get-Item . ).FullName }
-$commandName = $MyInvocation.MyCommand.Name.Replace(".Tests.ps1", "")
+Param (
+	[switch]$Batch
+)
+
+if ($PSScriptRoot) { $commandName = $MyInvocation.MyCommand.Name.Replace(".Tests.ps1", ""); $here = $PSScriptRoot }
+else { $commandName = "_ManualExecution"; $here = (Get-Item . ).FullName }
+
+if (!$Batch) {
+	# Is not a part of the global batch => import module
+	#Explicitly import the module for testing
+	Import-Module "$PSScriptRoot\..\PowerUp.psd1" -Force
+}
+else {
+	# Is a part of a batch, output some eye-catching happiness
+	Write-Host "Running $commandName tests" -ForegroundColor Cyan
+}
 
 Add-Type -AssemblyName System.IO.Compression
 Add-Type -AssemblyName System.IO.Compression.FileSystem
@@ -12,7 +26,7 @@ $script1 = "$here\etc\install-tests\success\1.sql"
 $script2 = "$here\etc\install-tests\success\2.sql"
 $script3 = "$here\etc\install-tests\success\3.sql"
 
-Describe "$commandName - PowerUpPackage tests" -Tag $commandName, UnitTests, PowerUpPackage {
+Describe "PowerUpPackage class tests" -Tag $commandName, UnitTests, PowerUpPackage {
 	AfterAll {
 		if (Test-Path $packageName) { Remove-Item $packageName }
 	}
@@ -193,7 +207,7 @@ Describe "$commandName - PowerUpPackage tests" -Tag $commandName, UnitTests, Pow
 			{ $script:pkg.SetConfiguration([PowerUpConfig]::new($config)) } | Should Not Throw
 			$script:pkg.Configuration.SchemaVersionTable | Should Be 'dbo.NewTable'
 		}
-		$oldResults = Get-ArchiveItem $packageName | ? IsFolder -eq $false
+		$oldResults = Get-ArchiveItem $packageName | Where-Object IsFolder -eq $false
 		#Sleep 1 second to ensure that modification date is changed
 		Start-Sleep -Seconds 2
 		It "should test Save*/Alter methods" {
@@ -209,12 +223,12 @@ Describe "$commandName - PowerUpPackage tests" -Tag $commandName, UnitTests, Pow
 			'content\1.0\success\1.sql' | Should BeIn $results.Path
 		}
 		# Testing file contents to be updated by the Save method
-		$results = Get-ArchiveItem $packageName | ? IsFolder -eq $false
+		$results = Get-ArchiveItem $packageName | Where-Object IsFolder -eq $false
 		$saveTestsErrors = 0
 		foreach ($result in $oldResults) {
-			if ($result.ModifyDate -ge ($results | ? Path -eq $result.Path).ModifyDate) {
+			if ($result.ModifyDate -ge ($results | Where-Object Path -eq $result.Path).ModifyDate) {
 				It "Should have updated Modified date for file $($result.Path)" {
-					$result.ModifyDate -lt ($results | ? Path -eq $result.Path).ModifyDate | Should Be $true
+					$result.ModifyDate -lt ($results | Where-Object Path -eq $result.Path).ModifyDate | Should Be $true
 				}
 				$saveTestsErrors++
 			}
@@ -227,7 +241,7 @@ Describe "$commandName - PowerUpPackage tests" -Tag $commandName, UnitTests, Pow
 	}
 }
 
-Describe "$commandName - PowerUpPackageFile tests" -Tag $commandName, UnitTests, PowerUpPackage, PowerUpPackageFile {
+Describe "PowerUpPackageFile class tests" -Tag $commandName, UnitTests, PowerUpPackage, PowerUpPackageFile {
 	AfterAll {
 		if (Test-Path $packageName) { Remove-Item $packageName }
 	}
@@ -243,7 +257,7 @@ Describe "$commandName - PowerUpPackageFile tests" -Tag $commandName, UnitTests,
 			$b2 = $p.NewBuild('2.0')
 			$s1 = $b2.NewScript($script2, 1)
 			$p.SaveToFile($packageName)
-			$expandFolder = New-Item "$here\etc\LoadFromFile" -ItemType Directory
+			$null = New-Item "$here\etc\LoadFromFile" -ItemType Directory
 			Expand-Archive $p.FullName "$here\etc\LoadFromFile"
 		}
 		It "should load package from file" {
@@ -306,7 +320,7 @@ Describe "$commandName - PowerUpPackageFile tests" -Tag $commandName, UnitTests,
 
 }
 
-Describe "$commandName - PowerUpBuild tests" -Tag $commandName, UnitTests, PowerUpBuild {
+Describe "PowerUpBuild class tests" -Tag $commandName, UnitTests, PowerUpBuild {
 	Context "tests PowerUpBuild object creation" {
 		It "Should create new PowerUpBuild object" {
 			$b = [PowerUpBuild]::new('1.0')
@@ -525,7 +539,7 @@ Describe "$commandName - PowerUpBuild tests" -Tag $commandName, UnitTests, Power
 			$script:pkg = [PowerUpPackage]::new("$packageName.test.zip")
 			$script:build = $script:pkg.GetBuild('1.0')
 		}
-		$oldResults = Get-ArchiveItem "$packageName.test.zip" | ? IsFolder -eq $false
+		$oldResults = Get-ArchiveItem "$packageName.test.zip" | Where-Object IsFolder -eq $false
 		#Sleep 1 second to ensure that modification date is changed
 		Start-Sleep -Seconds 2
 		It "should test Alter method" {
@@ -547,13 +561,13 @@ Describe "$commandName - PowerUpBuild tests" -Tag $commandName, UnitTests, Power
 			$p.Builds.Scripts.Name | Should Be @('1.sql', '2.sql', '3.sql')
 		}
 		# Testing file contents to be updated by the Save method
-		$results = Get-ArchiveItem "$packageName.test.zip" | ? IsFolder -eq $false
+		$results = Get-ArchiveItem "$packageName.test.zip" | Where-Object IsFolder -eq $false
 		$saveTestsErrors = 0
 		#should trigger file updates for build files and module files
-		foreach ($result in ($oldResults | ? { $_.Path -like 'content\1.0\success' -or $_.Path -like 'Modules\PowerUp\*'  } )) {
-			if ($result.ModifyDate -ge ($results | ? Path -eq $result.Path).ModifyDate) {
+		foreach ($result in ($oldResults | Where-Object { $_.Path -like 'content\1.0\success' -or $_.Path -like 'Modules\PowerUp\*'  } )) {
+			if ($result.ModifyDate -ge ($results | Where-Object Path -eq $result.Path).ModifyDate) {
 				It "Should have updated Modified date for file $($result.Path)" {
-					$result.ModifyDate -lt ($results | ? Path -eq $result.Path).ModifyDate | Should Be $true
+					$result.ModifyDate -lt ($results | Where-Object Path -eq $result.Path).ModifyDate | Should Be $true
 				}
 				$saveTestsErrors++
 			}
@@ -566,7 +580,7 @@ Describe "$commandName - PowerUpBuild tests" -Tag $commandName, UnitTests, Power
     }
 }
 
-Describe "$commandName - PowerUpFile tests" -Tag $commandName, UnitTests, PowerUpFile {
+Describe "PowerUpFile class tests" -Tag $commandName, UnitTests, PowerUpFile {
 	AfterAll {
 		if (Test-Path $packageName) { Remove-Item $packageName }
 	}
@@ -634,7 +648,7 @@ Describe "$commandName - PowerUpFile tests" -Tag $commandName, UnitTests, PowerU
 				#Open zip file
 				$zip = [ZipArchive]::new($stream, [ZipArchiveMode]::Read)
 				try {
-					$zipEntry = $zip.Entries | ? FullName -eq 'content\1.0\success\1.sql'
+					$zipEntry = $zip.Entries | Where-Object FullName -eq 'content\1.0\success\1.sql'
 					$obj = @{
 						SourcePath  = $script1
 						packagePath = '1.sql'
@@ -699,12 +713,9 @@ Describe "$commandName - PowerUpFile tests" -Tag $commandName, UnitTests, PowerU
 		}
 		It "should test SetContent method" {
 			$oldData = $script:file.ByteArray
-			$oldHash = $script:file.Hash
 			$script:file.SetContent([PowerUpHelper]::GetBinaryFile($script2))
 			$script:file.ByteArray | Should Not Be $oldData
 			$script:file.ByteArray | Should Not BeNullOrEmpty
-			# $script:file.Hash | Should Not Be $oldHash
-			# $script:file.Hash | Should Not BeNullOrEmpty
 		}
 		It "should test ExportToJson method" {
 			$j = $script:file.ExportToJson() | ConvertFrom-Json
@@ -714,7 +725,7 @@ Describe "$commandName - PowerUpFile tests" -Tag $commandName, UnitTests, PowerU
 		}
 		It "should test Save method" {
 			#Save old file parameters
-			$oldResults = Get-ArchiveItem $packageName | ? Path -eq 'content\1.0\success\1.sql'
+			$oldResults = Get-ArchiveItem $packageName | Where-Object Path -eq 'content\1.0\success\1.sql'
 			#Sleep 2 seconds to ensure that modification date is changed
 			Start-Sleep -Seconds 2
 			#Modify file content
@@ -744,25 +755,25 @@ Describe "$commandName - PowerUpFile tests" -Tag $commandName, UnitTests, PowerU
 				#Close archive
 				$stream.Dispose()
 			}
-			$results = Get-ArchiveItem $packageName | ? Path -eq 'content\1.0\success\1.sql'
-			$oldResults.ModifyDate -lt ($results | ? Path -eq $oldResults.Path).ModifyDate | Should Be $true
+			$results = Get-ArchiveItem $packageName | Where-Object Path -eq 'content\1.0\success\1.sql'
+			$oldResults.ModifyDate -lt ($results | Where-Object Path -eq $oldResults.Path).ModifyDate | Should Be $true
 			# { $p = [PowerUpPackage]::new($packageName) } | Should Throw #Because of the hash mismatch - package file is not updated in Save()
 		}
 		It "should test Alter method" {
 			#Save old file parameters
-			$oldResults = Get-ArchiveItem $packageName | ? Path -eq 'content\1.0\success\1.sql'
+			$oldResults = Get-ArchiveItem $packageName | Where-Object Path -eq 'content\1.0\success\1.sql'
 			#Sleep 2 seconds to ensure that modification date is changed
 			Start-Sleep -Seconds 2
 			#Modify file content
 			$script:file.SetContent([PowerUpHelper]::GetBinaryFile($script2))
 			{ $script:file.Alter() } | Should Not Throw
-			$results = Get-ArchiveItem $packageName | ? Path -eq 'content\1.0\success\1.sql'
-			$oldResults.ModifyDate -lt ($results | ? Path -eq $oldResults.Path).ModifyDate | Should Be $true
+			$results = Get-ArchiveItem $packageName | Where-Object Path -eq 'content\1.0\success\1.sql'
+			$oldResults.ModifyDate -lt ($results | Where-Object Path -eq $oldResults.Path).ModifyDate | Should Be $true
 		}
 	}
 }
 
-Describe "$commandName - PowerUpScriptFile tests" -Tag $commandName, UnitTests, PowerUpFile, PowerUpScriptFile {
+Describe "PowerUpScriptFile class tests" -Tag $commandName, UnitTests, PowerUpFile, PowerUpScriptFile {
 	AfterAll {
 		if (Test-Path $packageName) { Remove-Item $packageName }
 	}
@@ -830,7 +841,7 @@ Describe "$commandName - PowerUpScriptFile tests" -Tag $commandName, UnitTests, 
 				#Open zip file
 				$zip = [ZipArchive]::new($stream, [ZipArchiveMode]::Read)
 				try {
-					$zipEntry = $zip.Entries | ? FullName -eq 'content\1.0\success\1.sql'
+					$zipEntry = $zip.Entries | Where-Object FullName -eq 'content\1.0\success\1.sql'
 					$obj = @{
 						SourcePath  = $script1
 						packagePath = '1.sql'
@@ -902,7 +913,7 @@ Describe "$commandName - PowerUpScriptFile tests" -Tag $commandName, UnitTests, 
 		}
 		It "should test Save method" {
 			#Save old file parameters
-			$oldResults = Get-ArchiveItem $packageName | ? Path -eq 'content\1.0\success\1.sql'
+			$oldResults = Get-ArchiveItem $packageName | Where-Object Path -eq 'content\1.0\success\1.sql'
 			#Sleep 2 seconds to ensure that modification date is changed
 			Start-Sleep -Seconds 2
 			#Modify file content
@@ -932,26 +943,26 @@ Describe "$commandName - PowerUpScriptFile tests" -Tag $commandName, UnitTests, 
 				#Close archive
 				$stream.Dispose()
 			}
-			$results = Get-ArchiveItem $packageName | ? Path -eq 'content\1.0\success\1.sql'
-			$oldResults.ModifyDate -lt ($results | ? Path -eq $oldResults.Path).ModifyDate | Should Be $true
-			{ $p = [PowerUpPackage]::new($packageName) } | Should Throw #Because of the hash mismatch - package file is not updated in Save()
+			$results = Get-ArchiveItem $packageName | Where-Object Path -eq 'content\1.0\success\1.sql'
+			$oldResults.ModifyDate -lt ($results | Where-Object Path -eq $oldResults.Path).ModifyDate | Should Be $true
+			{ [PowerUpPackage]::new($packageName) } | Should Throw #Because of the hash mismatch - package file is not updated in Save()
 		}
 		It "should test Alter method" {
 			#Save old file parameters
-			$oldResults = Get-ArchiveItem $packageName | ? Path -eq 'content\1.0\success\1.sql'
+			$oldResults = Get-ArchiveItem $packageName | Where-Object Path -eq 'content\1.0\success\1.sql'
 			#Sleep 2 seconds to ensure that modification date is changed
 			Start-Sleep -Seconds 2
 			#Modify file content
 			$script:file.SetContent([PowerUpHelper]::GetBinaryFile($script2))
 			{ $script:file.Alter() } | Should Not Throw
-			$results = Get-ArchiveItem $packageName | ? Path -eq 'content\1.0\success\1.sql'
-			$oldResults.ModifyDate -lt ($results | ? Path -eq $oldResults.Path).ModifyDate | Should Be $true
+			$results = Get-ArchiveItem $packageName | Where-Object Path -eq 'content\1.0\success\1.sql'
+			$oldResults.ModifyDate -lt ($results | Where-Object Path -eq $oldResults.Path).ModifyDate | Should Be $true
 			$p = [PowerUpPackage]::new($packageName)
 			$p.Builds[0].Scripts[0].GetContent() | Should BeLike 'CREATE TABLE dbo.c (a int)*'
 		}
 	}
 }
-Describe "$commandName - PowerUpRootFile tests" -Tag $commandName, UnitTests, PowerUpFile, PowerUpRootFile {
+Describe "PowerUpRootFile class tests" -Tag $commandName, UnitTests, PowerUpFile, PowerUpRootFile {
 	AfterAll {
 		if (Test-Path $packageName) { Remove-Item $packageName }
 	}
@@ -1019,7 +1030,7 @@ Describe "$commandName - PowerUpRootFile tests" -Tag $commandName, UnitTests, Po
 				#Open zip file
 				$zip = [ZipArchive]::new($stream, [ZipArchiveMode]::Read)
 				try {
-					$zipEntry = $zip.Entries | ? FullName -eq 'content\1.0\success\1.sql'
+					$zipEntry = $zip.Entries | Where-Object FullName -eq 'content\1.0\success\1.sql'
 					$obj = @{
 						SourcePath  = $script1
 						packagePath = '1.sql'
@@ -1069,7 +1080,6 @@ Describe "$commandName - PowerUpRootFile tests" -Tag $commandName, UnitTests, Po
 		}
 		It "should test SetContent method" {
 			$oldData = $script:file.ByteArray
-			$oldHash = $script:file.Hash
 			$script:file.SetContent([PowerUpHelper]::GetBinaryFile($script2))
 			$script:file.ByteArray | Should Not Be $oldData
 			$script:file.ByteArray | Should Not BeNullOrEmpty
@@ -1082,7 +1092,7 @@ Describe "$commandName - PowerUpRootFile tests" -Tag $commandName, UnitTests, Po
 		}
 		It "should test Save method" {
 			#Save old file parameters
-			$oldResults = Get-ArchiveItem $packageName | ? Path -eq 'Deploy.ps1'
+			$oldResults = Get-ArchiveItem $packageName | Where-Object Path -eq 'Deploy.ps1'
 			#Sleep 2 seconds to ensure that modification date is changed
 			Start-Sleep -Seconds 2
 			#Modify file content
@@ -1112,24 +1122,24 @@ Describe "$commandName - PowerUpRootFile tests" -Tag $commandName, UnitTests, Po
 				#Close archive
 				$stream.Dispose()
 			}
-			$results = Get-ArchiveItem $packageName | ? Path -eq 'Deploy.ps1'
-			$oldResults.ModifyDate -lt ($results | ? Path -eq $oldResults.Path).ModifyDate | Should Be $true
+			$results = Get-ArchiveItem $packageName | Where-Object Path -eq 'Deploy.ps1'
+			$oldResults.ModifyDate -lt ($results | Where-Object Path -eq $oldResults.Path).ModifyDate | Should Be $true
 		}
 		It "should test Alter method" {
 			#Save old file parameters
-			$oldResults = Get-ArchiveItem $packageName | ? Path -eq 'Deploy.ps1'
+			$oldResults = Get-ArchiveItem $packageName | Where-Object Path -eq 'Deploy.ps1'
 			#Sleep 2 seconds to ensure that modification date is changed
 			Start-Sleep -Seconds 2
 			#Modify file content
 			$script:file.SetContent([PowerUpHelper]::GetBinaryFile($script2))
 			{ $script:file.Alter() } | Should Not Throw
-			$results = Get-ArchiveItem $packageName | ? Path -eq 'Deploy.ps1'
-			$oldResults.ModifyDate -lt ($results | ? Path -eq $oldResults.Path).ModifyDate | Should Be $true
+			$results = Get-ArchiveItem $packageName | Where-Object Path -eq 'Deploy.ps1'
+			$oldResults.ModifyDate -lt ($results | Where-Object Path -eq $oldResults.Path).ModifyDate | Should Be $true
 		}
 	}
 }
 
-Describe "$commandName - PowerUpConfig tests" -Tag $commandName, UnitTests, PowerUpConfig {
+Describe "PowerUpConfig class tests" -Tag $commandName, UnitTests, PowerUpConfig {
 	Context "tests static methods of PowerUpConfig" {
 		It "Should test static GetDeployFile method" {
 			$f = [PowerUpConfig]::GetDeployFile()

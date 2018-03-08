@@ -311,7 +311,7 @@ class PowerUpPackageBase : PowerUp {
 		return $exportObject | ConvertTo-Json -Depth 4
 	}
 	hidden [void] SavePackageFile([ZipArchive]$zipFile) {
-		$pkgFileContent = $this.ExportToJson() | ConvertTo-Byte
+		$pkgFileContent = [Text.Encoding]::ASCII.GetBytes($this.ExportToJson())
 		[PowerUpHelper]::WriteZipFile($zipFile, ([PowerUpConfig]::GetPackageFileName()), $pkgFileContent)
 	}
 	[void] Alter() {
@@ -418,7 +418,7 @@ class PowerUpPackage : PowerUpPackageBase {
 		$this.AddFile([PowerUpRootFile]::new($file.FullName, $file.Name), 'DeployFile')
 		# Adding configuration file default contents
 		$configFile = [PowerUpRootFile]::new()
-		$configContent = $this.Configuration.ExportToJson() | ConvertTo-Byte
+		$configContent = [Text.Encoding]::ASCII.GetBytes($this.Configuration.ExportToJson())
 		$configFile.SetContent($configContent)
 		$configFile.PackagePath = [PowerUpConfig]::GetConfigurationFileName()
 		$this.AddFile($configFile, 'ConfigurationFile')
@@ -1047,7 +1047,7 @@ class PowerUpConfig : PowerUp {
 		return $this | Select-Object -Property ([PowerUpConfig]::EnumProperties()) | ConvertTo-Json -Depth 2
 	}
 	[void] Save([ZipArchive]$zipFile) {
-		$fileContent = $this.ExportToJson() | ConvertTo-Byte
+		$fileContent = [Text.Encoding]::ASCII.GetBytes($this.ExportToJson())
 		if ($this.Parent.ConfigurationFile) {
 			$filePath = $this.Parent.ConfigurationFile.PackagePath
 		}

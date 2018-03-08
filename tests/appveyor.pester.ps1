@@ -205,7 +205,12 @@ if (-not $Finalize) {
     foreach ($f in $AllTestsWithinScenario) {
         $Counter += 1
         $PesterSplat = @{
-            'Script'   = $f.FullName
+            'Script'   =  @{
+                Path = $f.FullName
+                Parameters = @{
+                    Batch = $true
+                }
+            }
             'Show'     = 'None'
             'PassThru' = $true
         }

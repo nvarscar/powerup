@@ -1,28 +1,41 @@
-﻿$commandName = $MyInvocation.MyCommand.Name.Replace(".Tests.ps1", "")
+﻿Param (
+	[switch]$Batch
+)
 
-$here = if ($PSScriptRoot) { $PSScriptRoot } else {	(Get-Item . ).FullName }
-$sut = (Split-Path -Leaf $MyInvocation.MyCommand.Path) -replace '\.Tests\.', '.'
+if ($PSScriptRoot) { $commandName = $MyInvocation.MyCommand.Name.Replace(".Tests.ps1", ""); $here = $PSScriptRoot }
+else { $commandName = "_ManualExecution"; $here = (Get-Item . ).FullName }
+
+if (!$Batch) {
+	# Is not a part of the global batch => import module
+	#Explicitly import the module for testing
+	Import-Module "$PSScriptRoot\..\PowerUp.psd1" -Force
+}
+else {
+	# Is a part of a batch, output some eye-catching happiness
+	Write-Host "Running $commandName tests" -ForegroundColor Cyan
+}
 
 . "$here\..\internal\Get-ArchiveItem.ps1"
-. "$here\..\internal\New-TempWorkspaceFolder.ps1"
 
-$workFolder = New-TempWorkspaceFolder
-$unpackedFolder = Join-Path $workFolder "Unpacked"
+$workFolder = Join-Path "$here\etc" "$commandName.Tests.PowerUp"
+$unpackedFolder = Join-Path $workFolder 'unpacked'
 $packageName = Join-Path $workFolder 'TempDeployment.zip'
 $scriptFolder = Join-Path $here 'etc\install-tests\success'
 $v1scripts = Join-Path $scriptFolder '1.sql'
 $v2scripts = Join-Path $scriptFolder '2.sql'
 $v3scripts = Join-Path $scriptFolder '3.sql'
 
-Describe "$commandName tests" {	
+Describe "Get-PowerUpPackage tests" -Tag $commandName, UnitTests {	
 	
 	BeforeAll {
+		$null = New-Item $workFolder -ItemType Directory
+		$null = New-Item $unpackedFolder -ItemType Directory
 		$null = New-PowerUpPackage -ScriptPath $v1scripts -Name $packageName -Build 1.0 -Force -ConfigurationFile "$here\etc\full_config.json"
 		$null = Add-PowerUpBuild -ScriptPath $v2scripts -Path $packageName -Build 2.0
 		$null = Add-PowerUpBuild -ScriptPath $v3scripts -Path $packageName -Build 3.0
 	}
 	AfterAll {
-		if ($workFolder.Name -like 'PowerUpWorkspace*') { Remove-Item $workFolder -Recurse }
+		if ((Test-Path $workFolder) -and $workFolder -like '*.Tests.PowerUp') { Remove-Item $workFolder -Recurse }
 	}
 	Context "Negative tests" {
 		It "returns error when path does not exist" {

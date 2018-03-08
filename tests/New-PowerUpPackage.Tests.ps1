@@ -1,22 +1,37 @@
-﻿$commandName = $MyInvocation.MyCommand.Name.Replace(".Tests.ps1", "")
-$here = if ($PSScriptRoot) { $PSScriptRoot } else {	(Get-Item . ).FullName }
-$sut = (Split-Path -Leaf $MyInvocation.MyCommand.Path) -replace '\.Tests\.', '.'
+﻿Param (
+	[switch]$Batch
+)
+
+if ($PSScriptRoot) { $commandName = $MyInvocation.MyCommand.Name.Replace(".Tests.ps1", ""); $here = $PSScriptRoot }
+else { $commandName = "_ManualExecution"; $here = (Get-Item . ).FullName }
+
+if (!$Batch) {
+	# Is not a part of the global batch => import module
+	#Explicitly import the module for testing
+	Import-Module "$PSScriptRoot\..\PowerUp.psd1" -Force
+}
+else {
+	# Is a part of a batch, output some eye-catching happiness
+	Write-Host "Running $commandName tests" -ForegroundColor Cyan
+}
+
 
 . "$here\..\internal\Get-ArchiveItem.ps1"
-. "$here\..\internal\New-TempWorkspaceFolder.ps1"
 . "$here\..\internal\Expand-ArchiveItem.ps1"
 
-$workFolder = New-TempWorkspaceFolder
+$workFolder = Join-Path "$here\etc" "$commandName.Tests.PowerUp"
+$unpackedFolder = Join-Path $workFolder 'unpacked'
 $packagePath = "$workFolder\PowerUpTest.zip"
 $scriptFolder = "$here\etc\install-tests\success"
 
-Describe "$commandName tests" {	
-	
+Describe "New-PowerUpPackage tests" -Tag $commandName, UnitTests {	
 	BeforeAll {
-		if (Test-Path $packagePath) { Remove-Item $packagePath -Force }
+		if ((Test-Path $workFolder) -and $workFolder -like '*.Tests.PowerUp') { Remove-Item $workFolder -Recurse }
+		$null = New-Item $workFolder -ItemType Directory
+		$null = New-Item $unpackedFolder -ItemType Directory
 	}
 	AfterAll {
-		if ($workFolder.Name -like 'PowerUpWorkspace*') { Remove-Item $workFolder -Recurse }
+		if ((Test-Path $workFolder) -and $workFolder -like '*.Tests.PowerUp') { Remove-Item $workFolder -Recurse }
 	}
 	Context "testing package contents" {
 		It "should create a package file" {
@@ -50,7 +65,7 @@ Describe "$commandName tests" {
 		BeforeEach {
 		}
 		AfterEach {
-			if ($workFolder.Name -like 'PowerUpWorkspace*') { Remove-Item "$workFolder\PowerUp.config.json" -Recurse }
+			if (Test-Path "$workFolder\PowerUp.config.json") { Remove-Item "$workFolder\PowerUp.config.json" -Recurse }
 		}
 		It "should be able to apply config file" {
 			$null = New-PowerUpPackage -ScriptPath "$here\etc\query1.sql" -Name $packagePath -ConfigurationFile "$here\etc\full_config.json" -Force
@@ -171,7 +186,7 @@ Describe "$commandName tests" {
 	Context "runs negative tests" {
 		It "should throw error when scripts with the same relative path is being added" {
 			try {
-				$result = New-PowerUpPackage -Name $packageNameTest -ScriptPath "$scriptFolder\*", "$scriptFolder\..\transactional-failure\*"
+				$null = New-PowerUpPackage -Name $packageNameTest -ScriptPath "$scriptFolder\*", "$scriptFolder\..\transactional-failure\*"
 			}
 			catch {
 				$errorResult = $_
@@ -180,7 +195,7 @@ Describe "$commandName tests" {
 		}
 		It "returns error when path does not exist" {
 			try {
-				$result = New-PowerUpPackage -ScriptPath 'asduwheiruwnfelwefo\sdfpoijfdsf.sps'
+				$null = New-PowerUpPackage -ScriptPath 'asduwheiruwnfelwefo\sdfpoijfdsf.sps'
 			}
 			catch {
 				$errorResult = $_
@@ -189,7 +204,7 @@ Describe "$commandName tests" {
 		}
 		It "returns error when config file does not exist" {
 			try {
-				$result = New-PowerUpPackage -ScriptPath "$here\etc\query1.sql" -ConfigurationFile 'asduwheiruwnfelwefo\sdfpoijfdsf.sps'
+				$null = New-PowerUpPackage -ScriptPath "$here\etc\query1.sql" -ConfigurationFile 'asduwheiruwnfelwefo\sdfpoijfdsf.sps'
 			}
 			catch {
 				$errorResult = $_
