@@ -8,7 +8,7 @@ $here = if ($PSScriptRoot) { $PSScriptRoot } else {	(Get-Item . ).FullName }
 if (!$Batch) {
 	# Is not a part of the global batch => import module
 	#Explicitly import the module for testing
-	Import-Module "$PSScriptRoot\..\PowerUp.psd1" -Force
+	Import-Module "$here\..\PowerUp.psd1" -Force
 }
 else {
 	# Is a part of a batch, output some eye-catching happiness
@@ -21,6 +21,25 @@ Add-Type -AssemblyName System.IO.Compression.FileSystem
 $script1 = "$here\etc\install-tests\success\1.sql"
 $script2 = "$here\etc\install-tests\success\2.sql"
 $archiveName = "$here\etc\PowerUpHelper.zip"
+$sqlName = "$here\etc\PowerUpHelper.sql"
+
+$encodings = @(
+	'ASCII'
+	'Unicode'
+	'BigEndianUnicode'
+	'UTF32'
+	'UTF7'
+	'UTF8'
+)
+$encodedFiles = @(
+	"$here\etc\encoding-tests\1252.txt"
+	"$here\etc\encoding-tests\UTF8-BOM.txt"
+	"$here\etc\encoding-tests\UTF8-NoBOM.txt"
+	"$here\etc\encoding-tests\UTF16-BE.txt"
+	"$here\etc\encoding-tests\UTF16-LE.txt"
+	"$here\etc\encoding-tests\UTF16-NoBOM.txt"
+)
+
 
 Describe "PowerUpHelper class tests" -Tag $commandName, UnitTests, PowerUpHelper {
 	Context "tests SplitRelativePath method" {
@@ -61,7 +80,7 @@ Describe "PowerUpHelper class tests" -Tag $commandName, UnitTests, PowerUpHelper
 			}
 			catch { throw $_ }
 			finally { $zip.Dispose() }
-			
+		
 			#Verifying that the threads are closed
 			$zip = [Zipfile]::OpenRead($archiveName)
 			try {
@@ -89,7 +108,7 @@ Describe "PowerUpHelper class tests" -Tag $commandName, UnitTests, PowerUpHelper
 			$results = [PowerUpHelper]::GetArchiveItems($archiveName)
 			'1.sql' | Should BeIn $results.FullName
 			'2.sql' | Should BeIn $results.FullName
-			
+		
 			#Verifying that the threads are closed
 			{ [PowerUpHelper]::GetArchiveItems($archiveName) } | Should Not Throw
 		}
@@ -202,18 +221,29 @@ Describe "PowerUpHelper class tests" -Tag $commandName, UnitTests, PowerUpHelper
 		}
 	}
 	Context "tests DecodeBinaryText method" {
-		It "should validate positive tests" {
-			$string = 'SELECT foo from bar'
-			$h = [PowerUpHelper]
-			$enc = [System.Text.Encoding]
-			$h::DecodeBinaryText($enc::ASCII.GetBytes($string)) | Should Be $string
-			$h::DecodeBinaryText($enc::Unicode.GetBytes($string)) | Should Be $string
-			$h::DecodeBinaryText($enc::BigEndianUnicode.GetBytes($string)) | Should Be $string
-			$h::DecodeBinaryText($enc::UTF32.GetBytes($string)) | Should Be $string
-			$h::DecodeBinaryText($enc::UTF7.GetBytes($string)) | Should Be $string
-			$h::DecodeBinaryText($enc::UTF8.GetBytes($string)) | Should Be $string
-
+		AfterAll {
+			Remove-Item $sqlName
 		}
+
+		$string = 'SELECT foo FROM bar'
+		$h = [PowerUpHelper]
+		$enc = [System.Text.Encoding]
+		foreach ($encoding in $encodings) {
+			It "should convert from binary string encoded as $encoding" {
+				$h::DecodeBinaryText($enc::$encoding.GetPreamble() + $enc::$encoding.GetBytes($string)) | Should BeExactly $string
+			}
+			It "should convert from file encoded as $encoding" {
+				$string | Out-File $sqlName -Encoding $encoding -Force -NoNewline
+				$sqlName | Should -FileContentMatchExactly ([regex]::Escape($h::DecodeBinaryText($h::GetBinaryFile($sqlName))))
+			}
+		}
+		foreach ($encodedFile in $encodedFiles) {
+			It "should read encoded file $encodedFile" {
+				$h::DecodeBinaryText($h::GetBinaryFile($encodedFile)) | Should BeExactly $string
+				$encodedFile | Should -FileContentMatchExactly ([regex]::Escape($h::DecodeBinaryText($h::GetBinaryFile($encodedFile))))
+			}
+		}
+
 		It "should validate negative tests" {
 			$h = [PowerUpHelper]
 			{ $h::DecodeBinaryText('0xAAAA') } | Should Throw
