@@ -1,14 +1,26 @@
-﻿$commandName = $MyInvocation.MyCommand.Name.Replace(".Tests.ps1", "")
-$here = if ($PSScriptRoot) { $PSScriptRoot } else {	(Get-Item . ).FullName }
-$sut = (Split-Path -Leaf $MyInvocation.MyCommand.Path) -replace '\.Tests\.', '.'
+﻿Param (
+	[switch]$Batch
+)
+
+if ($PSScriptRoot) { $commandName = $MyInvocation.MyCommand.Name.Replace(".Tests.ps1", ""); $here = $PSScriptRoot }
+else { $commandName = "_ManualExecution"; $here = (Get-Item . ).FullName }
+
+if (!$Batch) {
+	# Is not a part of the global batch => import module
+	#Explicitly import the module for testing
+	Import-Module "$here\..\PowerUp.psd1" -Force
+}
+else {
+	# Is a part of a batch, output some eye-catching happiness
+	Write-Host "Running $commandName tests" -ForegroundColor Cyan
+}
 
 . "$here\constants.ps1"
-
 . "$here\..\internal\Get-ArchiveItem.ps1"
-. "$here\..\internal\New-TempWorkspaceFolder.ps1"
-. "$here\etc\Invoke-SqlCmd2.ps1"
+. "$here\..\internal\Expand-ArchiveItem.ps1"
 
-$workFolder = New-TempWorkspaceFolder
+$workFolder = Join-Path "$here\etc" "$commandName.Tests.PowerUp"
+$unpackedFolder = Join-Path $workFolder 'unpacked'
 $logTable = "testdeploymenthistory"
 $cleanupScript = "$here\etc\install-tests\Cleanup.sql"
 $tranFailScripts = "$here\etc\install-tests\transactional-failure"
@@ -19,15 +31,23 @@ $packageName = Join-Path $workFolder "TempDeployment.zip"
 $packageNamev1 = Join-Path $workFolder "TempDeployment_v1.zip"
 
 
-Describe "$commandName tests" {
+Describe "Install-PowerUpPackage integration tests" -Tag $commandName, IntegrationTests {
 	BeforeAll {
-		$null = New-PowerUpPackage -ScriptPath $tranFailScripts -Name $packageName -Build 1.0 -Force
+		$null = Invoke-SqlCmd2 -ServerInstance $script:instance1 -Database $script:database1 -InputFile $cleanupScript
+		if ((Test-Path $workFolder) -and $workFolder -like '*.Tests.PowerUp') { Remove-Item $workFolder -Recurse }
+		$null = New-Item $workFolder -ItemType Directory -Force
+		$null = New-Item $unpackedFolder -ItemType Directory -Force
 	}
 	AfterAll {
-		$null = Invoke-SqlCmd2 -ServerInstance $script:instance1 -Database $script:database1 -InputFile $cleanupScript
-		if ($workFolder.Name -like 'PowerUpWorkspace*') { Remove-Item $workFolder -Recurse }
+		if ((Test-Path $workFolder) -and $workFolder -like '*.Tests.PowerUp') { Remove-Item $workFolder -Recurse }
 	}
 	Context "testing transactional deployment" {
+		BeforeAll {
+			$null = New-PowerUpPackage -ScriptPath $tranFailScripts -Name $packageName -Build 1.0 -Force
+		}
+		AfterAll {
+			$null = Invoke-SqlCmd2 -ServerInstance $script:instance1 -Database $script:database1 -InputFile $cleanupScript
+		}
 		BeforeEach {
 			$null = Invoke-SqlCmd2 -ServerInstance $script:instance1 -Database $script:database1 -InputFile $cleanupScript
 		}
@@ -47,6 +67,12 @@ Describe "$commandName tests" {
 		
 	}
 	Context "testing non transactional deployment" {
+		BeforeAll {
+			$null = New-PowerUpPackage -ScriptPath $tranFailScripts -Name $packageName -Build 1.0 -Force
+		}
+		AfterAll {
+			$null = Invoke-SqlCmd2 -ServerInstance $script:instance1 -Database $script:database1 -InputFile $cleanupScript
+		}
 		It "Should return errors and create one object" {
 			#Running package
 			$results = Install-PowerUpPackage $packageName -SqlInstance $script:instance1 -Database $script:database1 -SchemaVersionTable $logTable -DeploymentMethod NoTransaction -Silent
@@ -140,7 +166,7 @@ Describe "$commandName tests" {
 			Remove-Item $packageNamev1
 		}
 		It "should deploy nothing" {
-			$results = Install-PowerUpPackage "pv1.zip" -SqlInstance $script:instance1 -Database $script:database1 -SchemaVersionTable $logTable -Silent -WhatIf
+			$results = Install-PowerUpPackage $packageNamev1 -SqlInstance $script:instance1 -Database $script:database1 -SchemaVersionTable $logTable -Silent -WhatIf
 			$results | Should BeNullOrEmpty
 			#Verifying objects
 			$results = Invoke-SqlCmd2 -ServerInstance $script:instance1 -Database $script:database1 -InputFile $verificationScript

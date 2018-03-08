@@ -1,6 +1,19 @@
-﻿$commandName = $MyInvocation.MyCommand.Name.Replace(".Tests.ps1", "")
-$here = if ($PSScriptRoot) { $PSScriptRoot } else {	(Get-Item . ).FullName }
-$sut = (Split-Path -Leaf $MyInvocation.MyCommand.Path) -replace '\.Tests\.', '.'
+﻿Param (
+	[switch]$Batch
+)
+
+if ($PSScriptRoot) { $commandName = $MyInvocation.MyCommand.Name.Replace(".Tests.ps1", ""); $here = $PSScriptRoot }
+else { $commandName = "_ManualExecution"; $here = (Get-Item . ).FullName }
+
+if (!$Batch) {
+	# Is not a part of the global batch => import module
+	#Explicitly import the module for testing
+	Import-Module "$here\..\PowerUp.psd1" -Force
+}
+else {
+	# Is a part of a batch, output some eye-catching happiness
+	Write-Host "Running $commandName tests" -ForegroundColor Cyan
+}
 
 . "$here\constants.ps1"
 
@@ -8,7 +21,8 @@ $sut = (Split-Path -Leaf $MyInvocation.MyCommand.Path) -replace '\.Tests\.', '.'
 . "$here\..\internal\New-TempWorkspaceFolder.ps1"
 . "$here\etc\Invoke-SqlCmd2.ps1"
 
-$workFolder = New-TempWorkspaceFolder
+$workFolder = Join-Path "$here\etc" "$commandName.Tests.PowerUp"
+$unpackedFolder = Join-Path $workFolder 'unpacked'
 $logTable = "testdeploymenthistory"
 $cleanupScript = "$here\etc\install-tests\Cleanup.sql"
 $tranFailScripts = "$here\etc\install-tests\transactional-failure"
@@ -20,14 +34,17 @@ $cleanupPackageName = "$here\etc\TempCleanup.zip"
 $outFile = "$here\etc\outLog.txt"
 
 
-Describe "$commandName tests" {
+Describe "Invoke-PowerUpDeployment integration tests" -Tag $commandName, IntegrationTests {
 	BeforeAll {
+		if ((Test-Path $workFolder) -and $workFolder -like '*.Tests.PowerUp') { Remove-Item $workFolder -Recurse }
+		$null = New-Item $workFolder -ItemType Directory -Force
+		$null = New-Item $unpackedFolder -ItemType Directory -Force
 		$packageName = New-PowerUpPackage -Path (Join-Path $workFolder 'tmp.zip') -ScriptPath $tranFailScripts -Build 1.0 -Force
 		$null = Expand-Archive -Path $packageName -DestinationPath $workFolder -Force
 	}
 	AfterAll {
 		$null = Invoke-SqlCmd2 -ServerInstance $script:instance1 -Database $script:database1 -InputFile $cleanupScript
-		if ($workFolder.Name -like 'PowerUpWorkspace*') { Remove-Item $workFolder -Recurse }
+		if ((Test-Path $workFolder) -and $workFolder -like '*.Tests.PowerUp') { Remove-Item $workFolder -Recurse }
 	}
 	Context "testing transactional deployment of extracted package" {
 		BeforeEach {
