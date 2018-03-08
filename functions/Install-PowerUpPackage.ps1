@@ -13,8 +13,7 @@
 		Aliases: Name, FileName, Package
 
 	.PARAMETER InputObject
-		Pipeline implementation of Path. Can also be a PowerUpPackage object.
-		Aliases: Name, FileName, Package
+		Pipeline implementation of Path. Can also contain a PowerUpPackage object.
 	
 	.PARAMETER SqlInstance
 		Database server to connect to. SQL Server only for now.
