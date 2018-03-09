@@ -29,14 +29,29 @@
 #>
 param
 (
-	[string[]]$Path = '.'
+	[string[]]$Path = '.',
+	[string[]]$Tag
+	
 )
 
 #Explicitly import the module for testing
 Import-Module "$PSScriptRoot\..\PowerUp.psd1" -Force
+#Import ZipHelper
+Import-Module "$PSScriptRoot\etc\modules\ZipHelper" -Force
 
 #Run each module function
-Invoke-Pester $Path
+$params = @{
+	Script = @{
+		Path = $Path
+		Parameters = @{
+			Batch = $true
+		}
+	}
+}
+if ($Tag) {
+	$params += @{ Tag = $Tag}
+}
+Invoke-Pester @params
 
 #Sample Pester Test
 #Describe "Test PowerUp" {

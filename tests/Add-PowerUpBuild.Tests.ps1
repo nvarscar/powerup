@@ -1,13 +1,23 @@
-﻿$commandName = $MyInvocation.MyCommand.Name.Replace(".Tests.ps1", "")
-$here = if ($PSScriptRoot) { $PSScriptRoot } else {	(Get-Item . ).FullName }
-$sut = (Split-Path -Leaf $MyInvocation.MyCommand.Path) -replace '\.Tests\.', '.'
+﻿Param (
+	[switch]$Batch
+)
 
-. "$here\..\internal\Get-ArchiveItem.ps1"
-. "$here\..\internal\New-TempWorkspaceFolder.ps1"
-. "$here\..\internal\Remove-ArchiveItem.ps1"
+if ($PSScriptRoot) { $commandName = $MyInvocation.MyCommand.Name.Replace(".Tests.ps1", ""); $here = $PSScriptRoot }
+else { $commandName = "_ManualExecution"; $here = (Get-Item . ).FullName }
 
-$workFolder = New-TempWorkspaceFolder
-$unpackedFolder = New-TempWorkspaceFolder
+if (!$Batch) {
+	# Is not a part of the global batch => import module
+	#Explicitly import the module for testing
+	Import-Module "$here\..\PowerUp.psd1" -Force
+	Import-Module "$here\etc\modules\ZipHelper" -Force
+}
+else {
+	# Is a part of a batch, output some eye-catching happiness
+	Write-Host "Running $commandName tests" -ForegroundColor Cyan
+}
+
+$workFolder = Join-Path "$here\etc" "$commandName.Tests.PowerUp"
+$unpackedFolder = Join-Path $workFolder 'unpacked'
 
 $scriptFolder = "$here\etc\install-tests\success"
 $v1scripts = Join-Path $scriptFolder '1.sql'
@@ -16,13 +26,14 @@ $packageName = Join-Path $workFolder 'TempDeployment.zip'
 $packageNameTest = "$packageName.test.zip"
 $packageNoPkgFile = Join-Path $workFolder "pkg_nopkgfile.zip"
 
-Describe "$commandName tests" {
+Describe "Add-PowerUpBuild tests" -Tag $commandName, UnitTests {
 	BeforeAll {
+		$null = New-Item $workFolder -ItemType Directory -Force
+		$null = New-Item $unpackedFolder -ItemType Directory -Force
 		$null = New-PowerUpPackage -ScriptPath $v1scripts -Name $packageName -Build 1.0 -Force
 	}
 	AfterAll {
-		if ($workFolder.Name -like 'PowerUpWorkspace*') { Remove-Item $workFolder -Recurse }
-		if ($unpackedFolder.Name -like 'PowerUpWorkspace*') { Remove-Item $unpackedFolder -Recurse }
+		if ((Test-Path $workFolder) -and $workFolder -like '*.Tests.PowerUp') { Remove-Item $workFolder -Recurse }
 	}
 	Context "adding version 2.0 to existing package" {
 		BeforeAll {
@@ -66,13 +77,13 @@ Describe "$commandName tests" {
 			$results = Add-PowerUpBuild -ScriptPath $scriptFolder -Name $packageNameTest -Build 2.0 -Type 'New'
 			$results | Should Not Be $null
 			$results.Name | Should Be (Split-Path $packageNameTest -Leaf)
-			$results.Config | Should Not Be $null
+			$results.Configuration | Should Not Be $null
 			$results.Version | Should Be '2.0'
 			$results.ModuleVersion | Should Be (Get-Module PowerUp).Version
 			$results.Builds | Where-Object Build -eq '1.0' | Should Not Be $null
 			$results.Builds | Where-Object Build -eq '2.0' | Should Not Be $null
-			$results.Path | Should Be $packageNameTest
-			$results.Size -gt 0 | Should Be $true
+			$results.FullName | Should Be $packageNameTest
+			$results.Length -gt 0 | Should Be $true
 			Test-Path $packageNameTest | Should Be $true
 		}
 		$results = Get-ArchiveItem $packageNameTest
@@ -106,13 +117,13 @@ Describe "$commandName tests" {
 			$results = Add-PowerUpBuild -ScriptPath $scriptFolder, "$workFolder\Test.sql" -Name $packageNameTest -Build 2.0 -Type 'Unique'
 			$results | Should Not Be $null
 			$results.Name | Should Be (Split-Path $packageNameTest -Leaf)
-			$results.Config | Should Not Be $null
+			$results.Configuration | Should Not Be $null
 			$results.Version | Should Be '2.0'
 			$results.ModuleVersion | Should Be (Get-Module PowerUp).Version
 			'1.0' | Should BeIn $results.Builds.Build
 			'2.0' | Should BeIn $results.Builds.Build
-			$results.Path | Should Be $packageNameTest
-			$results.Size -gt 0 | Should Be $true
+			$results.FullName | Should Be $packageNameTest
+			$results.Length -gt 0 | Should Be $true
 			Test-Path $packageNameTest | Should Be $true
 		}
 		It "should add new build to existing package based on changes in the file" {
@@ -121,15 +132,15 @@ Describe "$commandName tests" {
 			$results = Add-PowerUpBuild -ScriptPath $scriptFolder, "$workFolder\Test.sql" -Name $packageNameTest -Build 3.0 -Type 'Modified'
 			$results | Should Not Be $null
 			$results.Name | Should Be (Split-Path $packageNameTest -Leaf)
-			$results.Config | Should Not Be $null
+			$results.Configuration | Should Not Be $null
 			$results.Version | Should Be '3.0'
 			$results.ModuleVersion | Should Be (Get-Module PowerUp).Version
 			'1.0' | Should BeIn $results.Builds.Build
 			'2.0' | Should BeIn $results.Builds.Build
 			'2.1' | Should BeIn $results.Builds.Build
 			'3.0' | Should BeIn $results.Builds.Build
-			$results.Path | Should Be $packageNameTest
-			$results.Size -gt 0 | Should Be $true
+			$results.FullName | Should Be $packageNameTest
+			$results.Length -gt 0 | Should Be $true
 			Test-Path $packageNameTest | Should Be $true
 		}
 		$results = Get-ArchiveItem $packageNameTest
@@ -156,40 +167,6 @@ Describe "$commandName tests" {
 			'PowerUp.package.json' | Should BeIn $results.Path
 		}
 	}
-	Context "unpacked package tests" {
-		BeforeAll {
-			$null = New-PowerUpPackage -Name $packageNameTest -Build 1.0 -ScriptPath $scriptFolder
-			Expand-Archive $packageNameTest $unpackedFolder
-		}
-		AfterAll {
-			Remove-Item -Path (Join-Path $unpackedFolder *) -Recurse
-			Remove-Item $packageNameTest
-		}
-		It "Should add a build to unpacked folder" {
-			$results = Add-PowerUpBuild -ScriptPath "$scriptFolder\*" -Name $unpackedFolder -Unpacked -Build 2.0
-			$results | Should Not Be $null
-			$results.Name | Should Be (Split-Path $unpackedFolder -Leaf)
-			$results.Config | Should Not Be $null
-			$results.Version | Should Be '2.0'
-			$results.ModuleVersion | Should Be (Get-Module PowerUp).Version
-			'1.0' | Should BeIn $results.Builds.Build
-			'2.0' | Should BeIn $results.Builds.Build
-			$results.Path | Should Be $unpackedFolder.FullName
-			$results.Size | Should Be 0
-			Test-Path "$unpackedFolder\content\2.0" | Should Be $true
-			Get-ChildItem "$scriptFolder" | ForEach-Object {
-				Test-Path "$unpackedFolder\content\2.0\$($_.Name)" | Should Be $true
-			}
-		}
-		It "should contain module files" {
-			Test-Path "$unpackedFolder\Modules\PowerUp\PowerUp.psd1" | Should Be $true
-			Test-Path "$unpackedFolder\Modules\PowerUp\bin\DbUp.dll" | Should Be $true
-		}
-		It "should contain config files" {
-			Test-Path "$unpackedFolder\PowerUp.config.json" | Should Be $true
-			Test-Path "$unpackedFolder\PowerUp.package.json" | Should Be $true
-		}
-	}
 	Context "negative tests" {
 		BeforeAll {
 			$null = Copy-Item $packageName $packageNameTest
@@ -201,30 +178,24 @@ Describe "$commandName tests" {
 			Remove-Item $packageNoPkgFile
 		}
 		It "should show warning when there are no new files" {
-			$result = Add-PowerUpBuild -Name $packageNameTest -ScriptPath $v1scripts -Type 'Unique' -WarningVariable warningResult 3>$null
+			$null= Add-PowerUpBuild -Name $packageNameTest -ScriptPath $v1scripts -Type 'Unique' -WarningVariable warningResult 3>$null
 			$warningResult.Message -join ';' | Should BeLike '*No scripts have been selected, the original file is unchanged.*'
 		}
 		It "should throw error when package data file does not exist" {
 			try {
-				$result = Add-PowerUpBuild -Name $packageNoPkgFile -ScriptPath $v2scripts -SkipValidation
+				$null = Add-PowerUpBuild -Name $packageNoPkgFile -ScriptPath $v2scripts
 			}
 			catch {
 				$errorResult = $_
 			}
-			$errorResult.Exception.Message -join ';' | Should BeLike '*Package file * not found*'
+			$errorResult.Exception.Message -join ';' | Should BeLike '*Incorrect package format*'
 		}
 		It "should throw error when package zip does not exist" {
-			try {
-				$result = Add-PowerUpBuild -Name ".\nonexistingpackage.zip" -ScriptPath $v1scripts
-			}
-			catch {
-				$errorResult = $_
-			}
-			$errorResult.Exception.Message -join ';' | Should BeLike '*Package * not found. Aborting build*'
+			{ Add-PowerUpBuild -Name ".\nonexistingpackage.zip" -ScriptPath $v1scripts -ErrorAction Stop} | Should Throw
 		}
 		It "should throw error when path cannot be resolved" {
 			try {
-				$result = Add-PowerUpBuild -Name $packageNameTest -ScriptPath ".\nonexistingsourcefiles.sql"
+				$null = Add-PowerUpBuild -Name $packageNameTest -ScriptPath ".\nonexistingsourcefiles.sql"
 			}
 			catch {
 				$errorResult = $_
@@ -233,12 +204,12 @@ Describe "$commandName tests" {
 		}
 		It "should throw error when scripts with the same relative path is being added" {
 			try {
-				$result = Add-PowerUpBuild -Name $packageNameTest -ScriptPath "$scriptFolder\*", "$scriptFolder\..\transactional-failure\*"
+				$null = Add-PowerUpBuild -Name $packageNameTest -ScriptPath "$scriptFolder\*", "$scriptFolder\..\transactional-failure\*"
 			}
 			catch {
 				$errorResult = $_
 			}
-			$errorResult.Exception.Message -join ';' | Should BeLike '*already exists inside this build*'
+			$errorResult.Exception.Message -join ';' | Should BeLike '*File * already exists in*'
 		}
 	}
 }

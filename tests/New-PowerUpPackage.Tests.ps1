@@ -1,60 +1,87 @@
-﻿$commandName = $MyInvocation.MyCommand.Name.Replace(".Tests.ps1", "")
-$here = if ($PSScriptRoot) { $PSScriptRoot } else {	(Get-Item . ).FullName }
-$sut = (Split-Path -Leaf $MyInvocation.MyCommand.Path) -replace '\.Tests\.', '.'
+﻿Param (
+	[switch]$Batch
+)
 
-. "$here\..\internal\Get-ArchiveItem.ps1"
-. "$here\..\internal\New-TempWorkspaceFolder.ps1"
-. "$here\..\internal\Expand-ArchiveItem.ps1"
+if ($PSScriptRoot) { $commandName = $MyInvocation.MyCommand.Name.Replace(".Tests.ps1", ""); $here = $PSScriptRoot }
+else { $commandName = "_ManualExecution"; $here = (Get-Item . ).FullName }
 
-$workFolder = New-TempWorkspaceFolder
-$packagePath = "$workFolder\PowerUpTest.zip"
+if (!$Batch) {
+	# Is not a part of the global batch => import module
+	#Explicitly import the module for testing
+	Import-Module "$here\..\PowerUp.psd1" -Force
+	Import-Module "$here\etc\modules\ZipHelper" -Force
+}
+else {
+	# Is a part of a batch, output some eye-catching happiness
+	Write-Host "Running $commandName tests" -ForegroundColor Cyan
+}
+
+
+
+
+
+$workFolder = Join-Path "$here\etc" "$commandName.Tests.PowerUp"
+$unpackedFolder = Join-Path $workFolder 'unpacked'
+$packageName = "$workFolder\PowerUpTest.zip"
 $scriptFolder = "$here\etc\install-tests\success"
 
-Describe "$commandName tests" {	
-	
+Describe "New-PowerUpPackage tests" -Tag $commandName, UnitTests {	
 	BeforeAll {
-		if (Test-Path $packagePath) { Remove-Item $packagePath -Force }
+		if ((Test-Path $workFolder) -and $workFolder -like '*.Tests.PowerUp') { Remove-Item $workFolder -Recurse }
+		$null = New-Item $workFolder -ItemType Directory -Force
+		$null = New-Item $unpackedFolder -ItemType Directory -Force
 	}
 	AfterAll {
-		if ($workFolder.Name -like 'PowerUpWorkspace*') { Remove-Item $workFolder -Recurse }
+		if ((Test-Path $workFolder) -and $workFolder -like '*.Tests.PowerUp') { Remove-Item $workFolder -Recurse }
 	}
 	Context "testing package contents" {
+		AfterAll {
+			if (Test-Path $packageName.TrimEnd('.zip')) { Remove-Item $packageName.TrimEnd('.zip') }
+		}
 		It "should create a package file" {
-			$results = New-PowerUpPackage -ScriptPath "$here\etc\query1.sql" -Name $packagePath
+			$results = New-PowerUpPackage -ScriptPath "$here\etc\query1.sql" -Name $packageName
 			$results | Should Not Be $null
-			$results.Name | Should Be (Split-Path $packagePath -Leaf)
-			$results.FullName | Should Be (Get-Item $packagePath).FullName
+			$results.Name | Should Be (Split-Path $packageName -Leaf)
+			$results.FullName | Should Be (Get-Item $packageName).FullName
 			$results.ModuleVersion | Should Be (Get-Module PowerUp).Version
-			Test-Path $packagePath | Should Be $true
+			Test-Path $packageName | Should Be $true
 		}
 		It "should contain query files" {
-			$results = Get-ArchiveItem $packagePath
+			$results = Get-ArchiveItem $packageName
 			'query1.sql' | Should BeIn $results.Name
 		}
 		It "should contain module files" {
-			$results = Get-ArchiveItem $packagePath
+			$results = Get-ArchiveItem $packageName
 			'Modules\PowerUp\PowerUp.psd1' | Should BeIn $results.Path
 			'Modules\PowerUp\bin\DbUp.dll' | Should BeIn $results.Path
 		}
 		It "should contain config files" {
-			$results = Get-ArchiveItem $packagePath
+			$results = Get-ArchiveItem $packageName
 			'PowerUp.config.json' | Should BeIn $results.Path
 			'PowerUp.package.json' | Should BeIn $results.Path
 		}
 		It "should contain deploy files" {
-			$results = Get-ArchiveItem $packagePath
+			$results = Get-ArchiveItem $packageName
 			'Deploy.ps1' | Should BeIn $results.Path
+		}
+		It "should create a zip package based on name without extension" {
+			$results = New-PowerUpPackage -ScriptPath "$here\etc\query1.sql" -Name $packageName.TrimEnd('.zip') -Force
+			$results | Should Not Be $null
+			$results.Name | Should Be (Split-Path $packageName -Leaf)
+			$results.FullName | Should Be (Get-Item $packageName).FullName
+			$results.ModuleVersion | Should Be (Get-Module PowerUp).Version
+			Test-Path $packageName | Should Be $true
 		}
 	}
 	Context "testing configurations" {
 		BeforeEach {
 		}
 		AfterEach {
-			if ($workFolder.Name -like 'PowerUpWorkspace*') { Remove-Item "$workFolder\PowerUp.config.json" -Recurse }
+			if (Test-Path "$workFolder\PowerUp.config.json") { Remove-Item "$workFolder\PowerUp.config.json" -Recurse }
 		}
 		It "should be able to apply config file" {
-			$null = New-PowerUpPackage -ScriptPath "$here\etc\query1.sql" -Name $packagePath -ConfigurationFile "$here\etc\full_config.json" -Force
-			$null = Expand-ArchiveItem -Path $packagePath -DestinationPath $workFolder -Item 'PowerUp.config.json'
+			$null = New-PowerUpPackage -ScriptPath "$here\etc\query1.sql" -Name $packageName -ConfigurationFile "$here\etc\full_config.json" -Force
+			$null = Expand-ArchiveItem -Path $packageName -DestinationPath $workFolder -Item 'PowerUp.config.json'
 			$config = Get-Content "$workFolder\PowerUp.config.json" | ConvertFrom-Json
 			$config.ApplicationName | Should Be "MyTestApp"
 			$config.SqlInstance | Should Be "TestServer"
@@ -70,8 +97,8 @@ Describe "$commandName tests" {
 			$config.Variables | Should Be $null
 		}
 		It "should be able to apply custom config" {
-			$null = New-PowerUpPackage -ScriptPath "$here\etc\query1.sql" -Name $packagePath -Configuration @{ApplicationName = "MyTestApp2"; ConnectionTimeout = 4; Database = $null } -Force
-			$null = Expand-ArchiveItem -Path $packagePath -DestinationPath $workFolder -Item 'PowerUp.config.json'
+			$null = New-PowerUpPackage -ScriptPath "$here\etc\query1.sql" -Name $packageName -Configuration @{ApplicationName = "MyTestApp2"; ConnectionTimeout = 4; Database = $null } -Force
+			$null = Expand-ArchiveItem -Path $packageName -DestinationPath $workFolder -Item 'PowerUp.config.json'
 			$config = Get-Content "$workFolder\PowerUp.config.json" | ConvertFrom-Json
 			$config.ApplicationName | Should Be "MyTestApp2"
 			$config.SqlInstance | Should Be $null
@@ -87,8 +114,8 @@ Describe "$commandName tests" {
 			$config.Variables | Should Be $null
 		}
 		It "should be able to store variables" {
-			$null = New-PowerUpPackage -ScriptPath "$here\etc\query1.sql" -Name $packagePath -Configuration @{ ApplicationName = 'FooBar' } -Variables @{ MyVar = 'foo'; MyBar = 1; MyNull = $null} -Force
-			$null = Expand-ArchiveItem -Path $packagePath -DestinationPath $workFolder -Item 'PowerUp.config.json'
+			$null = New-PowerUpPackage -ScriptPath "$here\etc\query1.sql" -Name $packageName -Configuration @{ ApplicationName = 'FooBar' } -Variables @{ MyVar = 'foo'; MyBar = 1; MyNull = $null} -Force
+			$null = Expand-ArchiveItem -Path $packageName -DestinationPath $workFolder -Item 'PowerUp.config.json'
 			$config = Get-Content "$workFolder\PowerUp.config.json" | ConvertFrom-Json
 			$config.ApplicationName | Should Be 'FooBar'
 			$config.SqlInstance | Should Be $null
@@ -108,14 +135,14 @@ Describe "$commandName tests" {
 	}
 	Context "testing input scenarios" {
 		It "should accept wildcard input" {
-			$results = New-PowerUpPackage -ScriptPath "$here\etc\install-tests\*" -Build 'abracadabra' -Name $packagePath -Force
+			$results = New-PowerUpPackage -ScriptPath "$here\etc\install-tests\*" -Build 'abracadabra' -Name $packageName -Force
 			$results | Should Not Be $null
-			$results.Name | Should Be (Split-Path $packagePath -Leaf)
-			$results.FullName | Should Be (Get-Item $packagePath).FullName
+			$results.Name | Should Be (Split-Path $packageName -Leaf)
+			$results.FullName | Should Be (Get-Item $packageName).FullName
 			$results.ModuleVersion | Should Be (Get-Module PowerUp).Version
 			$results.Version | Should Be 'abracadabra'
-			Test-Path $packagePath | Should Be $true
-			$results = Get-ArchiveItem $packagePath
+			Test-Path $packageName | Should Be $true
+			$results = Get-ArchiveItem $packageName
 			'content\abracadabra\Cleanup.sql' | Should BeIn $results.Path
 			'content\abracadabra\success\1.sql' | Should BeIn $results.Path
 			'content\abracadabra\success\2.sql' | Should BeIn $results.Path
@@ -125,27 +152,27 @@ Describe "$commandName tests" {
 			'content\abracadabra\verification\select.sql' | Should BeIn $results.Path
 		}
 		It "should accept Get-Item <files> pipeline input" {
-			$results = Get-Item "$scriptFolder\*" | New-PowerUpPackage -Build 'abracadabra' -Name $packagePath -Force
+			$results = Get-Item "$scriptFolder\*" | New-PowerUpPackage -Build 'abracadabra' -Name $packageName -Force
 			$results | Should Not Be $null
-			$results.Name | Should Be (Split-Path $packagePath -Leaf)
-			$results.FullName | Should Be (Get-Item $packagePath).FullName
+			$results.Name | Should Be (Split-Path $packageName -Leaf)
+			$results.FullName | Should Be (Get-Item $packageName).FullName
 			$results.ModuleVersion | Should Be (Get-Module PowerUp).Version
 			$results.Version | Should Be 'abracadabra'
-			Test-Path $packagePath | Should Be $true
-			$results = Get-ArchiveItem $packagePath
+			Test-Path $packageName | Should Be $true
+			$results = Get-ArchiveItem $packageName
 			'content\abracadabra\1.sql' | Should BeIn $results.Path
 			'content\abracadabra\2.sql' | Should BeIn $results.Path
 			'content\abracadabra\3.sql' | Should BeIn $results.Path
 		}
 		It "should accept Get-Item <files and folders> pipeline input" {
-			$results = Get-Item "$here\etc\install-tests\*" | New-PowerUpPackage -Build 'abracadabra' -Name $packagePath -Force
+			$results = Get-Item "$here\etc\install-tests\*" | New-PowerUpPackage -Build 'abracadabra' -Name $packageName -Force
 			$results | Should Not Be $null
-			$results.Name | Should Be (Split-Path $packagePath -Leaf)
-			$results.FullName | Should Be (Get-Item $packagePath).FullName
+			$results.Name | Should Be (Split-Path $packageName -Leaf)
+			$results.FullName | Should Be (Get-Item $packageName).FullName
 			$results.ModuleVersion | Should Be (Get-Module PowerUp).Version
 			$results.Version | Should Be 'abracadabra'
-			Test-Path $packagePath | Should Be $true
-			$results = Get-ArchiveItem $packagePath
+			Test-Path $packageName | Should Be $true
+			$results = Get-ArchiveItem $packageName
 			'content\abracadabra\Cleanup.sql' | Should BeIn $results.Path
 			'content\abracadabra\success\1.sql' | Should BeIn $results.Path
 			'content\abracadabra\success\2.sql' | Should BeIn $results.Path
@@ -155,14 +182,14 @@ Describe "$commandName tests" {
 			'content\abracadabra\verification\select.sql' | Should BeIn $results.Path
 		}
 		It "should accept Get-ChildItem pipeline input" {
-			$results = Get-ChildItem "$scriptFolder" -File -Recurse | New-PowerUpPackage -Build 'abracadabra' -Name $packagePath -Force
+			$results = Get-ChildItem "$scriptFolder" -File -Recurse | New-PowerUpPackage -Build 'abracadabra' -Name $packageName -Force
 			$results | Should Not Be $null
-			$results.Name | Should Be (Split-Path $packagePath -Leaf)
-			$results.FullName | Should Be (Get-Item $packagePath).FullName
+			$results.Name | Should Be (Split-Path $packageName -Leaf)
+			$results.FullName | Should Be (Get-Item $packageName).FullName
 			$results.ModuleVersion | Should Be (Get-Module PowerUp).Version
 			$results.Version | Should Be 'abracadabra'
-			Test-Path $packagePath | Should Be $true
-			$results = Get-ArchiveItem $packagePath
+			Test-Path $packageName | Should Be $true
+			$results = Get-ArchiveItem $packageName
 			'content\abracadabra\1.sql' | Should BeIn $results.Path
 			'content\abracadabra\2.sql' | Should BeIn $results.Path
 			'content\abracadabra\3.sql' | Should BeIn $results.Path
@@ -171,16 +198,16 @@ Describe "$commandName tests" {
 	Context "runs negative tests" {
 		It "should throw error when scripts with the same relative path is being added" {
 			try {
-				$result = New-PowerUpPackage -Name $packageNameTest -ScriptPath "$scriptFolder\*", "$scriptFolder\..\transactional-failure\*"
+				$null = New-PowerUpPackage -Name $packageName -ScriptPath "$scriptFolder\*", "$scriptFolder\..\transactional-failure\*"
 			}
 			catch {
 				$errorResult = $_
 			}
-			$errorResult.Exception.Message -join ';' | Should BeLike '*already exists inside this build*'
+			$errorResult.Exception.Message -join ';' | Should BeLike '*File * already exists in*'
 		}
 		It "returns error when path does not exist" {
 			try {
-				$result = New-PowerUpPackage -ScriptPath 'asduwheiruwnfelwefo\sdfpoijfdsf.sps'
+				$null = New-PowerUpPackage -ScriptPath 'asduwheiruwnfelwefo\sdfpoijfdsf.sps'
 			}
 			catch {
 				$errorResult = $_
@@ -189,7 +216,7 @@ Describe "$commandName tests" {
 		}
 		It "returns error when config file does not exist" {
 			try {
-				$result = New-PowerUpPackage -ScriptPath "$here\etc\query1.sql" -ConfigurationFile 'asduwheiruwnfelwefo\sdfpoijfdsf.sps'
+				$null = New-PowerUpPackage -ScriptPath "$here\etc\query1.sql" -ConfigurationFile 'asduwheiruwnfelwefo\sdfpoijfdsf.sps'
 			}
 			catch {
 				$errorResult = $_

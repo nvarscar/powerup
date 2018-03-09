@@ -1,5 +1,20 @@
-if ($SkipHelpTest) { return }
+Param (
+	[switch]$Batch
+)
+
+$commandName = $MyInvocation.MyCommand.Name.Replace(".Tests.ps1", "")
 $here = if ($PSScriptRoot) { $PSScriptRoot } else {	(Get-Item . ).FullName }
+
+if (!$Batch) {
+	# Is not a part of the global batch => import module
+	#Explicitly import the module for testing
+	Import-Module "$here\..\PowerUp.psd1" -Force
+}
+else {
+	# Is a part of a batch, output some eye-catching happiness
+	Write-Host "Running $commandName tests" -ForegroundColor Cyan
+}
+if ($SkipHelpTest) { return }
 $includedNames = (Get-ChildItem "$here\..\functions" | Where-Object Name -like "*.ps1" ).BaseName
 $commands = Get-Command -Module (Get-Module PowerUp) -CommandType Cmdlet, Function, Workflow | Where-Object Name -in $includedNames
 
@@ -71,7 +86,6 @@ foreach ($command in $commands) {
             $parameterSets = $command.ParameterSets | Sort-Object -Property Name -Unique | Where-Object Parameters.Name -notin $common
             foreach ($parameterSet in $parameterSets) {
                 $parameters = $parameterSet.Parameters | Sort-Object -Property Name -Unique | Where-Object Name -notin $common
-                $parameterNames = $parameters.Name
                 $HelpParameterNames = $Help.Parameters.Parameter.Name | Sort-Object -Unique
                 foreach ($parameter in $parameters) {
                     $parameterName = $parameter.Name

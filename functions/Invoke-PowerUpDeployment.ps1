@@ -10,6 +10,9 @@
 	
 	.PARAMETER PackageFile
 		Path to the PowerUp package file (usually, PowerUp.package.json).
+
+	.PARAMETER InputObject
+		PowerUpPackage object to deploy. Supports pipelining.
 	
 	.PARAMETER ScriptPath
 		A collection of script files to deploy to the server. Accepts Get-Item/Get-ChildItem objects and wildcards.
@@ -113,6 +116,9 @@
 		[parameter(ParameterSetName = 'Script')]
 		[Alias('SourcePath')]
 		[string[]]$ScriptPath,
+		[parameter(ParameterSetName = 'PowerUpPackage')]
+		[Alias('Package')]
+		[object]$InputObject,
 		[Alias('Server', 'SqlServer', 'DBServer', 'Instance')]
 		[string]$SqlInstance,
 		[string]$Database,
@@ -132,31 +138,27 @@
 		[hashtable]$Variables
 	)
 	begin {}
-	process {}
-	end {
+	process {
 		if ($PsCmdlet.ParameterSetName -eq 'PackageFile') {
 			#Get package object from the json file
-			if (!(Test-Path $PackageFile)) {
-				throw "Package file $PackageFile not found. Aborting deployment."
-			}
-			else {
-				$pFile = Get-Item $PackageFile
-			}
 			Write-Verbose "Loading package information from $pFile"
-			$package = [PowerUpPackage]::FromFile($pFile.FullName)
-	
-			#Read config file 
-			$configPath = Join-Path $pFile.DirectoryName $package.ConfigurationFile
-			if (!$package.ConfigurationFile -or !(Test-Path $configPath)) {
-				throw "Configuration file cannot be found. The package is corrupted."
+			if ($package = [PowerUpPackageFile]::new((Get-Item $PackageFile))) {
+				$config = $package.Configuration
 			}
-	
-			$config = Get-PowerUpConfig -Path $configPath
 		}	
 		elseif ($PsCmdlet.ParameterSetName -eq 'Script') {
 			$config = Get-PowerUpConfig
 		}
-	
+		elseif ($PsCmdlet.ParameterSetName -eq 'PowerUpPackage') {
+			if ($InputObject.GetType().Name -eq 'PowerUpPackage') {
+				$package = $InputObject
+				$config = $package.Configuration
+			}
+			else {
+				throw "PowerUpPackage type is expected as an input object"
+			}
+		}
+
 		#Join variables from config and parameters
 		$runtimeVariables = @{ }
 		if ($Variables) {
@@ -174,21 +176,21 @@
 	
 		#Replace tokens if any
 		foreach ($property in $config.psobject.Properties.Name | Where-Object { $_ -ne 'Variables' }) {
-			$config.$property = Resolve-VariableToken $config.$property $runtimeVariables
+			$config.SetValue($property, (Resolve-VariableToken $config.$property $runtimeVariables))
 		}
 	
 		#Apply overrides if any
 		foreach ($key in ($PSBoundParameters.Keys | Where-Object { $_ -ne 'Variables' })) {
 			if ($key -in $config.psobject.Properties.Name) {
-				$config.$key = Resolve-VariableToken $PSBoundParameters[$key] $runtimeVariables
+				$config.SetValue($key, (Resolve-VariableToken $PSBoundParameters[$key] $runtimeVariables))
 			}
 		}
 	
 		#Apply default values if not set
-		if (!$config.ApplicationName) { $config.ApplicationName = 'PowerUp' }
-		if (!$config.SqlInstance) { $config.SqlInstance = 'localhost' }
-		if ($config.ConnectionTimeout -eq $null) { $config.ConnectionTimeout = 30 }
-		if ($config.ExecutionTimeout -eq $null) { $config.ExecutionTimeout = 180 }
+		if (!$config.ApplicationName) { $config.SetValue('ApplicationName', 'PowerUp') }
+		if (!$config.SqlInstance) { $config.SetValue('SqlInstance', 'localhost') }
+		if ($config.ConnectionTimeout -eq $null) { $config.SetValue('ConnectionTimeout', 30) }
+		if ($config.ExecutionTimeout -eq $null) { $config.SetValue('ExecutionTimeout', 180) }
 	
 	
 		#Build connection string
@@ -223,16 +225,14 @@
 	
 	
 		$scriptCollection = @()
-		if ($PsCmdlet.ParameterSetName -eq 'PackageFile') {
-			$scriptRoot = Join-Path $pFile.DirectoryName $package.ScriptDirectory
-		
+		if ($PsCmdlet.ParameterSetName -in 'PackageFile','PowerUpPackage') {		
 			# Get contents of the script files
 			foreach ($build in $package.builds) {
 				foreach ($script in $build.scripts) {
 					# Replace tokens in the scripts
-					$scriptPath = Join-Path $scriptRoot $script.PackagePath
-					$scriptContent = Resolve-VariableToken (Get-Content $scriptPath -Raw) $runtimeVariables
-					$scriptCollection += [DbUp.Engine.SqlScript]::new($script.PackagePath, $scriptContent)
+					$scriptPackagePath = $script.GetPackagePath().TrimStart($package.GetPackagePath()).TrimStart('\')
+					$scriptContent = Resolve-VariableToken $script.GetContent() $runtimeVariables
+					$scriptCollection += [DbUp.Engine.SqlScript]::new($scriptPackagePath, $scriptContent)
 				}
 			}
 		}
@@ -299,4 +299,5 @@
 			$upgradeResult
 		}
 	}
+	end {}
 }
