@@ -32,7 +32,7 @@ Describe "New-PowerUpPackage tests" -Tag $commandName, UnitTests {
 	}
 	Context "testing package contents" {
 		AfterAll {
-			if (Test-Path $packageName.TrimEnd('.zip')) { Remove-Item $packageName.TrimEnd('.zip') }
+			if ((Test-Path $workFolder\*) -and $workFolder -like '*.Tests.PowerUp') { Remove-Item $workFolder\* }
 		}
 		It "should create a package file" {
 			$results = New-PowerUpPackage -ScriptPath "$here\etc\query1.sql" -Name $packageName
@@ -62,6 +62,22 @@ Describe "New-PowerUpPackage tests" -Tag $commandName, UnitTests {
 		}
 		It "should create a zip package based on name without extension" {
 			$results = New-PowerUpPackage -ScriptPath "$here\etc\query1.sql" -Name $packageName.TrimEnd('.zip') -Force
+			$results | Should Not Be $null
+			$results.Name | Should Be (Split-Path $packageName -Leaf)
+			$results.FullName | Should Be (Get-Item $packageName).FullName
+			$results.ModuleVersion | Should Be (Get-Module PowerUp).Version
+			Test-Path $packageName | Should Be $true
+		}
+	}
+	Context "current folder tests" {
+		BeforeAll {
+			Push-Location $workFolder
+		}
+		AfterAll {
+			Pop-Location
+		}
+		It "should create a package file in the current folder" {
+			$results = New-PowerUpPackage -ScriptPath "$here\etc\query1.sql" -Name (Split-Path $packageName -Leaf)
 			$results | Should Not Be $null
 			$results.Name | Should Be (Split-Path $packageName -Leaf)
 			$results.FullName | Should Be (Get-Item $packageName).FullName
@@ -130,6 +146,12 @@ Describe "New-PowerUpPackage tests" -Tag $commandName, UnitTests {
 		}
 	}
 	Context "testing input scenarios" {
+		BeforeAll {
+			Push-Location -Path "$here\etc\install-tests"
+		}
+		AfterAll {
+			Pop-Location
+		}
 		It "should accept wildcard input" {
 			$results = New-PowerUpPackage -ScriptPath "$here\etc\install-tests\*" -Build 'abracadabra' -Name $packageName -Force
 			$results | Should Not Be $null
@@ -191,9 +213,7 @@ Describe "New-PowerUpPackage tests" -Tag $commandName, UnitTests {
 			'content\abracadabra\3.sql' | Should BeIn $results.Path
 		}
 		It "should accept relative paths" {
-			Push-Location -Path "$here\etc\install-tests"
 			$results = New-PowerUpPackage -ScriptPath ".\*" -Build 'abracadabra' -Name $packageName -Force
-			Pop-Location
 			$results | Should Not Be $null
 			$results.Name | Should Be (Split-Path $packageName -Leaf)
 			$results.FullName | Should Be (Get-Item $packageName).FullName

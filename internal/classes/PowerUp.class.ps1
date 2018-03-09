@@ -324,19 +324,27 @@ class PowerUpPackageBase : PowerUp {
 		$this.SaveToFile($fileName, $false)
 	}
 	[void] SaveToFile([string]$fileName, [bool]$force) {
+		$parentFolder = Split-Path $fileName -Parent
+		if (!$parentFolder) {
+			$parentFolder = (Get-Location).Path
+		}
+		else {
+			$parentFolder = (Get-Item $parentFolder -ErrorAction Stop).FullName
+		}
+		$currentFileName = Join-Path $parentFolder (Split-Path $filename -Leaf)
 		#Open new file stream
 		$writeMode = switch ($force) {
 			$true { [System.IO.FileMode]::Create }
 			default { [System.IO.FileMode]::CreateNew }
 		}
-		$stream = [FileStream]::new($fileName, $writeMode)
+		$stream = [FileStream]::new($currentFileName, $writeMode)
 		try {
 			#Create zip file
 			$zip = [ZipArchive]::new($stream, [ZipArchiveMode]::Create)
 			try {
 				#Change package file name in the object if it wasn't set before
 				if (!$this.FileName) {
-					$this.FileName = $fileName
+					$this.FileName = $currentFileName
 				}
 				#Write package file
 				$this.SavePackageFile($zip)
