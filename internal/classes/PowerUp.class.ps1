@@ -794,7 +794,7 @@ class PowerUpFile : PowerUp {
 		$this.Length = $file.Length
 		$this.Name = $file.Name
 		$this.LastWriteTime = $file.LastWriteTime
-		$this.ByteArray = [PowerUpHelper]::GetBinaryFile($SourcePath)
+		$this.ByteArray = [PowerUpHelper]::GetBinaryFile($file.FullName)
 	}
 
 	PowerUpFile ([psobject]$fileDescription) {
@@ -938,7 +938,8 @@ class PowerUpScriptFile : PowerUpFile {
 	#Mirroring base constructors adding Hash control pieces
 	PowerUpScriptFile () : base () { }
 	PowerUpScriptFile ([string]$SourcePath, [string]$PackagePath) : base($SourcePath, $PackagePath) {
-		$this.Hash = [PowerUpHelper]::ToHexString([Security.Cryptography.HashAlgorithm]::Create( "MD5" ).ComputeHash([PowerUpHelper]::GetBinaryFile($SourcePath)))
+		$file = Get-Item $SourcePath -ErrorAction Stop
+		$this.Hash = [PowerUpHelper]::ToHexString([Security.Cryptography.HashAlgorithm]::Create( "MD5" ).ComputeHash([PowerUpHelper]::GetBinaryFile($file.FullName)))
 	}
 
 	PowerUpScriptFile ([psobject]$fileDescription) : base($fileDescription) {
