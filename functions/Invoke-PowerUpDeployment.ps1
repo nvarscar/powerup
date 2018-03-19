@@ -297,7 +297,12 @@
 			$build = $dbUp.Build()
 			$upgradeResult = $build.PerformUpgrade() 
 			$upgradeResult
+			if (!$upgradeResult.Successful) {
+				#Throw output error if unsuccessful
+				throw $upgradeResult.Error
+			}
 		}
+
 	}
 	end {}
 }

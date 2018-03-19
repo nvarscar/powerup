@@ -51,11 +51,15 @@ Describe "Install-PowerUpPackage integration tests" -Tag $commandName, Integrati
 		BeforeEach {
 			$null = Invoke-SqlCmd2 -ServerInstance $script:instance1 -Database $script:database1 -InputFile $cleanupScript
 		}
-		It "Should return errors and not create any objects" {
+		It "Should throw an error and not create any objects" {
 			#Running package
-			$results = Install-PowerUpPackage $packageName -SqlInstance $script:instance1 -Database $script:database1 -SchemaVersionTable $logTable -DeploymentMethod SingleTransaction -Silent
-			$results.Successful | Should Be $false
-			$results.Error.Message | Should Be "There is already an object named 'a' in the database."
+			try {
+				$null = Install-PowerUpPackage $packageName -SqlInstance $script:instance1 -Database $script:database1 -SchemaVersionTable $logTable -DeploymentMethod SingleTransaction -Silent
+			}
+			catch {
+				$results = $_
+			}
+			$results.Exception.Message | Should Be "There is already an object named 'a' in the database."
 			#Verifying objects
 			$results = Invoke-SqlCmd2 -ServerInstance $script:instance1 -Database $script:database1 -InputFile $verificationScript
 			$logTable | Should Not BeIn $results.name
@@ -73,11 +77,15 @@ Describe "Install-PowerUpPackage integration tests" -Tag $commandName, Integrati
 		AfterAll {
 			$null = Invoke-SqlCmd2 -ServerInstance $script:instance1 -Database $script:database1 -InputFile $cleanupScript
 		}
-		It "Should return errors and create one object" {
+		It "Should throw an error and create one object" {
 			#Running package
-			$results = Install-PowerUpPackage $packageName -SqlInstance $script:instance1 -Database $script:database1 -SchemaVersionTable $logTable -DeploymentMethod NoTransaction -Silent
-			$results.Successful | Should Be $false
-			$results.Error.Message | Should Be "There is already an object named 'a' in the database."
+			try {
+				$null = Install-PowerUpPackage $packageName -SqlInstance $script:instance1 -Database $script:database1 -SchemaVersionTable $logTable -DeploymentMethod NoTransaction -Silent
+			}
+			catch {
+				$results = $_
+			}
+			$results.Exception.Message | Should Be "There is already an object named 'a' in the database."
 			#Verifying objects
 			$results = Invoke-SqlCmd2 -ServerInstance $script:instance1 -Database $script:database1 -InputFile $verificationScript
 			$logTable | Should BeIn $results.name
@@ -132,9 +140,15 @@ Describe "Install-PowerUpPackage integration tests" -Tag $commandName, Integrati
 		BeforeEach {
 			$null = Invoke-SqlCmd2 -ServerInstance $script:instance1 -Database $script:database1 -InputFile $cleanupScript
 		}
-		It "should return timeout error " {
-			$results = Install-PowerUpPackage "$workFolder\delay.zip" -SqlInstance $script:instance1 -Database $script:database1 -SchemaVersionTable $logTable -OutputFile "$workFolder\log.txt" -Silent
-			$results.Successful | Should Be $false
+		It "should throw timeout error " {
+			try {
+				$null = Install-PowerUpPackage "$workFolder\delay.zip" -SqlInstance $script:instance1 -Database $script:database1 -SchemaVersionTable $logTable -OutputFile "$workFolder\log.txt" -Silent
+			}
+			catch {
+				$results = $_
+			}
+			$results | Should Not Be $null
+			$results.Exception.Message | Should BeLike 'Execution Timeout Expired.*'
 			$output = Get-Content "$workFolder\log.txt" -Raw
 			$output | Should BeLike '*Execution Timeout Expired*'
 			$output | Should Not BeLike '*Successful!*'
