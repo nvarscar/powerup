@@ -196,8 +196,8 @@ Describe "PowerUpPackage class tests" -Tag $commandName, UnitTests, PowerUpPacka
 			$script:pkg.Extension | Should Be $FileObject.Extension
 			$script:pkg.CreationTime | Should Be $FileObject.CreationTime
 			$script:pkg.CreationTimeUtc | Should Be $FileObject.CreationTimeUtc
-			$script:pkg.LastAccessTime | Should Be $FileObject.LastAccessTime
-			$script:pkg.LastAccessTimeUtc | Should Be $FileObject.LastAccessTimeUtc
+			$script:pkg.LastAccessTime | Should Not BeNullOrEmpty
+			$script:pkg.LastAccessTimeUtc | Should Not BeNullOrEmpty
 			$script:pkg.LastWriteTime | Should Be $FileObject.LastWriteTime
 			$script:pkg.LastWriteTimeUtc | Should Be $FileObject.LastWriteTimeUtc
 			$script:pkg.Attributes | Should Be $FileObject.Attributes

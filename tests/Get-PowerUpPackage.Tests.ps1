@@ -73,8 +73,8 @@ Describe "Get-PowerUpPackage tests" -Tag $commandName, UnitTests {
 			$result.Extension | Should Be $FileObject.Extension
 			$result.CreationTime | Should Be $FileObject.CreationTime
 			$result.CreationTimeUtc | Should Be $FileObject.CreationTimeUtc
-			$result.LastAccessTime | Should Be $FileObject.LastAccessTime
-			$result.LastAccessTimeUtc | Should Be $FileObject.LastAccessTimeUtc
+			$result.LastAccessTime | Should Not BeNullOrEmpty
+			$result.LastAccessTimeUtc | Should Not BeNullOrEmpty
 			$result.LastWriteTime | Should Be $FileObject.LastWriteTime
 			$result.LastWriteTimeUtc | Should Be $FileObject.LastWriteTimeUtc
 			$result.Attributes | Should Be $FileObject.Attributes
