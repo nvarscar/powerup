@@ -29,9 +29,6 @@
 	Proper format of the variable tokens is #{MyVariableName}
 	Can also be provided as a part of Configuration hashtable: -Configuration @{ Variables = @{ Var1 = ...; Var2 = ...}}
 	
-	.PARAMETER Unpacked
-	Mostly intended for internal use. Performs configuration changes inside unpacked package.
-
 	.PARAMETER Confirm
         Prompts to confirm certain actions
 
@@ -90,51 +87,16 @@
 			Position = 2 )]
 		[Parameter(ParameterSetName = 'Hashtable')]
 		[Parameter(ParameterSetName = 'File')]
-		[AllowNull()][hashtable]$Variables,
-		[switch]$Unpacked
+		[AllowNull()][hashtable]$Variables
 	)
 	begin {
 
 	}
 	process {
 		foreach ($pFile in (Get-Item $Path)) {
-			if ($Unpacked) {
-				$workFolder = $pFile
-			}
-			else {
-				if ($pscmdlet.ShouldProcess([System.IO.Path]::GetTempPath(), "Creating new temporary folder")) {
-					$workFolder = New-TempWorkspaceFolder
-				}
-				else {
-					$workFolder = "NonExistingPath"
-				}
-			}
-			try {
-				$packageFile = [PowerUpConfig]::GetPackageFileName()
-				if (!$Unpacked) {
-					#Extract package files
-					if ($pscmdlet.ShouldProcess($pFile, "Extracting package file to $workFolder")) {
-						Expand-ArchiveItem -Path $pFile -DestinationPath $workFolder -Item $packageFile
-					}
-				}
-			
-				if ($pscmdlet.ShouldProcess($packageFile, "Reading package file from $workFolder")) {
-					$package = [PowerUpPackage]::FromFile((Join-Path $workFolder $packageFile))
-				}
-				else {
-					$package = [PowerUpPackage]::new()
-				}
-				$configFile = $package.ConfigurationFile
-
-				if (!$Unpacked) {
-					if ($pscmdlet.ShouldProcess($configFile, "Extracting config file from $pFile")) {
-						Expand-ArchiveItem -Path $pFile -DestinationPath $workFolder -Item $configFile
-					}
-				}
-				
-				#Assign new values
+			if ($package = [PowerUpPackage]::new($pFile.FullName)) {
+				$config = $package.Configuration
 				Write-Verbose "Assigning new values to the config"
-
 				if ($PSCmdlet.ParameterSetName -eq 'Value') {
 					$newConfig = @{ $ConfigName = $Value }
 				}
@@ -150,26 +112,11 @@
 					$newConfig += @{ Variables = $Variables}
 				}
 
-				$configTempFile = (Join-Path $workFolder $configFile)
-				$configObject = Get-PowerUpConfig -Path $configTempFile -Configuration $newConfig
+				Write-Verbose "Saving configuration in the PowerUpPackage object"
+				$config.Merge($newConfig)
 
-				if ($pscmdlet.ShouldProcess($configTempFile, "Saving the config file")) {
-					$configObject.SaveToFile($configTempFile, $true)
-				}
-				if (!$Unpacked) {
-					if ($pscmdlet.ShouldProcess($pFile, "Updating package with a new config file")) {
-						$null = Add-ArchiveItem -Path $pFile -Item $configTempFile
-					}
-				}
-			}
-			catch {
-				throw $_
-			}
-			finally {
-				if (!$Unpacked -and $workFolder.Name -like 'PowerUpWorkspace*') {
-					if ($pscmdlet.ShouldProcess($workFolder, "Removing temporary folder")) {
-						Remove-Item $workFolder -Recurse -Force
-					}
+				if ($pscmdlet.ShouldProcess($package, "Updating the package file")) {
+					$config.Alter()
 				}
 			}
 		}

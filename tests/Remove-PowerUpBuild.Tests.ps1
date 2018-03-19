@@ -1,12 +1,22 @@
-﻿$commandName = $MyInvocation.MyCommand.Name.Replace(".Tests.ps1", "")
-$here = if ($PSScriptRoot) { $PSScriptRoot } else {	(Get-Item . ).FullName }
-$sut = (Split-Path -Leaf $MyInvocation.MyCommand.Path) -replace '\.Tests\.', '.'
+﻿Param (
+	[switch]$Batch
+)
 
-. "$here\..\internal\Get-ArchiveItem.ps1"
-. "$here\..\internal\Remove-ArchiveItem.ps1"
-. "$here\..\internal\New-TempWorkspaceFolder.ps1"
+if ($PSScriptRoot) { $commandName = $MyInvocation.MyCommand.Name.Replace(".Tests.ps1", ""); $here = $PSScriptRoot }
+else { $commandName = "_ManualExecution"; $here = (Get-Item . ).FullName }
 
-$workFolder = New-TempWorkspaceFolder
+if (!$Batch) {
+	# Is not a part of the global batch => import module
+	Import-Module "$here\..\PowerUp.psd1" -Force
+	Import-Module "$here\etc\modules\ZipHelper" -Force
+}
+else {
+	# Is a part of a batch, output some eye-catching happiness
+	Write-Host "Running $commandName tests" -ForegroundColor Cyan
+}
+
+$workFolder = Join-Path "$here\etc" "$commandName.Tests.PowerUp"
+$unpackedFolder = Join-Path $workFolder 'unpacked'
 
 $scriptFolder = "$here\etc\install-tests\success"
 $v1scripts = Join-Path $scriptFolder "1.sql"
@@ -15,13 +25,16 @@ $packageName = Join-Path $workFolder "TempDeployment.zip"
 $packageNameTest = "$packageName.test.zip"
 $packageNoPkgFile = Join-Path $workFolder "pkg_nopkgfile.zip"
 
-Describe "$commandName tests" {
+Describe "Remove-PowerUpBuild tests" -Tag $commandName, UnitTests {
 	BeforeAll {
+		if ((Test-Path $workFolder) -and $workFolder -like '*.Tests.PowerUp') { Remove-Item $workFolder -Recurse }
+		$null = New-Item $workFolder -ItemType Directory -Force
+		$null = New-Item $unpackedFolder -ItemType Directory -Force
 		$null = New-PowerUpPackage -ScriptPath $v1scripts -Name $packageName -Build 1.0 -Force
 		$null = Add-PowerUpBuild -ScriptPath $v2scripts -Path $packageName -Build 2.0
 	}
 	AfterAll {
-		if ($workFolder.Name -like 'PowerUpWorkspace*') { Remove-Item $workFolder -Recurse }
+		if ((Test-Path $workFolder) -and $workFolder -like '*.Tests.PowerUp') { Remove-Item $workFolder -Recurse }
 	}
 	Context "removing version 1.0 from existing package" {
 		BeforeAll {
@@ -112,7 +125,7 @@ Describe "$commandName tests" {
 			$null = Remove-Item $packageNameTest
 		}
 		It "should remove build from existing package" {
-			{ '2.0' | Remove-PowerUpBuild -Path $packageNameTest } | Should Not Throw
+			{ $packageNameTest | Remove-PowerUpBuild -Build '2.0' } | Should Not Throw
 			Test-Path $packageNameTest | Should Be $true
 		}
 		$results = Get-ArchiveItem $packageNameTest
@@ -142,24 +155,18 @@ Describe "$commandName tests" {
 		}
 		It "should throw error when package data file does not exist" {
 			try {
-				$result = Remove-PowerUpBuild -Name $packageNoPkgFile -Build 2.0 -SkipValidation
+				$null = Remove-PowerUpBuild -Name $packageNoPkgFile -Build 2.0
 			}
 			catch {
 				$errorResult = $_
 			}
-			$errorResult.Exception.Message -join ';' | Should BeLike '*Package file * not found*'
+			$errorResult.Exception.Message -join ';' | Should BeLike '*Incorrect package format*'
 		}
 		It "should throw error when package zip does not exist" {
-			try {
-				$result = Remove-PowerUpBuild -Name ".\nonexistingpackage.zip" -Build 2.0
-			}
-			catch {
-				$errorResult = $_
-			}
-			$errorResult.Exception.Message -join ';' | Should BeLike '*Package * not found. Aborting build*'
+			{ Remove-PowerUpBuild -Name ".\nonexistingpackage.zip" -Build 2.0 -ErrorAction Stop } | Should Throw
 		}
 		It "should output warning when build does not exist" {
-			$result = Remove-PowerUpBuild -Name $packageNameTest -Build 3.0 -WarningVariable errorResult 3>$null
+			$null = Remove-PowerUpBuild -Name $packageNameTest -Build 3.0 -WarningVariable errorResult 3>$null
 			$errorResult.Message -join ';' | Should BeLike '*not found in the package*'
 		}
 	}

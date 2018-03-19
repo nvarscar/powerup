@@ -7,7 +7,6 @@ $TestsRunGroups = @{
 		'Add-PowerUpBuild',
 		'Get-PowerUpConfig',
 		'New-PowerUpPackage',
-		'Test-PowerUpPackage',
 		'Remove-PowerUpBuild',
 		'Get-PowerUpPackage',
 		'Update-PowerUpConfig'
