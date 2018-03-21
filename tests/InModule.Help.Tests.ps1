@@ -8,7 +8,7 @@ $here = if ($PSScriptRoot) { $PSScriptRoot } else {	(Get-Item . ).FullName }
 if (!$Batch) {
 	# Is not a part of the global batch => import module
 	#Explicitly import the module for testing
-	Import-Module "$here\..\PowerUp.psd1" -Force
+	Import-Module "$here\..\dbops.psd1" -Force
 }
 else {
 	# Is a part of a batch, output some eye-catching happiness
@@ -16,7 +16,7 @@ else {
 }
 if ($SkipHelpTest) { return }
 $includedNames = (Get-ChildItem "$here\..\functions" | Where-Object Name -like "*.ps1" ).BaseName
-$commands = Get-Command -Module (Get-Module PowerUp) -CommandType Cmdlet, Function, Workflow | Where-Object Name -in $includedNames
+$commands = Get-Command -Module (Get-Module dbops) -CommandType Cmdlet, Function, Workflow | Where-Object Name -in $includedNames
 
 ## When testing help, remember that help is cached at the beginning of each session.
 ## To test, restart session.

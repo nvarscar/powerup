@@ -43,10 +43,10 @@ param (
 # Move to the project root
 Set-Location $ModuleBase
 #removes previously imported module, if any
-Remove-Module PowerUp -ErrorAction Ignore
+Remove-Module dbops -ErrorAction Ignore
 Remove-Module ZipHelper -ErrorAction Ignore
 #imports the module making sure DLL is loaded ok
-Import-Module "$ModuleBase\PowerUp.psd1"
+Import-Module "$ModuleBase\dbops.psd1"
 #Import ZipHelper
 Import-Module "$PSScriptRoot\etc\modules\ZipHelper" -Force
 
@@ -163,7 +163,7 @@ function Send-CodecovReport($CodecovReport) {
 
 if (-not $Finalize) {
 	# Welcome message
-	Write-Host -ForegroundColor DarkGreen "Running PowerUp build $((Get-Module PowerUp).Version.ToString()) on PS $($PSVersionTable.PsVersion.ToString())"
+	Write-Host -ForegroundColor DarkGreen "Running dbops build $((Get-Module dbops).Version.ToString()) on PS $($PSVersionTable.PsVersion.ToString())"
 	# Invoke pester.groups.ps1 to know which tests to run
 	. "$ModuleBase\tests\pester.groups.ps1"
 

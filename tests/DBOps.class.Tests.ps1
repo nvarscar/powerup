@@ -8,7 +8,7 @@ else { $commandName = "_ManualExecution"; $here = (Get-Item . ).FullName }
 if (!$Batch) {
 	# Is not a part of the global batch => import module
 	#Explicitly import the module for testing
-	Import-Module "$here\..\PowerUp.psd1" -Force
+	Import-Module "$here\..\dbops.psd1" -Force
 	Import-Module "$here\etc\modules\ZipHelper" -Force
 }
 else {
@@ -18,8 +18,8 @@ else {
 
 Add-Type -AssemblyName System.IO.Compression
 Add-Type -AssemblyName System.IO.Compression.FileSystem
-. "$here\..\internal\classes\PowerUpHelper.class.ps1"
-. "$here\..\internal\classes\PowerUp.class.ps1"
+. "$here\..\internal\classes\DBOpsHelper.class.ps1"
+. "$here\..\internal\classes\DBOps.class.ps1"
 
 $packageName = "$here\etc\$commandName.zip"
 $script:pkg = $script:build = $script:file = $null
@@ -27,19 +27,19 @@ $script1 = "$here\etc\install-tests\success\1.sql"
 $script2 = "$here\etc\install-tests\success\2.sql"
 $script3 = "$here\etc\install-tests\success\3.sql"
 
-Describe "PowerUpPackage class tests" -Tag $commandName, UnitTests, PowerUpPackage {
+Describe "DBOpsPackage class tests" -Tag $commandName, UnitTests, DBOpsPackage {
 	AfterAll {
 		if (Test-Path $packageName) { Remove-Item $packageName }
 	}
-	Context "validating PowerUpPackage creation" {
+	Context "validating DBOpsPackage creation" {
 		AfterAll {
 			if (Test-Path $packageName) { Remove-Item $packageName }
 		}
-		It "Should create new PowerUpPackage object" {
-			$script:pkg = [PowerUpPackage]::new()
+		It "Should create new DBOpsPackage object" {
+			$script:pkg = [DBOpsPackage]::new()
 			$script:pkg.ScriptDirectory | Should Be 'content'
 			$script:pkg.DeployFile.ToString() | Should Be 'Deploy.ps1'
-			$script:pkg.DeployFile.GetContent() | Should BeLike '*Invoke-PowerUpDeployment @params*'
+			$script:pkg.DeployFile.GetContent() | Should BeLike '*Invoke-DBODeployment @params*'
 			$script:pkg.Configuration.SchemaVersionTable | Should Be 'dbo.SchemaVersions'
 			$script:pkg.FileName | Should BeNullOrEmpty
 			$script:pkg.$Version | Should BeNullOrEmpty
@@ -49,32 +49,32 @@ Describe "PowerUpPackage class tests" -Tag $commandName, UnitTests, PowerUpPacka
 		}
 		$results = Get-ArchiveItem $packageName
 		It "should contain module files" {
-			foreach ($file in (Get-PowerUpModuleFileList)) {
-				Join-Path 'Modules\PowerUp' $file.Path | Should BeIn $results.Path
+			foreach ($file in (Get-DBOModuleFileList)) {
+				Join-Path 'Modules\dbops' $file.Path | Should BeIn $results.Path
 			}
 		}
 		It "should contain config files" {
-			'PowerUp.config.json' | Should BeIn $results.Path
-			'PowerUp.package.json' | Should BeIn $results.Path
+			'dbops.config.json' | Should BeIn $results.Path
+			'dbops.package.json' | Should BeIn $results.Path
 		}
 		It "should contain deploy file" {
 			'Deploy.ps1' | Should BeIn $results.Path
 		}
 	}
-	Context "validate PowerUpPackage being loaded from file" {
+	Context "validate DBOpsPackage being loaded from file" {
 		AfterAll {
 			if (Test-Path $packageName) { Remove-Item $packageName }
 		}
 		BeforeAll {
-			$script:pkg = [PowerUpPackage]::new()
+			$script:pkg = [DBOpsPackage]::new()
 			$script:pkg.SaveToFile($packageName)
 		}
 		It "should load package from file" {
-			$script:pkg = [PowerUpPackage]::new($packageName)
+			$script:pkg = [DBOpsPackage]::new($packageName)
 			$script:pkg.ScriptDirectory | Should Be 'content'
 			$script:pkg.DeployFile.ToString() | Should Be 'Deploy.ps1'
-			$script:pkg.DeployFile.GetContent() | Should BeLike '*Invoke-PowerUpDeployment @params*'
-			$script:pkg.ConfigurationFile.ToString() | Should Be 'PowerUp.config.json'
+			$script:pkg.DeployFile.GetContent() | Should BeLike '*Invoke-DBODeployment @params*'
+			$script:pkg.ConfigurationFile.ToString() | Should Be 'dbops.config.json'
 			($script:pkg.ConfigurationFile.GetContent() | ConvertFrom-Json).SchemaVersionTable | Should Be 'dbo.SchemaVersions'
 			$script:pkg.Configuration.SchemaVersionTable | Should Be 'dbo.SchemaVersions'
 			$script:pkg.FileName | Should Be $packageName
@@ -82,12 +82,12 @@ Describe "PowerUpPackage class tests" -Tag $commandName, UnitTests, PowerUpPacka
 			$script:pkg.PackagePath | Should BeNullOrEmpty
 		}
 	}
-	Context "should validate PowerUpPackage methods" {
+	Context "should validate DBOpsPackage methods" {
 		AfterAll {
 			if (Test-Path $packageName) { Remove-Item $packageName }
 		}
 		BeforeAll {
-			$script:pkg = [PowerUpPackage]::new()
+			$script:pkg = [DBOpsPackage]::new()
 			$script:pkg.SaveToFile($packageName)
 		}
 		It "Should test GetBuilds method" {
@@ -97,7 +97,7 @@ Describe "PowerUpPackage class tests" -Tag $commandName, UnitTests, PowerUpPacka
 			$b = $script:pkg.NewBuild('1.0')
 			$b.Build | Should Be '1.0'
 			$b.PackagePath | Should Be '1.0'
-			$b.Parent.GetType().Name | Should Be 'PowerUpPackage'
+			$b.Parent.GetType().Name | Should Be 'DBOpsPackage'
 			$b.Scripts | Should BeNullOrEmpty
 			([datetime]$b.CreatedDate).Date | Should Be ([datetime]::Now).Date
 			$script:pkg.Version | Should Be '1.0'
@@ -106,7 +106,7 @@ Describe "PowerUpPackage class tests" -Tag $commandName, UnitTests, PowerUpPacka
 			$b = $script:pkg.GetBuild('1.0')
 			$b.Build | Should Be '1.0'
 			$b.PackagePath | Should Be '1.0'
-			$b.Parent.GetType().Name | Should Be 'PowerUpPackage'
+			$b.Parent.GetType().Name | Should Be 'DBOpsPackage'
 			$b.Scripts | Should BeNullOrEmpty
 			([datetime]$b.CreatedDate).Date | Should Be ([datetime]::Now).Date
 		}
@@ -115,7 +115,7 @@ Describe "PowerUpPackage class tests" -Tag $commandName, UnitTests, PowerUpPacka
 			$b = $script:pkg.GetBuild('2.0')
 			$b.Build | Should Be '2.0'
 			$b.PackagePath | Should Be '2.0'
-			$b.Parent.GetType().Name | Should Be 'PowerUpPackage'
+			$b.Parent.GetType().Name | Should Be 'DBOpsPackage'
 			$b.Scripts | Should BeNullOrEmpty
 			([datetime]$b.CreatedDate).Date | Should Be ([datetime]::Now).Date
 			$script:pkg.Version | Should Be '2.0'
@@ -143,8 +143,8 @@ Describe "PowerUpPackage class tests" -Tag $commandName, UnitTests, PowerUpPacka
 		It "should test ScriptExists method" {
 			$b = $script:pkg.GetBuild('1.0')
 			$s = "$here\etc\install-tests\success\1.sql"
-			$f = [PowerUpScriptFile]::new(@{SourcePath = $s; PackagePath = 'success\1.sql'})
-			$f.SetContent([PowerUpHelper]::GetBinaryFile($s))
+			$f = [DBOpsScriptFile]::new(@{SourcePath = $s; PackagePath = 'success\1.sql'})
+			$f.SetContent([DBOpsHelper]::GetBinaryFile($s))
 			$b.AddFile($f, 'Scripts')
 			$script:pkg.ScriptExists($s) | Should Be $true
             $script:pkg.ScriptExists("$here\etc\install-tests\transactional-failure\1.sql") | Should Be $false
@@ -174,7 +174,7 @@ Describe "PowerUpPackage class tests" -Tag $commandName, UnitTests, PowerUpPacka
 		}
 		It "Should test RefreshModuleVersion method" {
 			$script:pkg.RefreshModuleVersion()
-			$script:pkg.ModuleVersion | Should Be (Get-Module PowerUp).Version
+			$script:pkg.ModuleVersion | Should Be (Get-Module dbops).Version
 		}
 		It "Should test RefreshFileProperties method" {
 			$script:pkg.RefreshFileProperties()
@@ -205,7 +205,7 @@ Describe "PowerUpPackage class tests" -Tag $commandName, UnitTests, PowerUpPacka
 
 		It "Should test SetConfiguration method" {
 			$config = @{ SchemaVersionTable = 'dbo.NewTable' } | ConvertTo-Json -Depth 1
-			{ $script:pkg.SetConfiguration([PowerUpConfig]::new($config)) } | Should Not Throw
+			{ $script:pkg.SetConfiguration([DBOpsConfig]::new($config)) } | Should Not Throw
 			$script:pkg.Configuration.SchemaVersionTable | Should Be 'dbo.NewTable'
 		}
 		$oldResults = Get-ArchiveItem $packageName | Where-Object IsFolder -eq $false
@@ -215,11 +215,11 @@ Describe "PowerUpPackage class tests" -Tag $commandName, UnitTests, PowerUpPacka
 			{ $script:pkg.SaveToFile($packageName) } | Should Throw #File already exists
 			{ $script:pkg.Alter() } | Should Not Throw
 			$results = Get-ArchiveItem $packageName
-			foreach ($file in (Get-PowerUpModuleFileList)) {
-				Join-Path 'Modules\PowerUp' $file.Path | Should BeIn $results.Path
+			foreach ($file in (Get-DBOModuleFileList)) {
+				Join-Path 'Modules\dbops' $file.Path | Should BeIn $results.Path
 			}
-			'PowerUp.config.json' | Should BeIn $results.Path
-			'PowerUp.package.json' | Should BeIn $results.Path
+			'dbops.config.json' | Should BeIn $results.Path
+			'dbops.package.json' | Should BeIn $results.Path
 			'Deploy.ps1' | Should BeIn $results.Path
 			'content\1.0\success\1.sql' | Should BeIn $results.Path
 		}
@@ -242,17 +242,17 @@ Describe "PowerUpPackage class tests" -Tag $commandName, UnitTests, PowerUpPacka
 	}
 }
 
-Describe "PowerUpPackageFile class tests" -Tag $commandName, UnitTests, PowerUpPackage, PowerUpPackageFile {
+Describe "DBOpsPackageFile class tests" -Tag $commandName, UnitTests, DBOpsPackage, DBOpsPackageFile {
 	AfterAll {
 		if (Test-Path $packageName) { Remove-Item $packageName }
 	}
-	Context "validate PowerUpPackageFile being loaded from file" {
+	Context "validate DBOpsPackageFile being loaded from file" {
 		AfterAll {
 			if (Test-Path $packageName) { Remove-Item $packageName }
 			if (Test-Path "$here\etc\LoadFromFile") { Remove-Item "$here\etc\LoadFromFile" -Recurse}
 		}
 		BeforeAll {
-			$p = [PowerUpPackage]::new()
+			$p = [DBOpsPackage]::new()
 			$b1 = $p.NewBuild('1.0')
 			$s1 = $b1.NewScript($script1, 1)
 			$b2 = $p.NewBuild('2.0')
@@ -262,11 +262,11 @@ Describe "PowerUpPackageFile class tests" -Tag $commandName, UnitTests, PowerUpP
 			Expand-Archive $p.FullName "$here\etc\LoadFromFile"
 		}
 		It "should load package from file" {
-			$p = [PowerUpPackageFile]::new("$here\etc\LoadFromFile\PowerUp.package.json")
+			$p = [DBOpsPackageFile]::new("$here\etc\LoadFromFile\dbops.package.json")
 			$p.ScriptDirectory | Should Be 'content'
 			$p.DeployFile.ToString() | Should Be 'Deploy.ps1'
-			$p.DeployFile.GetContent() | Should BeLike '*Invoke-PowerUpDeployment @params*'
-			$p.ConfigurationFile.ToString() | Should Be 'PowerUp.config.json'
+			$p.DeployFile.GetContent() | Should BeLike '*Invoke-DBODeployment @params*'
+			$p.ConfigurationFile.ToString() | Should Be 'dbops.config.json'
 			($p.ConfigurationFile.GetContent() | ConvertFrom-Json).SchemaVersionTable | Should Be 'dbo.SchemaVersions'
 			$p.Configuration.SchemaVersionTable | Should Be 'dbo.SchemaVersions'
 			$p.FileName | Should Be "$here\etc\LoadFromFile"
@@ -276,25 +276,25 @@ Describe "PowerUpPackageFile class tests" -Tag $commandName, UnitTests, PowerUpP
 			$p.Builds.Scripts | Should Be @('success\1.sql', 'success\2.sql')
 		}
 		It "should override Save/Alter methods" {
-			$p = [PowerUpPackageFile]::new("$here\etc\LoadFromFile\PowerUp.package.json")
+			$p = [DBOpsPackageFile]::new("$here\etc\LoadFromFile\dbops.package.json")
 			{ $p.Save() } | Should Throw
 			{ $p.Alter() } | Should Throw
 		}
 		It "should still save the package using SaveToFile method" {
-			$p = [PowerUpPackageFile]::new("$here\etc\LoadFromFile\PowerUp.package.json")
+			$p = [DBOpsPackageFile]::new("$here\etc\LoadFromFile\dbops.package.json")
 			$p.SaveToFile($packageName, $true)
 			$results = Get-ArchiveItem $packageName
-			foreach ($file in (Get-PowerUpModuleFileList)) {
-				Join-Path 'Modules\PowerUp' $file.Path | Should BeIn $results.Path
+			foreach ($file in (Get-DBOModuleFileList)) {
+				Join-Path 'Modules\dbops' $file.Path | Should BeIn $results.Path
 			}
-			'PowerUp.config.json' | Should BeIn $results.Path
-			'PowerUp.package.json' | Should BeIn $results.Path
+			'dbops.config.json' | Should BeIn $results.Path
+			'dbops.package.json' | Should BeIn $results.Path
 			'Deploy.ps1' | Should BeIn $results.Path
 			'content\1.0\success\1.sql' | Should BeIn $results.Path
 			'content\2.0\success\2.sql' | Should BeIn $results.Path
 		}
 		It "Should test RefreshFileProperties method" {
-			$p = [PowerUpPackageFile]::new("$here\etc\LoadFromFile\PowerUp.package.json")
+			$p = [DBOpsPackageFile]::new("$here\etc\LoadFromFile\dbops.package.json")
 			$p.RefreshFileProperties()
 			$FileObject = Get-Item "$here\etc\LoadFromFile"
 			$p.PSPath | Should Be $FileObject.PSPath.ToString()
@@ -321,38 +321,38 @@ Describe "PowerUpPackageFile class tests" -Tag $commandName, UnitTests, PowerUpP
 
 }
 
-Describe "PowerUpBuild class tests" -Tag $commandName, UnitTests, PowerUpBuild {
-	Context "tests PowerUpBuild object creation" {
-		It "Should create new PowerUpBuild object" {
-			$b = [PowerUpBuild]::new('1.0')
+Describe "DBOpsBuild class tests" -Tag $commandName, UnitTests, DBOpsBuild {
+	Context "tests DBOpsBuild object creation" {
+		It "Should create new DBOpsBuild object" {
+			$b = [DBOpsBuild]::new('1.0')
 			$b.Build | Should Be '1.0'
 			$b.PackagePath | Should Be '1.0'
 			([datetime]$b.CreatedDate).Date | Should Be ([datetime]::Now).Date
 		}
-		It "Should create new PowerUpBuild object using custom object" {
+		It "Should create new DBOpsBuild object using custom object" {
 			$obj = @{
 				Build       = '2.0'
 				PackagePath = '2.00'
 				CreatedDate = (Get-Date).Date
 			}
-			$b = [PowerUpBuild]::new($obj)
+			$b = [DBOpsBuild]::new($obj)
 			$b.Build | Should Be $obj.Build
 			$b.PackagePath | Should Be $obj.PackagePath
 			$b.CreatedDate | Should Be $obj.CreatedDate
 		}
     }
-    Context "tests PowerUpBuild file adding methods" {
+    Context "tests DBOpsBuild file adding methods" {
         AfterAll {
             if (Test-Path $packageName) { Remove-Item $packageName }
         }
 		BeforeAll {
-			$script:pkg = [PowerUpPackage]::new()
+			$script:pkg = [DBOpsPackage]::new()
 			$script:pkg.SaveToFile($packageName)
 		}
 		BeforeEach {
 			if ( $script:pkg.GetBuild('1.0')) { $script:pkg.RemoveBuild('1.0') }
 			$b = $script:pkg.NewBuild('1.0')
-			# $f = [PowerUpFile]::new($script1, 'success\1.sql')
+			# $f = [DBOpsFile]::new($script1, 'success\1.sql')
 			# $b.AddScript($f)
 			$script:build = $b
 		}
@@ -387,22 +387,22 @@ Describe "PowerUpBuild class tests" -Tag $commandName, UnitTests, PowerUpBuild {
 			{ $script:build.NewScript($script1, 1) } | Should Throw
         }
 		It "Should test AddScript([string]) method" {
-			$f = [PowerUpFile]::new($script1, 'success\1.sql')
+			$f = [DBOpsFile]::new($script1, 'success\1.sql')
 			$script:build.AddScript($f)
 			#test build to contain the script
 			'1.sql' | Should BeIn $script:build.Scripts.Name
 			($script:build.Scripts | Measure-Object).Count | Should Be 1
 		}
 		It "Should test AddScript([string],[bool]) method" {
-			$f = [PowerUpFile]::new($script1, 'success\1.sql')
+			$f = [DBOpsFile]::new($script1, 'success\1.sql')
 			$script:build.AddScript($f,$false)
 			#test build to contain the script
 			'1.sql' | Should BeIn $script:build.Scripts.Name
 			($script:build.Scripts | Measure-Object).Count | Should Be 1
-			$f2 = [PowerUpFile]::new($script1, 'success\1a.sql')
+			$f2 = [DBOpsFile]::new($script1, 'success\1a.sql')
 			{ $script:build.AddScript($f2, $false) } | Should Throw
 			($script:build.Scripts | Measure-Object).Count | Should Be 1
-			$f3 = [PowerUpFile]::new($script1, 'success\1a.sql')
+			$f3 = [DBOpsFile]::new($script1, 'success\1a.sql')
 			$script:build.AddScript($f3, $true)
 			($script:build.Scripts | Measure-Object).Count | Should Be 2
 		}
@@ -411,7 +411,7 @@ Describe "PowerUpBuild class tests" -Tag $commandName, UnitTests, PowerUpBuild {
 		BeforeEach {
 			if ( $script:pkg.GetBuild('1.0')) { $script:pkg.RemoveBuild('1.0') }
 			$b = $script:pkg.NewBuild('1.0')
-			$f = [PowerUpScriptFile]::new($script1, 'success\1.sql')
+			$f = [DBOpsScriptFile]::new($script1, 'success\1.sql')
 			$b.AddScript($f)
 			$script:build = $b
 		}
@@ -419,14 +419,14 @@ Describe "PowerUpBuild class tests" -Tag $commandName, UnitTests, PowerUpBuild {
 			if (Test-Path $packageName) { Remove-Item $packageName }
 		}
 		BeforeAll {
-			$script:pkg = [PowerUpPackage]::new()
+			$script:pkg = [DBOpsPackage]::new()
 			$script:pkg.SaveToFile($packageName)
 		}
         It "should test ToString method" {
             $script:build.ToString() | Should Be '[Build: 1.0; Scripts: @{1.sql}]'  
         }
         It "should test HashExists method" {
-            $f = [PowerUpScriptFile]::new(@{PackagePath = '1.sql'; SourcePath = '.\1.sql'; Hash = 'MyHash'})
+            $f = [DBOpsScriptFile]::new(@{PackagePath = '1.sql'; SourcePath = '.\1.sql'; Hash = 'MyHash'})
             $script:build.AddScript($f, $true)
             $script:build.HashExists('MyHash') | Should Be $true
             $script:build.HashExists('MyHash2') | Should Be $false
@@ -476,13 +476,13 @@ Describe "PowerUpBuild class tests" -Tag $commandName, UnitTests, PowerUpBuild {
 		}
 		It "should test Save method" {
 			#Generate new package file
-			$script:pkg = [PowerUpPackage]::new()
+			$script:pkg = [DBOpsPackage]::new()
 			$script:pkg.SaveToFile($packageName)
 			if ( $script:pkg.GetBuild('1.0')) { $script:pkg.RemoveBuild('1.0') }
 			$b = $script:pkg.NewBuild('1.0')
-			$f = [PowerUpScriptFile]::new($script1, 'success\1.sql')
+			$f = [DBOpsScriptFile]::new($script1, 'success\1.sql')
 			$b.AddScript($f)
-			$f = [PowerUpScriptFile]::new($script2, 'success\2.sql')
+			$f = [DBOpsScriptFile]::new($script2, 'success\2.sql')
 			$b.AddScript($f)
 			$script:build = $b
 
@@ -512,60 +512,60 @@ Describe "PowerUpBuild class tests" -Tag $commandName, UnitTests, PowerUpBuild {
 				$stream.Dispose()
 			}
 			$results = Get-ArchiveItem $packageName
-			foreach ($file in (Get-PowerUpModuleFileList)) {
-				Join-Path 'Modules\PowerUp' $file.Path | Should BeIn $results.Path
+			foreach ($file in (Get-DBOModuleFileList)) {
+				Join-Path 'Modules\dbops' $file.Path | Should BeIn $results.Path
 			}
-			'PowerUp.config.json' | Should BeIn $results.Path
-			'PowerUp.package.json' | Should BeIn $results.Path
+			'dbops.config.json' | Should BeIn $results.Path
+			'dbops.package.json' | Should BeIn $results.Path
 			'Deploy.ps1' | Should BeIn $results.Path
 			'content\1.0\success\1.sql' | Should BeIn $results.Path
 			'content\1.0\success\2.sql' | Should BeIn $results.Path
 		}
 		It "Should load package successfully after saving it" {
-			$p = [PowerUpPackage]::new($packageName)
+			$p = [DBOpsPackage]::new($packageName)
 			$p.Builds.Scripts.Name | Should Not Be @('1.sql','2.sql') #Build.Save method does not write to package file
 		}
 		It "Should save and reopen the package under a different name" {
 			#Generate new package file
-			$p1 = [PowerUpPackage]::new()
+			$p1 = [DBOpsPackage]::new()
 			$p1.SaveToFile($packageName, $true)
-			$p2 = [PowerUpPackage]::new($packageName)
+			$p2 = [DBOpsPackage]::new($packageName)
 			if ( $p2.GetBuild('1.0')) { $script:pkg.RemoveBuild('1.0') }
 			$b = $p2.NewBuild('1.0')
-			$f = [PowerUpScriptFile]::new($script1, 'success\1.sql')
+			$f = [DBOpsScriptFile]::new($script1, 'success\1.sql')
 			$b.AddScript($f)
-			$f = [PowerUpScriptFile]::new($script2, 'success\2.sql')
+			$f = [DBOpsScriptFile]::new($script2, 'success\2.sql')
 			$b.AddScript($f)
 			$p2.SaveToFile("$packageName.test.zip")
-			$script:pkg = [PowerUpPackage]::new("$packageName.test.zip")
+			$script:pkg = [DBOpsPackage]::new("$packageName.test.zip")
 			$script:build = $script:pkg.GetBuild('1.0')
 		}
 		$oldResults = Get-ArchiveItem "$packageName.test.zip" | Where-Object IsFolder -eq $false
 		#Sleep 1 second to ensure that modification date is changed
 		Start-Sleep -Seconds 2
 		It "should test Alter method" {
-			$f = [PowerUpScriptFile]::new($script3, 'success\3.sql')
+			$f = [DBOpsScriptFile]::new($script3, 'success\3.sql')
 			$script:build.AddScript($f)
 			{ $script:build.Alter() } | Should Not Throw
 			$results = Get-ArchiveItem "$packageName.test.zip"
-			foreach ($file in (Get-PowerUpModuleFileList)) {
-				Join-Path 'Modules\PowerUp' $file.Path | Should BeIn $results.Path
+			foreach ($file in (Get-DBOModuleFileList)) {
+				Join-Path 'Modules\dbops' $file.Path | Should BeIn $results.Path
 			}
-			'PowerUp.config.json' | Should BeIn $results.Path
-			'PowerUp.package.json' | Should BeIn $results.Path
+			'dbops.config.json' | Should BeIn $results.Path
+			'dbops.package.json' | Should BeIn $results.Path
 			'Deploy.ps1' | Should BeIn $results.Path
 			'content\1.0\success\1.sql' | Should BeIn $results.Path
 			'content\1.0\success\2.sql' | Should BeIn $results.Path
 		}
 		It "Should load package successfully after saving it" {
-			$p = [PowerUpPackage]::new("$packageName.test.zip")
+			$p = [DBOpsPackage]::new("$packageName.test.zip")
 			$p.Builds.Scripts.Name | Should Be @('1.sql', '2.sql', '3.sql')
 		}
 		# Testing file contents to be updated by the Save method
 		$results = Get-ArchiveItem "$packageName.test.zip" | Where-Object IsFolder -eq $false
 		$saveTestsErrors = 0
 		#should trigger file updates for build files and module files
-		foreach ($result in ($oldResults | Where-Object { $_.Path -like 'content\1.0\success' -or $_.Path -like 'Modules\PowerUp\*'  } )) {
+		foreach ($result in ($oldResults | Where-Object { $_.Path -like 'content\1.0\success' -or $_.Path -like 'Modules\dbops\*'  } )) {
 			if ($result.LastWriteTime -ge ($results | Where-Object Path -eq $result.Path).LastWriteTime) {
 				It "Should have updated Modified date for file $($result.Path)" {
 					$result.LastWriteTime -lt ($results | Where-Object Path -eq $result.Path).LastWriteTime | Should Be $true
@@ -581,16 +581,16 @@ Describe "PowerUpBuild class tests" -Tag $commandName, UnitTests, PowerUpBuild {
     }
 }
 
-Describe "PowerUpFile class tests" -Tag $commandName, UnitTests, PowerUpFile {
+Describe "DBOpsFile class tests" -Tag $commandName, UnitTests, DBOpsFile {
 	AfterAll {
 		if (Test-Path $packageName) { Remove-Item $packageName }
 	}
-	Context "tests PowerUpFile object creation" {
+	Context "tests DBOpsFile object creation" {
 		AfterAll {
 			if (Test-Path $packageName) { Remove-Item $packageName }
 		}
-		It "Should create new PowerUpFile object" {
-			$f = [PowerUpFile]::new()
+		It "Should create new DBOpsFile object" {
+			$f = [DBOpsFile]::new()
 			# $f | Should Not BeNullOrEmpty
 			$f.SourcePath | Should BeNullOrEmpty
 			$f.PackagePath | Should BeNullOrEmpty
@@ -601,8 +601,8 @@ Describe "PowerUpFile class tests" -Tag $commandName, UnitTests, PowerUpFile {
 			$f.Hash | Should BeNullOrEmpty
 			$f.Parent | Should BeNullOrEmpty
 		}
-		It "Should create new PowerUpFile object from path" {
-			$f = [PowerUpFile]::new($script1, '1.sql')
+		It "Should create new DBOpsFile object from path" {
+			$f = [DBOpsFile]::new($script1, '1.sql')
 			$f | Should Not BeNullOrEmpty
 			$f.SourcePath | Should Be $script1
 			$f.PackagePath | Should Be '1.sql'
@@ -613,17 +613,17 @@ Describe "PowerUpFile class tests" -Tag $commandName, UnitTests, PowerUpFile {
 			$f.Hash | Should BeNullOrEmpty
 			$f.Parent | Should BeNullOrEmpty
 			#Negative tests
-			{ [PowerUpFile]::new('Nonexisting\path', '1.sql') } | Should Throw
-			{ [PowerUpFile]::new($script1, '') } | Should Throw
-			{ [PowerUpFile]::new('', '1.sql') } | Should Throw
+			{ [DBOpsFile]::new('Nonexisting\path', '1.sql') } | Should Throw
+			{ [DBOpsFile]::new($script1, '') } | Should Throw
+			{ [DBOpsFile]::new('', '1.sql') } | Should Throw
 		}
-		It "Should create new PowerUpFile object using custom object" {
+		It "Should create new DBOpsFile object using custom object" {
 			$obj = @{
 				SourcePath  = $script1
 				packagePath = '1.sql'
 				Hash        = 'MyHash'
 			}
-			$f = [PowerUpFile]::new($obj)
+			$f = [DBOpsFile]::new($obj)
 			$f | Should Not BeNullOrEmpty
 			$f.SourcePath | Should Be $script1
 			$f.PackagePath | Should Be '1.sql'
@@ -636,10 +636,10 @@ Describe "PowerUpFile class tests" -Tag $commandName, UnitTests, PowerUpFile {
 
 			#Negative tests
 			$obj = @{ foo = 'bar'}
-			{ [PowerUpFile]::new($obj) } | Should Throw
+			{ [DBOpsFile]::new($obj) } | Should Throw
 		}
-		It "Should create new PowerUpFile object from zipfile using custom object" {
-			$p = [PowerUpPackage]::new()
+		It "Should create new DBOpsFile object from zipfile using custom object" {
+			$p = [DBOpsPackage]::new()
 			$null = $p.NewBuild('1.0').NewScript($script1, 1)
 			$p.SaveToFile($packageName)
 			#Open zip file stream
@@ -655,9 +655,9 @@ Describe "PowerUpFile class tests" -Tag $commandName, UnitTests, PowerUpFile {
 						packagePath = '1.sql'
 						Hash        = 'MyHash'
 					}
-					# { [PowerUpFile]::new($obj, $zipEntry) } | Should Throw #hash is invalid
-					# $obj.Hash = [PowerUpHelper]::ToHexString([Security.Cryptography.HashAlgorithm]::Create( "MD5" ).ComputeHash([PowerUpHelper]::GetBinaryFile($script1)))
-					$f = [PowerUpFile]::new($obj, $zipEntry)
+					# { [DBOpsFile]::new($obj, $zipEntry) } | Should Throw #hash is invalid
+					# $obj.Hash = [DBOpsHelper]::ToHexString([Security.Cryptography.HashAlgorithm]::Create( "MD5" ).ComputeHash([DBOpsHelper]::GetBinaryFile($script1)))
+					$f = [DBOpsFile]::new($obj, $zipEntry)
 					$f | Should Not BeNullOrEmpty
 					$f.SourcePath | Should Be $script1
 					$f.PackagePath | Should Be '1.sql'
@@ -687,11 +687,11 @@ Describe "PowerUpFile class tests" -Tag $commandName, UnitTests, PowerUpFile {
 
 			#Negative tests
 			$badobj = @{ foo = 'bar'}
-			{ [PowerUpFile]::new($badobj, $zip) } | Should Throw #object is incorrect
-			{ [PowerUpFile]::new($obj, $zip) } | Should Throw #zip stream has been disposed
+			{ [DBOpsFile]::new($badobj, $zip) } | Should Throw #object is incorrect
+			{ [DBOpsFile]::new($obj, $zip) } | Should Throw #zip stream has been disposed
 		}
 	}
-	Context "tests other PowerUpFile methods" {
+	Context "tests other DBOpsFile methods" {
 		BeforeEach {
 			if ( $script:build.GetFile('success\1.sql', 'Scripts')) { $script:build.RemoveFile('success\1.sql', 'Scripts') }
 			$script:file = $script:build.NewFile($script1, 'success\1.sql', 'Scripts')
@@ -701,7 +701,7 @@ Describe "PowerUpFile class tests" -Tag $commandName, UnitTests, PowerUpFile {
 			if (Test-Path $packageName) { Remove-Item $packageName }
 		}
 		BeforeAll {
-			$script:pkg = [PowerUpPackage]::new()
+			$script:pkg = [DBOpsPackage]::new()
 			$script:build = $script:pkg.NewBuild('1.0')
 			$script:pkg.SaveToFile($packageName, $true)
 		}
@@ -714,14 +714,14 @@ Describe "PowerUpFile class tests" -Tag $commandName, UnitTests, PowerUpFile {
 		}
 		It "should test SetContent method" {
 			$oldData = $script:file.ByteArray
-			$script:file.SetContent([PowerUpHelper]::GetBinaryFile($script2))
+			$script:file.SetContent([DBOpsHelper]::GetBinaryFile($script2))
 			$script:file.ByteArray | Should Not Be $oldData
 			$script:file.ByteArray | Should Not BeNullOrEmpty
 		}
 		It "should test ExportToJson method" {
 			$j = $script:file.ExportToJson() | ConvertFrom-Json
 			$j.PackagePath | Should Be 'success\1.sql'
-			# $j.Hash | Should Be ([PowerUpHelper]::ToHexString([Security.Cryptography.HashAlgorithm]::Create( "MD5" ).ComputeHash([PowerUpHelper]::GetBinaryFile($script1))))
+			# $j.Hash | Should Be ([DBOpsHelper]::ToHexString([Security.Cryptography.HashAlgorithm]::Create( "MD5" ).ComputeHash([DBOpsHelper]::GetBinaryFile($script1))))
 			$j.SourcePath | Should Be $script1
 		}
 		It "should test Save method" {
@@ -730,7 +730,7 @@ Describe "PowerUpFile class tests" -Tag $commandName, UnitTests, PowerUpFile {
 			#Sleep 2 seconds to ensure that modification date is changed
 			Start-Sleep -Seconds 2
 			#Modify file content
-			$script:file.SetContent([PowerUpHelper]::GetBinaryFile($script2))
+			$script:file.SetContent([DBOpsHelper]::GetBinaryFile($script2))
 			#Open zip file stream
 			$writeMode = [System.IO.FileMode]::Open
 			$stream = [FileStream]::new($packageName, $writeMode)
@@ -758,7 +758,7 @@ Describe "PowerUpFile class tests" -Tag $commandName, UnitTests, PowerUpFile {
 			}
 			$results = Get-ArchiveItem $packageName | Where-Object Path -eq 'content\1.0\success\1.sql'
 			$oldResults.LastWriteTime -lt ($results | Where-Object Path -eq $oldResults.Path).LastWriteTime | Should Be $true
-			# { $p = [PowerUpPackage]::new($packageName) } | Should Throw #Because of the hash mismatch - package file is not updated in Save()
+			# { $p = [DBOpsPackage]::new($packageName) } | Should Throw #Because of the hash mismatch - package file is not updated in Save()
 		}
 		It "should test Alter method" {
 			#Save old file parameters
@@ -766,7 +766,7 @@ Describe "PowerUpFile class tests" -Tag $commandName, UnitTests, PowerUpFile {
 			#Sleep 2 seconds to ensure that modification date is changed
 			Start-Sleep -Seconds 2
 			#Modify file content
-			$script:file.SetContent([PowerUpHelper]::GetBinaryFile($script2))
+			$script:file.SetContent([DBOpsHelper]::GetBinaryFile($script2))
 			{ $script:file.Alter() } | Should Not Throw
 			$results = Get-ArchiveItem $packageName | Where-Object Path -eq 'content\1.0\success\1.sql'
 			$oldResults.LastWriteTime -lt ($results | Where-Object Path -eq $oldResults.Path).LastWriteTime | Should Be $true
@@ -774,16 +774,16 @@ Describe "PowerUpFile class tests" -Tag $commandName, UnitTests, PowerUpFile {
 	}
 }
 
-Describe "PowerUpScriptFile class tests" -Tag $commandName, UnitTests, PowerUpFile, PowerUpScriptFile {
+Describe "dbopsScriptFile class tests" -Tag $commandName, UnitTests, DBOpsFile, dbopsScriptFile {
 	AfterAll {
 		if (Test-Path $packageName) { Remove-Item $packageName }
 	}
-	Context "tests PowerUpScriptFile object creation" {
+	Context "tests dbopsScriptFile object creation" {
 		AfterAll {
 			if (Test-Path $packageName) { Remove-Item $packageName }
 		}
-		It "Should create new PowerUpScriptFile object" {
-			$f = [PowerUpScriptFile]::new()
+		It "Should create new dbopsScriptFile object" {
+			$f = [DBOpsScriptFile]::new()
 			# $f | Should Not BeNullOrEmpty
 			$f.SourcePath | Should BeNullOrEmpty
 			$f.PackagePath | Should BeNullOrEmpty
@@ -794,8 +794,8 @@ Describe "PowerUpScriptFile class tests" -Tag $commandName, UnitTests, PowerUpFi
 			$f.Hash | Should BeNullOrEmpty
 			$f.Parent | Should BeNullOrEmpty
 		}
-		It "Should create new PowerUpScriptFile object from path" {
-			$f = [PowerUpScriptFile]::new($script1, '1.sql')
+		It "Should create new dbopsScriptFile object from path" {
+			$f = [DBOpsScriptFile]::new($script1, '1.sql')
 			$f | Should Not BeNullOrEmpty
 			$f.SourcePath | Should Be $script1
 			$f.PackagePath | Should Be '1.sql'
@@ -806,17 +806,17 @@ Describe "PowerUpScriptFile class tests" -Tag $commandName, UnitTests, PowerUpFi
 			$f.Hash | Should Not BeNullOrEmpty
 			$f.Parent | Should BeNullOrEmpty
 			#Negative tests
-			{ [PowerUpScriptFile]::new('Nonexisting\path', '1.sql') } | Should Throw
-			{ [PowerUpScriptFile]::new($script1, '') } | Should Throw
-			{ [PowerUpScriptFile]::new('', '1.sql') } | Should Throw
+			{ [DBOpsScriptFile]::new('Nonexisting\path', '1.sql') } | Should Throw
+			{ [DBOpsScriptFile]::new($script1, '') } | Should Throw
+			{ [DBOpsScriptFile]::new('', '1.sql') } | Should Throw
 		}
-		It "Should create new PowerUpScriptFile object using custom object" {
+		It "Should create new dbopsScriptFile object using custom object" {
 			$obj = @{
 				SourcePath  = $script1
 				packagePath = '1.sql'
 				Hash        = 'MyHash'
 			}
-			$f = [PowerUpScriptFile]::new($obj)
+			$f = [DBOpsScriptFile]::new($obj)
 			$f | Should Not BeNullOrEmpty
 			$f.SourcePath | Should Be $script1
 			$f.PackagePath | Should Be '1.sql'
@@ -829,10 +829,10 @@ Describe "PowerUpScriptFile class tests" -Tag $commandName, UnitTests, PowerUpFi
 
 			#Negative tests
 			$obj = @{ foo = 'bar'}
-			{ [PowerUpScriptFile]::new($obj) } | Should Throw
+			{ [DBOpsScriptFile]::new($obj) } | Should Throw
 		}
-		It "Should create new PowerUpScriptFile object from zipfile using custom object" {
-			$p = [PowerUpPackage]::new()
+		It "Should create new dbopsScriptFile object from zipfile using custom object" {
+			$p = [DBOpsPackage]::new()
 			$null = $p.NewBuild('1.0').NewScript($script1, 1)
 			$p.SaveToFile($packageName)
 			#Open zip file stream
@@ -848,9 +848,9 @@ Describe "PowerUpScriptFile class tests" -Tag $commandName, UnitTests, PowerUpFi
 						packagePath = '1.sql'
 						Hash        = 'MyHash'
 					}
-					{ [PowerUpScriptFile]::new($obj, $zipEntry) } | Should Throw #hash is invalid
-					$obj.Hash = [PowerUpHelper]::ToHexString([Security.Cryptography.HashAlgorithm]::Create( "MD5" ).ComputeHash([PowerUpHelper]::GetBinaryFile($script1)))
-					$f = [PowerUpScriptFile]::new($obj, $zipEntry)
+					{ [DBOpsScriptFile]::new($obj, $zipEntry) } | Should Throw #hash is invalid
+					$obj.Hash = [DBOpsHelper]::ToHexString([Security.Cryptography.HashAlgorithm]::Create( "MD5" ).ComputeHash([DBOpsHelper]::GetBinaryFile($script1)))
+					$f = [DBOpsScriptFile]::new($obj, $zipEntry)
 					$f | Should Not BeNullOrEmpty
 					$f.SourcePath | Should Be $script1
 					$f.PackagePath | Should Be '1.sql'
@@ -879,28 +879,28 @@ Describe "PowerUpScriptFile class tests" -Tag $commandName, UnitTests, PowerUpFi
 
 			#Negative tests
 			$badobj = @{ foo = 'bar'}
-			{ [PowerUpScriptFile]::new($badobj, $zip) } | Should Throw #object is incorrect
-			{ [PowerUpScriptFile]::new($obj, $zip) } | Should Throw #zip stream has been disposed
+			{ [DBOpsScriptFile]::new($badobj, $zip) } | Should Throw #object is incorrect
+			{ [DBOpsScriptFile]::new($obj, $zip) } | Should Throw #zip stream has been disposed
 		}
 	}
-	Context "tests overloaded PowerUpScriptFile methods" {
+	Context "tests overloaded dbopsScriptFile methods" {
 		BeforeEach {
 			if ( $script:build.GetFile('success\1.sql', 'Scripts')) { $script:build.RemoveFile('success\1.sql', 'Scripts') }
-			$script:file = $script:build.NewFile($script1, 'success\1.sql', 'Scripts', [PowerUpScriptFile])
+			$script:file = $script:build.NewFile($script1, 'success\1.sql', 'Scripts', [DBOpsScriptFile])
 			$script:build.Alter()
 		}
 		AfterAll {
 			if (Test-Path $packageName) { Remove-Item $packageName }
 		}
 		BeforeAll {
-			$script:pkg = [PowerUpPackage]::new()
+			$script:pkg = [DBOpsPackage]::new()
 			$script:build = $script:pkg.NewBuild('1.0')
 			$script:pkg.SaveToFile($packageName, $true)
 		}
 		It "should test SetContent method" {
 			$oldData = $script:file.ByteArray
 			$oldHash = $script:file.Hash
-			$script:file.SetContent([PowerUpHelper]::GetBinaryFile($script2))
+			$script:file.SetContent([DBOpsHelper]::GetBinaryFile($script2))
 			$script:file.ByteArray | Should Not Be $oldData
 			$script:file.ByteArray | Should Not BeNullOrEmpty
 			$script:file.Hash | Should Not Be $oldHash
@@ -909,7 +909,7 @@ Describe "PowerUpScriptFile class tests" -Tag $commandName, UnitTests, PowerUpFi
 		It "should test ExportToJson method" {
 			$j = $script:file.ExportToJson() | ConvertFrom-Json
 			$j.PackagePath | Should Be 'success\1.sql'
-			$j.Hash | Should Be ([PowerUpHelper]::ToHexString([Security.Cryptography.HashAlgorithm]::Create( "MD5" ).ComputeHash([PowerUpHelper]::GetBinaryFile($script1))))
+			$j.Hash | Should Be ([DBOpsHelper]::ToHexString([Security.Cryptography.HashAlgorithm]::Create( "MD5" ).ComputeHash([DBOpsHelper]::GetBinaryFile($script1))))
 			$j.SourcePath | Should Be $script1
 		}
 		It "should test Save method" {
@@ -918,7 +918,7 @@ Describe "PowerUpScriptFile class tests" -Tag $commandName, UnitTests, PowerUpFi
 			#Sleep 2 seconds to ensure that modification date is changed
 			Start-Sleep -Seconds 2
 			#Modify file content
-			$script:file.SetContent([PowerUpHelper]::GetBinaryFile($script2))
+			$script:file.SetContent([DBOpsHelper]::GetBinaryFile($script2))
 			#Open zip file stream
 			$writeMode = [System.IO.FileMode]::Open
 			$stream = [FileStream]::new($packageName, $writeMode)
@@ -946,7 +946,7 @@ Describe "PowerUpScriptFile class tests" -Tag $commandName, UnitTests, PowerUpFi
 			}
 			$results = Get-ArchiveItem $packageName | Where-Object Path -eq 'content\1.0\success\1.sql'
 			$oldResults.LastWriteTime -lt ($results | Where-Object Path -eq $oldResults.Path).LastWriteTime | Should Be $true
-			{ [PowerUpPackage]::new($packageName) } | Should Throw #Because of the hash mismatch - package file is not updated in Save()
+			{ [DBOpsPackage]::new($packageName) } | Should Throw #Because of the hash mismatch - package file is not updated in Save()
 		}
 		It "should test Alter method" {
 			#Save old file parameters
@@ -954,25 +954,25 @@ Describe "PowerUpScriptFile class tests" -Tag $commandName, UnitTests, PowerUpFi
 			#Sleep 2 seconds to ensure that modification date is changed
 			Start-Sleep -Seconds 2
 			#Modify file content
-			$script:file.SetContent([PowerUpHelper]::GetBinaryFile($script2))
+			$script:file.SetContent([DBOpsHelper]::GetBinaryFile($script2))
 			{ $script:file.Alter() } | Should Not Throw
 			$results = Get-ArchiveItem $packageName | Where-Object Path -eq 'content\1.0\success\1.sql'
 			$oldResults.LastWriteTime -lt ($results | Where-Object Path -eq $oldResults.Path).LastWriteTime | Should Be $true
-			$p = [PowerUpPackage]::new($packageName)
+			$p = [DBOpsPackage]::new($packageName)
 			$p.Builds[0].Scripts[0].GetContent() | Should BeLike 'CREATE TABLE dbo.c (a int)*'
 		}
 	}
 }
-Describe "PowerUpRootFile class tests" -Tag $commandName, UnitTests, PowerUpFile, PowerUpRootFile {
+Describe "DBOpsRootFile class tests" -Tag $commandName, UnitTests, DBOpsFile, DBOpsRootFile {
 	AfterAll {
 		if (Test-Path $packageName) { Remove-Item $packageName }
 	}
-	Context "tests PowerUpFile object creation" {
+	Context "tests DBOpsFile object creation" {
 		AfterAll {
 			if (Test-Path $packageName) { Remove-Item $packageName }
 		}
-		It "Should create new PowerUpRootFile object" {
-			$f = [PowerUpRootFile]::new()
+		It "Should create new DBOpsRootFile object" {
+			$f = [DBOpsRootFile]::new()
 			# $f | Should Not BeNullOrEmpty
 			$f.SourcePath | Should BeNullOrEmpty
 			$f.PackagePath | Should BeNullOrEmpty
@@ -983,8 +983,8 @@ Describe "PowerUpRootFile class tests" -Tag $commandName, UnitTests, PowerUpFile
 			$f.Hash | Should BeNullOrEmpty
 			$f.Parent | Should BeNullOrEmpty
 		}
-		It "Should create new PowerUpRootFile object from path" {
-			$f = [PowerUpRootFile]::new($script1, '1.sql')
+		It "Should create new DBOpsRootFile object from path" {
+			$f = [DBOpsRootFile]::new($script1, '1.sql')
 			$f | Should Not BeNullOrEmpty
 			$f.SourcePath | Should Be $script1
 			$f.PackagePath | Should Be '1.sql'
@@ -995,17 +995,17 @@ Describe "PowerUpRootFile class tests" -Tag $commandName, UnitTests, PowerUpFile
 			$f.Hash | Should BeNullOrEmpty
 			$f.Parent | Should BeNullOrEmpty
 			#Negative tests
-			{ [PowerUpRootFile]::new('Nonexisting\path', '1.sql') } | Should Throw
-			{ [PowerUpRootFile]::new($script1, '') } | Should Throw
-			{ [PowerUpRootFile]::new('', '1.sql') } | Should Throw
+			{ [DBOpsRootFile]::new('Nonexisting\path', '1.sql') } | Should Throw
+			{ [DBOpsRootFile]::new($script1, '') } | Should Throw
+			{ [DBOpsRootFile]::new('', '1.sql') } | Should Throw
 		}
-		It "Should create new PowerUpRootFile object using custom object" {
+		It "Should create new DBOpsRootFile object using custom object" {
 			$obj = @{
 				SourcePath  = $script1
 				packagePath = '1.sql'
 				Hash        = 'MyHash'
 			}
-			$f = [PowerUpRootFile]::new($obj)
+			$f = [DBOpsRootFile]::new($obj)
 			$f | Should Not BeNullOrEmpty
 			$f.SourcePath | Should Be $script1
 			$f.PackagePath | Should Be '1.sql'
@@ -1018,10 +1018,10 @@ Describe "PowerUpRootFile class tests" -Tag $commandName, UnitTests, PowerUpFile
 
 			#Negative tests
 			$obj = @{ foo = 'bar'}
-			{ [PowerUpFile]::new($obj) } | Should Throw
+			{ [DBOpsFile]::new($obj) } | Should Throw
 		}
-		It "Should create new PowerUpRootFile object from zipfile using custom object" {
-			$p = [PowerUpPackage]::new()
+		It "Should create new DBOpsRootFile object from zipfile using custom object" {
+			$p = [DBOpsPackage]::new()
 			$null = $p.NewBuild('1.0').NewScript($script1, 1)
 			$p.SaveToFile($packageName)
 			#Open zip file stream
@@ -1037,7 +1037,7 @@ Describe "PowerUpRootFile class tests" -Tag $commandName, UnitTests, PowerUpFile
 						packagePath = '1.sql'
 						Hash        = 'MyHash'
 					}
-					$f = [PowerUpRootFile]::new($obj, $zipEntry)
+					$f = [DBOpsRootFile]::new($obj, $zipEntry)
 					$f | Should Not BeNullOrEmpty
 					$f.SourcePath | Should Be $script1
 					$f.PackagePath | Should Be '1.sql'
@@ -1066,22 +1066,22 @@ Describe "PowerUpRootFile class tests" -Tag $commandName, UnitTests, PowerUpFile
 
 			#Negative tests
 			$badobj = @{ foo = 'bar'}
-			{ [PowerUpRootFile]::new($badobj, $zip) } | Should Throw #object is incorrect
-			{ [PowerUpRootFile]::new($obj, $zip) } | Should Throw #zip stream has been disposed
+			{ [DBOpsRootFile]::new($badobj, $zip) } | Should Throw #object is incorrect
+			{ [DBOpsRootFile]::new($obj, $zip) } | Should Throw #zip stream has been disposed
 		}
 	}
-	Context "tests overloaded PowerUpRootFile methods" {
+	Context "tests overloaded DBOpsRootFile methods" {
 		AfterAll {
 			if (Test-Path $packageName) { Remove-Item $packageName }
 		}
 		BeforeAll {
-			$script:pkg = [PowerUpPackage]::new()
+			$script:pkg = [DBOpsPackage]::new()
 			$script:pkg.SaveToFile($packageName, $true)
 			$script:file = $script:pkg.GetFile('Deploy.ps1', 'DeployFile')
 		}
 		It "should test SetContent method" {
 			$oldData = $script:file.ByteArray
-			$script:file.SetContent([PowerUpHelper]::GetBinaryFile($script2))
+			$script:file.SetContent([DBOpsHelper]::GetBinaryFile($script2))
 			$script:file.ByteArray | Should Not Be $oldData
 			$script:file.ByteArray | Should Not BeNullOrEmpty
 			$script:file.Hash | Should BeNullOrEmpty
@@ -1089,7 +1089,7 @@ Describe "PowerUpRootFile class tests" -Tag $commandName, UnitTests, PowerUpFile
 		It "should test ExportToJson method" {
 			$j = $script:file.ExportToJson() | ConvertFrom-Json
 			$j.PackagePath | Should Be 'Deploy.ps1'
-			$j.SourcePath | Should Be (Get-PowerUpModuleFileList | Where-Object {$_.Type -eq 'Misc' -and $_.Name -eq 'Deploy.ps1'}).FullName
+			$j.SourcePath | Should Be (Get-DBOModuleFileList | Where-Object {$_.Type -eq 'Misc' -and $_.Name -eq 'Deploy.ps1'}).FullName
 		}
 		It "should test Save method" {
 			#Save old file parameters
@@ -1097,7 +1097,7 @@ Describe "PowerUpRootFile class tests" -Tag $commandName, UnitTests, PowerUpFile
 			#Sleep 2 seconds to ensure that modification date is changed
 			Start-Sleep -Seconds 2
 			#Modify file content
-			$script:file.SetContent([PowerUpHelper]::GetBinaryFile($script2))
+			$script:file.SetContent([DBOpsHelper]::GetBinaryFile($script2))
 			#Open zip file stream
 			$writeMode = [System.IO.FileMode]::Open
 			$stream = [FileStream]::new($packageName, $writeMode)
@@ -1132,7 +1132,7 @@ Describe "PowerUpRootFile class tests" -Tag $commandName, UnitTests, PowerUpFile
 			#Sleep 2 seconds to ensure that modification date is changed
 			Start-Sleep -Seconds 2
 			#Modify file content
-			$script:file.SetContent([PowerUpHelper]::GetBinaryFile($script2))
+			$script:file.SetContent([DBOpsHelper]::GetBinaryFile($script2))
 			{ $script:file.Alter() } | Should Not Throw
 			$results = Get-ArchiveItem $packageName | Where-Object Path -eq 'Deploy.ps1'
 			$oldResults.LastWriteTime -lt ($results | Where-Object Path -eq $oldResults.Path).LastWriteTime | Should Be $true
@@ -1140,10 +1140,10 @@ Describe "PowerUpRootFile class tests" -Tag $commandName, UnitTests, PowerUpFile
 	}
 }
 
-Describe "PowerUpConfig class tests" -Tag $commandName, UnitTests, PowerUpConfig {
-	Context "tests PowerUpConfig constructors" {
+Describe "DBOpsConfig class tests" -Tag $commandName, UnitTests, DBOpsConfig {
+	Context "tests DBOpsConfig constructors" {
 		It "Should return an empty config by default" {
-			$result = [PowerUpConfig]::new()
+			$result = [DBOpsConfig]::new()
 			$result.ApplicationName | Should Be $null
 			$result.SqlInstance | Should Be $null
 			$result.Database | Should Be $null
@@ -1159,7 +1159,7 @@ Describe "PowerUpConfig class tests" -Tag $commandName, UnitTests, PowerUpConfig
 			$result.Variables | Should Be $null
 		}
 		It "Should return empty configuration from empty config file" {
-			$result = [PowerUpConfig]::new((Get-Content "$here\etc\empty_config.json" -Raw))
+			$result = [DBOpsConfig]::new((Get-Content "$here\etc\empty_config.json" -Raw))
 			$result.ApplicationName | Should Be $null
 			$result.SqlInstance | Should Be $null
 			$result.Database | Should Be $null
@@ -1175,7 +1175,7 @@ Describe "PowerUpConfig class tests" -Tag $commandName, UnitTests, PowerUpConfig
 			$result.Variables | Should Be $null
 		}
 		It "Should return all configurations from the config file" {
-			$result = [PowerUpConfig]::new((Get-Content "$here\etc\full_config.json" -Raw))
+			$result = [DBOpsConfig]::new((Get-Content "$here\etc\full_config.json" -Raw))
 			$result.ApplicationName | Should Be "MyTestApp"
 			$result.SqlInstance | Should Be "TestServer"
 			$result.Database | Should Be "MyTestDB"
@@ -1191,9 +1191,9 @@ Describe "PowerUpConfig class tests" -Tag $commandName, UnitTests, PowerUpConfig
 			$result.Variables | Should Be $null
 		}
 	}
-	Context "tests other methods of PowerUpConfig" {
+	Context "tests other methods of DBOpsConfig" {
 		It "should test AsHashtable method" {
-			$result = [PowerUpConfig]::new((Get-Content "$here\etc\full_config.json" -Raw)).AsHashtable()
+			$result = [DBOpsConfig]::new((Get-Content "$here\etc\full_config.json" -Raw)).AsHashtable()
 			$result.GetType().Name | Should Be 'hashtable'
 			$result.ApplicationName | Should Be "MyTestApp"
 			$result.SqlInstance | Should Be "TestServer"
@@ -1210,7 +1210,7 @@ Describe "PowerUpConfig class tests" -Tag $commandName, UnitTests, PowerUpConfig
 			$result.Variables | Should Be $null
 		}
 		It "should test SetValue method" {
-			$config = [PowerUpConfig]::new((Get-Content "$here\etc\full_config.json" -Raw))
+			$config = [DBOpsConfig]::new((Get-Content "$here\etc\full_config.json" -Raw))
 			#String property
 			$config.SetValue('ApplicationName', 'MyApp2')
 			$config.ApplicationName | Should Be 'MyApp2'
@@ -1241,7 +1241,7 @@ Describe "PowerUpConfig class tests" -Tag $commandName, UnitTests, PowerUpConfig
 			{ $config.SetValue('AppplicationName', 'MyApp3') } | Should Throw
 		}
 		It "should test ExportToJson method" {
-			$result = [PowerUpConfig]::new((Get-Content "$here\etc\full_config.json" -Raw)).ExportToJson() | ConvertFrom-Json -ErrorAction Stop
+			$result = [DBOpsConfig]::new((Get-Content "$here\etc\full_config.json" -Raw)).ExportToJson() | ConvertFrom-Json -ErrorAction Stop
 			$result.ApplicationName | Should Be "MyTestApp"
 			$result.SqlInstance | Should Be "TestServer"
 			$result.Database | Should Be "MyTestDB"
@@ -1257,7 +1257,7 @@ Describe "PowerUpConfig class tests" -Tag $commandName, UnitTests, PowerUpConfig
 			$result.Variables | Should Be $null
 		}
 		It "should test Merge method" {
-			$config = [PowerUpConfig]::new((Get-Content "$here\etc\full_config.json" -Raw))
+			$config = [DBOpsConfig]::new((Get-Content "$here\etc\full_config.json" -Raw))
 			$hashtable = @{
 				ApplicationName = 'MyTestApp2'
 				ConnectionTimeout = 0
@@ -1290,7 +1290,7 @@ Describe "PowerUpConfig class tests" -Tag $commandName, UnitTests, PowerUpConfig
 		}
 		It "should test Save method" {
 			#Generate new package file
-			$script:pkg = [PowerUpPackage]::new()
+			$script:pkg = [DBOpsPackage]::new()
 			$script:pkg.Configuration.ApplicationName = 'TestApp2'
 			$script:pkg.SaveToFile($packageName)
 
@@ -1320,42 +1320,42 @@ Describe "PowerUpConfig class tests" -Tag $commandName, UnitTests, PowerUpConfig
 				$stream.Dispose()
 			}
 			$results = Get-ArchiveItem $packageName
-			foreach ($file in (Get-PowerUpModuleFileList)) {
-				Join-Path 'Modules\PowerUp' $file.Path | Should BeIn $results.Path
+			foreach ($file in (Get-DBOModuleFileList)) {
+				Join-Path 'Modules\dbops' $file.Path | Should BeIn $results.Path
 			}
-			'PowerUp.config.json' | Should BeIn $results.Path
-			'PowerUp.package.json' | Should BeIn $results.Path
+			'dbops.config.json' | Should BeIn $results.Path
+			'dbops.package.json' | Should BeIn $results.Path
 			'Deploy.ps1' | Should BeIn $results.Path
 		}
 		It "Should load package successfully after saving it" {
-			$script:pkg = [PowerUpPackage]::new($packageName)
+			$script:pkg = [DBOpsPackage]::new($packageName)
 			$script:pkg.Configuration.ApplicationName | Should Be 'TestApp2'
 		}
 		It "should test Alter method" {
 			$script:pkg.Configuration.ApplicationName = 'TestApp3'
 			$script:pkg.Configuration.Alter()
 			$results = Get-ArchiveItem "$packageName"
-			foreach ($file in (Get-PowerUpModuleFileList)) {
-				Join-Path 'Modules\PowerUp' $file.Path | Should BeIn $results.Path
+			foreach ($file in (Get-DBOModuleFileList)) {
+				Join-Path 'Modules\dbops' $file.Path | Should BeIn $results.Path
 			}
-			'PowerUp.config.json' | Should BeIn $results.Path
-			'PowerUp.package.json' | Should BeIn $results.Path
+			'dbops.config.json' | Should BeIn $results.Path
+			'dbops.package.json' | Should BeIn $results.Path
 			'Deploy.ps1' | Should BeIn $results.Path
 		}
 		It "Should load package successfully after saving it" {
-			$p = [PowerUpPackage]::new($packageName)
+			$p = [DBOpsPackage]::new($packageName)
 			$p.Configuration.ApplicationName | Should Be 'TestApp3'
 		}
 	}
-	Context "tests static methods of PowerUpConfig" {
+	Context "tests static methods of DBOpsConfig" {
 		It "should test static GetDeployFile method" {
-			$f = [PowerUpConfig]::GetDeployFile()
+			$f = [DBOpsConfig]::GetDeployFile()
 			$f.Type | Should Be 'Misc'
 			$f.Path | Should BeLike '*\Deploy.ps1'
 			$f.Name | Should Be 'Deploy.ps1'
 		}
 		It "should test static FromFile method" {
-			$result = [PowerUpConfig]::FromFile("$here\etc\full_config.json")
+			$result = [DBOpsConfig]::FromFile("$here\etc\full_config.json")
 			$result.ApplicationName | Should Be "MyTestApp"
 			$result.SqlInstance | Should Be "TestServer"
 			$result.Database | Should Be "MyTestDB"
@@ -1370,12 +1370,12 @@ Describe "PowerUpConfig class tests" -Tag $commandName, UnitTests, PowerUpConfig
 			$result.Silent | Should Be $true
 			$result.Variables | Should Be $null
 			#negatives
-			{ [PowerUpConfig]::FromFile("$here\etc\notajsonfile.json") } | Should Throw
-			{ [PowerUpConfig]::FromFile("nonexisting\file") } | Should Throw
-			{ [PowerUpConfig]::FromFile($null) } | Should Throw
+			{ [DBOpsConfig]::FromFile("$here\etc\notajsonfile.json") } | Should Throw
+			{ [DBOpsConfig]::FromFile("nonexisting\file") } | Should Throw
+			{ [DBOpsConfig]::FromFile($null) } | Should Throw
 		}
 		It "should test static FromJsonString method" {
-			$result = [PowerUpConfig]::FromJsonString((Get-Content "$here\etc\full_config.json" -Raw))
+			$result = [DBOpsConfig]::FromJsonString((Get-Content "$here\etc\full_config.json" -Raw))
 			$result.ApplicationName | Should Be "MyTestApp"
 			$result.SqlInstance | Should Be "TestServer"
 			$result.Database | Should Be "MyTestDB"
@@ -1390,9 +1390,9 @@ Describe "PowerUpConfig class tests" -Tag $commandName, UnitTests, PowerUpConfig
 			$result.Silent | Should Be $true
 			$result.Variables | Should Be $null
 			#negatives
-			{ [PowerUpConfig]::FromJsonString((Get-Content "$here\etc\notajsonfile.json" -Raw)) } | Should Throw
-			{ [PowerUpConfig]::FromJsonString($null) } | Should Throw
-			{ [PowerUpConfig]::FromJsonString('') } | Should Throw
+			{ [DBOpsConfig]::FromJsonString((Get-Content "$here\etc\notajsonfile.json" -Raw)) } | Should Throw
+			{ [DBOpsConfig]::FromJsonString($null) } | Should Throw
+			{ [DBOpsConfig]::FromJsonString('') } | Should Throw
 		}
 	}
 }

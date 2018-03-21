@@ -8,7 +8,7 @@ else { $commandName = "_ManualExecution"; $here = (Get-Item . ).FullName }
 if (!$Batch) {
 	# Is not a part of the global batch => import module
 	#Explicitly import the module for testing
-	Import-Module "$here\..\PowerUp.psd1" -Force
+	Import-Module "$here\..\dbops.psd1" -Force
 	Import-Module "$here\etc\modules\ZipHelper" -Force
 }
 else {
@@ -16,13 +16,13 @@ else {
 	Write-Host "Running $commandName tests" -ForegroundColor Cyan
 }
 
-Describe "Get-PowerUpConfig tests" -Tag $commandName, UnitTests {
+Describe "Get-DBOConfig tests" -Tag $commandName, UnitTests {
 	It "Should throw when path does not exist" {
-		{ Get-PowerUpConfig 'asdqweqsdfwer' } | Should throw
+		{ Get-DBOConfig 'asdqweqsdfwer' } | Should throw
 	}
 
 	It "Should return an empty config by default" {
-		$result = Get-PowerUpConfig
+		$result = Get-DBOConfig
 		$result.ApplicationName | Should Be $null
 		$result.SqlInstance | Should Be $null
 		$result.Database | Should Be $null
@@ -38,7 +38,7 @@ Describe "Get-PowerUpConfig tests" -Tag $commandName, UnitTests {
 	}
 
 	It "Should override properties in an empty config" {
-		$result = Get-PowerUpConfig -Configuration @{ApplicationName = 'MyNewApp'; ConnectionTimeout = 3}
+		$result = Get-DBOConfig -Configuration @{ApplicationName = 'MyNewApp'; ConnectionTimeout = 3}
 		$result.ApplicationName | Should Be 'MyNewApp'
 		$result.SqlInstance | Should Be $null
 		$result.Database | Should Be $null
@@ -54,7 +54,7 @@ Describe "Get-PowerUpConfig tests" -Tag $commandName, UnitTests {
 	}
 
 	It "Should return empty configuration from empty config file" {
-		$result = Get-PowerUpConfig "$here\etc\empty_config.json"
+		$result = Get-DBOConfig "$here\etc\empty_config.json"
 		$result.ApplicationName | Should Be $null
 		$result.SqlInstance | Should Be $null
 		$result.Database | Should Be $null
@@ -70,7 +70,7 @@ Describe "Get-PowerUpConfig tests" -Tag $commandName, UnitTests {
 	}
 
 	It "Should return all configurations from the config file" {
-		$result = Get-PowerUpConfig "$here\etc\full_config.json"
+		$result = Get-DBOConfig "$here\etc\full_config.json"
 		$result.ApplicationName | Should Be "MyTestApp"
 		$result.SqlInstance | Should Be "TestServer"
 		$result.Database | Should Be "MyTestDB"
@@ -86,7 +86,7 @@ Describe "Get-PowerUpConfig tests" -Tag $commandName, UnitTests {
 	}
 
 	It "Should override configurations of the config file" {
-		$result = Get-PowerUpConfig "$here\etc\full_config.json" -Configuration @{ApplicationName = 'MyNewApp'; ConnectionTimeout = 3; Database = $null}
+		$result = Get-DBOConfig "$here\etc\full_config.json" -Configuration @{ApplicationName = 'MyNewApp'; ConnectionTimeout = 3; Database = $null}
 		$result.ApplicationName | Should Be "MyNewApp"
 		$result.SqlInstance | Should Be "TestServer"
 		$result.Database | Should Be $null

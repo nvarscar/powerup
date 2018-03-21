@@ -1,10 +1,10 @@
-class PowerUpLog : DbUp.Engine.Output.IUpgradeLog {
+class DBOpsLog : DbUp.Engine.Output.IUpgradeLog {
 	#Hidden properties
 	hidden [string]$logToFile
 	hidden [bool]$silent
 	
 	#Constructors
-	PowerUpLog ([bool]$silent, [string]$outFile, [bool]$append) {
+	DBOpsLog ([bool]$silent, [string]$outFile, [bool]$append) {
 		$this.silent = $silent
 		$this.logToFile = $outFile
 		$txt = "Logging started at " + (get-date).ToString()

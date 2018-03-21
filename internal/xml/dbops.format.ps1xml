@@ -2,9 +2,9 @@
 <Configuration>
 <ViewDefinitions>
 <View>
-  <Name>PowerUpPackageFile</Name>
+  <Name>DBOpsPackageFile</Name>
   <ViewSelectedBy>
-    <TypeName>PowerUpPackageFile</TypeName>
+    <TypeName>DBOpsPackageFile</TypeName>
   </ViewSelectedBy>
   <TableControl>
     <TableHeaders>
@@ -48,9 +48,9 @@
   </TableControl>
 </View>
 <View>
-  <Name>PowerUpPackage</Name>
+  <Name>DBOpsPackage</Name>
   <ViewSelectedBy>
-    <TypeName>PowerUpPackage</TypeName>
+    <TypeName>DBOpsPackage</TypeName>
   </ViewSelectedBy>
   <TableControl>
     <TableHeaders>
