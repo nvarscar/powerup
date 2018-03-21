@@ -4,7 +4,7 @@ Function Get-PowerUpModuleFileList {
 Returns all module files based on json file in the module root
 
 .DESCRIPTION
-Returns objects from PowerUp.json. Is used internally to load files into the package.
+Returns objects from internal\json\dbops.json. Is used internally to load files into the package.
 
 .EXAMPLE
 # Returns module files
@@ -26,7 +26,7 @@ Get-PowerUpModuleFileList
 		$obj
 	}
 
-	$moduleCatalog = Get-Content (Join-Path "$PSScriptRoot\.." "PowerUp.json") -Raw | ConvertFrom-Json
+	$moduleCatalog = Get-Content (Join-Path "$PSScriptRoot\.." "internal\json\dbops.json") -Raw | ConvertFrom-Json
 	foreach ($property in $moduleCatalog.psobject.properties.Name) {
 		foreach ($file in $moduleCatalog.$property) {
 			ModuleFile $file $property
