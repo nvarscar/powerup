@@ -8,7 +8,7 @@ else { $commandName = "_ManualExecution"; $here = (Get-Item . ).FullName }
 if (!$Batch) {
 	# Is not a part of the global batch => import module
 	#Explicitly import the module for testing
-	Import-Module "$here\..\PowerUp.psd1" -Force
+	Import-Module "$here\..\dbops.psd1" -Force
 	Import-Module "$here\etc\modules\ZipHelper" -Force
 }
 else {
@@ -18,7 +18,7 @@ else {
 
 
 
-$workFolder = Join-Path "$here\etc" "$commandName.Tests.PowerUp"
+$workFolder = Join-Path "$here\etc" "$commandName.Tests.dbops"
 $unpackedFolder = Join-Path $workFolder 'unpacked'
 
 $packageName = Join-Path $workFolder 'TempDeployment.zip'
@@ -26,13 +26,13 @@ $v1scripts = "$here\etc\install-tests\success"
 
 Describe "Update-DBOConfig tests" -Tag $commandName, UnitTests {
 	BeforeAll {
-		if ((Test-Path $workFolder) -and $workFolder -like '*.Tests.PowerUp') { Remove-Item $workFolder -Recurse }
+		if ((Test-Path $workFolder) -and $workFolder -like '*.Tests.dbops') { Remove-Item $workFolder -Recurse }
 		$null = New-Item $workFolder -ItemType Directory -Force
 		$null = New-Item $unpackedFolder -ItemType Directory -Force
 		$null = New-DBOPackage -ScriptPath $v1scripts -Name $packageName -Build 1.0 -Force -ConfigurationFile "$here\etc\full_config.json"
 	}
 	AfterAll {
-		if ((Test-Path $workFolder) -and $workFolder -like '*.Tests.PowerUp') { Remove-Item $workFolder -Recurse }
+		if ((Test-Path $workFolder) -and $workFolder -like '*.Tests.dbops') { Remove-Item $workFolder -Recurse }
     }
 	Context "Updating single config item (config/value pairs)" {
 		It "updates config item with new value" {

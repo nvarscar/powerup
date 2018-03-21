@@ -1,13 +1,13 @@
 Function Remove-DBOBuild {
 	<#
 	.SYNOPSIS
-	Removes one or more builds from the PowerUp package
+	Removes one or more builds from the DBOps package
 	
 	.DESCRIPTION
-	Remove specific list of builds from the existing PowerUp package keeping all other parts of the package intact
+	Remove specific list of builds from the existing DBOps package keeping all other parts of the package intact
 	
 	.PARAMETER Path
-	Path to the existing PowerUpPackage.
+	Path to the existing DBOpsPackage.
 	Aliases: Name, FileName, Package
 	
 	.PARAMETER Build

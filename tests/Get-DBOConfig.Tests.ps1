@@ -8,7 +8,7 @@ else { $commandName = "_ManualExecution"; $here = (Get-Item . ).FullName }
 if (!$Batch) {
 	# Is not a part of the global batch => import module
 	#Explicitly import the module for testing
-	Import-Module "$here\..\PowerUp.psd1" -Force
+	Import-Module "$here\..\dbops.psd1" -Force
 	Import-Module "$here\etc\modules\ZipHelper" -Force
 }
 else {

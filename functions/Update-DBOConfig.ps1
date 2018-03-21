@@ -1,13 +1,13 @@
 ﻿function Update-DBOConfig {
 	<#
 	.SYNOPSIS
-	Updates configuration file inside the existing PowerUp package
+	Updates configuration file inside the existing DBOps package
 	
 	.DESCRIPTION
-	Overwrites configuration file inside the existing PowerUp package with the new values provided by user
+	Overwrites configuration file inside the existing DBOps package with the new values provided by user
 	
 	.PARAMETER Path
-	Path to the existing PowerUpPackage.
+	Path to the existing DBOpsPackage.
 	Aliases: Name, FileName, Package
 	
 	.PARAMETER ConfigurationFile
@@ -94,7 +94,7 @@
 	}
 	process {
 		foreach ($pFile in (Get-Item $Path)) {
-			if ($package = [PowerUpPackage]::new($pFile.FullName)) {
+			if ($package = [DBOpsPackage]::new($pFile.FullName)) {
 				$config = $package.Configuration
 				Write-Verbose "Assigning new values to the config"
 				if ($PSCmdlet.ParameterSetName -eq 'Value') {
@@ -112,7 +112,7 @@
 					$newConfig += @{ Variables = $Variables}
 				}
 
-				Write-Verbose "Saving configuration in the PowerUpPackage object"
+				Write-Verbose "Saving configuration in the DBOpsPackage object"
 				$config.Merge($newConfig)
 
 				if ($pscmdlet.ShouldProcess($package, "Updating the package file")) {

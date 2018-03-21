@@ -8,7 +8,7 @@ else { $commandName = "_ManualExecution"; $here = (Get-Item . ).FullName }
 if (!$Batch) {
 	# Is not a part of the global batch => import module
 	#Explicitly import the module for testing
-	Import-Module "$here\..\PowerUp.psd1" -Force
+	Import-Module "$here\..\dbops.psd1" -Force
 	Import-Module "$here\etc\modules\ZipHelper" -Force
 }
 else {
@@ -19,7 +19,7 @@ else {
 . "$here\constants.ps1"
 . "$here\etc\Invoke-SqlCmd2.ps1"
 
-$workFolder = Join-Path "$here\etc" "$commandName.Tests.PowerUp"
+$workFolder = Join-Path "$here\etc" "$commandName.Tests.dbops"
 $unpackedFolder = Join-Path $workFolder 'unpacked'
 $logTable = "testdeploymenthistory"
 $cleanupScript = "$here\etc\install-tests\Cleanup.sql"
@@ -34,12 +34,12 @@ $packageNamev1 = Join-Path $workFolder "TempDeployment_v1.zip"
 Describe "Install-DBOPackage integration tests" -Tag $commandName, IntegrationTests {
 	BeforeAll {
 		$null = Invoke-SqlCmd2 -ServerInstance $script:instance1 -Database $script:database1 -InputFile $cleanupScript
-		if ((Test-Path $workFolder) -and $workFolder -like '*.Tests.PowerUp') { Remove-Item $workFolder -Recurse }
+		if ((Test-Path $workFolder) -and $workFolder -like '*.Tests.dbops') { Remove-Item $workFolder -Recurse }
 		$null = New-Item $workFolder -ItemType Directory -Force
 		$null = New-Item $unpackedFolder -ItemType Directory -Force
 	}
 	AfterAll {
-		if ((Test-Path $workFolder) -and $workFolder -like '*.Tests.PowerUp') { Remove-Item $workFolder -Recurse }
+		if ((Test-Path $workFolder) -and $workFolder -like '*.Tests.dbops') { Remove-Item $workFolder -Recurse }
 	}
 	Context "testing transactional deployment" {
 		BeforeAll {

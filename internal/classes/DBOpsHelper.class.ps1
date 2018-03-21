@@ -1,7 +1,7 @@
 using namespace System.IO
 using namespace System.IO.Compression
 
-class PowerUpHelper {
+class DBOpsHelper {
 	# Only keeps N last items in the path - helps to build relative paths
 	static [string] SplitRelativePath ([string]$Path, [int]$Depth) {
 		$returnPath = Split-Path -Path $Path -Leaf
@@ -74,7 +74,7 @@ class PowerUpHelper {
 			$entries = $zip.Entries | Where-Object { $_.FullName -in $itemName }
 			foreach ($entry in $entries) {
 				#Read deflate stream
-				$stream = [PowerUpHelper]::ReadDeflateStream($entry.Open())
+				$stream = [DBOpsHelper]::ReadDeflateStream($entry.Open())
 				try { $bin = $stream.ToArray() }
 				catch { throw $_ }
 				finally { $stream.Dispose()	}

@@ -18,13 +18,13 @@ Param (
 #$ErrorActionPreference = 'Stop'
 
 #Import module
-If (Get-Module PowerUp) {
-	Remove-Module PowerUp
+If (Get-Module dbops) {
+	Remove-Module dbops
 }
-Import-Module "$PSScriptRoot\Modules\PowerUp\PowerUp.psd1" -Force
+Import-Module "$PSScriptRoot\Modules\dbops\dbops.psd1" -Force
 
 #Invoke deployment using current parameters
 $params = $PSBoundParameters
-$params += @{ PackageFile = "$PSScriptRoot\PowerUp.package.json"}
+$params += @{ PackageFile = "$PSScriptRoot\dbops.package.json"}
 Invoke-DBODeployment @params
 

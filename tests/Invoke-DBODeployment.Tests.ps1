@@ -8,7 +8,7 @@ else { $commandName = "_ManualExecution"; $here = (Get-Item . ).FullName }
 if (!$Batch) {
 	# Is not a part of the global batch => import module
 	#Explicitly import the module for testing
-	Import-Module "$here\..\PowerUp.psd1" -Force
+	Import-Module "$here\..\dbops.psd1" -Force
 	Import-Module "$here\etc\modules\ZipHelper" -Force
 }
 else {
@@ -19,7 +19,7 @@ else {
 . "$here\constants.ps1"
 . "$here\etc\Invoke-SqlCmd2.ps1"
 
-$workFolder = Join-Path "$here\etc" "$commandName.Tests.PowerUp"
+$workFolder = Join-Path "$here\etc" "$commandName.Tests.dbops"
 $unpackedFolder = Join-Path $workFolder 'unpacked'
 $logTable = "testdeploymenthistory"
 $cleanupScript = "$here\etc\install-tests\Cleanup.sql"
@@ -27,14 +27,14 @@ $tranFailScripts = "$here\etc\install-tests\transactional-failure"
 $v1scripts = "$here\etc\install-tests\success\1.sql"
 $v2scripts = "$here\etc\install-tests\success\2.sql"
 $verificationScript = "$here\etc\install-tests\verification\select.sql"
-$packageFileName = Join-Path $workFolder ".\PowerUp.package.json"
+$packageFileName = Join-Path $workFolder ".\dbops.package.json"
 $cleanupPackageName = "$here\etc\TempCleanup.zip"
 $outFile = "$here\etc\outLog.txt"
 
 
 Describe "Invoke-DBODeployment integration tests" -Tag $commandName, IntegrationTests {
 	BeforeAll {
-		if ((Test-Path $workFolder) -and $workFolder -like '*.Tests.PowerUp') { Remove-Item $workFolder -Recurse }
+		if ((Test-Path $workFolder) -and $workFolder -like '*.Tests.dbops') { Remove-Item $workFolder -Recurse }
 		$null = New-Item $workFolder -ItemType Directory -Force
 		$null = New-Item $unpackedFolder -ItemType Directory -Force
 		$packageName = New-DBOPackage -Path (Join-Path $workFolder 'tmp.zip') -ScriptPath $tranFailScripts -Build 1.0 -Force
@@ -42,7 +42,7 @@ Describe "Invoke-DBODeployment integration tests" -Tag $commandName, Integration
 	}
 	AfterAll {
 		$null = Invoke-SqlCmd2 -ServerInstance $script:instance1 -Database $script:database1 -InputFile $cleanupScript
-		if ((Test-Path $workFolder) -and $workFolder -like '*.Tests.PowerUp') { Remove-Item $workFolder -Recurse }
+		if ((Test-Path $workFolder) -and $workFolder -like '*.Tests.dbops') { Remove-Item $workFolder -Recurse }
 	}
 	Context "testing transactional deployment of extracted package" {
 		BeforeEach {

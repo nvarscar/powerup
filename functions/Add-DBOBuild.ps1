@@ -2,10 +2,10 @@
 function Add-DBOBuild {
 	<#
 	.SYNOPSIS
-		Creates a new build in existing PowerUp package
+		Creates a new build in existing DBOps package
 	
 	.DESCRIPTION
-		Creates a new build in existing PowerUp package from specified set of scripts.
+		Creates a new build in existing DBOps package from specified set of scripts.
 	
 	.PARAMETER ScriptPath
 		A collection of script files to add to the build. Accepts Get-Item/Get-ChildItem objects and wildcards.
@@ -18,7 +18,7 @@ function Add-DBOBuild {
 		Aliases: SourcePath
 	
 	.PARAMETER Path
-		Path to the existing PowerUpPackage.
+		Path to the existing DBOpsPackage.
 		Aliases: Name, FileName, Package
 	
 	.PARAMETER Build

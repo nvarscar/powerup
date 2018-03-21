@@ -104,7 +104,7 @@ function New-DBOPackage {
 		}
 		
 		#Create a package object
-		$package = [PowerUpPackage]::new()
+		$package = [DBOpsPackage]::new()
 
 		#Get configuration object according to current config options
 		$package.SetConfiguration((Get-DBOConfig -Path $ConfigurationFile -Configuration $configTable))

@@ -8,7 +8,7 @@ else { $commandName = "_ManualExecution"; $here = (Get-Item . ).FullName }
 if (!$Batch) {
 	# Is not a part of the global batch => import module
 	#Explicitly import the module for testing
-	Import-Module "$here\..\PowerUp.psd1" -Force
+	Import-Module "$here\..\dbops.psd1" -Force
 	Import-Module "$here\etc\modules\ZipHelper" -Force
 }
 else {
@@ -18,7 +18,7 @@ else {
 
 
 
-$workFolder = Join-Path "$here\etc" "$commandName.Tests.PowerUp"
+$workFolder = Join-Path "$here\etc" "$commandName.Tests.dbops"
 $unpackedFolder = Join-Path $workFolder 'unpacked'
 $packageName = Join-Path $workFolder 'TempDeployment.zip'
 $scriptFolder = Join-Path $here 'etc\install-tests\success'
@@ -36,7 +36,7 @@ Describe "Get-DBOPackage tests" -Tag $commandName, UnitTests {
 		$null = Add-DBOBuild -ScriptPath $v3scripts -Path $packageName -Build 3.0
 	}
 	AfterAll {
-		if ((Test-Path $workFolder) -and $workFolder -like '*.Tests.PowerUp') { Remove-Item $workFolder -Recurse }
+		if ((Test-Path $workFolder) -and $workFolder -like '*.Tests.dbops') { Remove-Item $workFolder -Recurse }
 	}
 	Context "Negative tests" {
 		It "returns error when path does not exist" {
@@ -53,7 +53,7 @@ Describe "Get-DBOPackage tests" -Tag $commandName, UnitTests {
 		It "should return package info" {
 			$result = Get-DBOPackage -Path $packageName
 			$result.Version | Should Be '3.0'
-			$result.ModuleVersion | Should Be (Get-Module PowerUp).Version
+			$result.ModuleVersion | Should Be (Get-Module dbops).Version
 
 			$FileObject = Get-Item $packageName
 			$result.PSPath | Should Be $FileObject.PSPath.ToString()
@@ -117,7 +117,7 @@ Describe "Get-DBOPackage tests" -Tag $commandName, UnitTests {
 			$result.FullName | Should Be $unpackedFolder
 			$result.CreationTime | Should Not Be $null
 			$result.Version | Should Be '3.0'
-			$result.ModuleVersion | Should Be (Get-Module PowerUp).Version
+			$result.ModuleVersion | Should Be (Get-Module dbops).Version
 		}
 		It "should return package config" {
 			$result = Get-DBOPackage -Path $unpackedFolder -Unpacked

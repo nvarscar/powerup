@@ -1,18 +1,18 @@
 ﻿function Invoke-DBODeployment {
 	<#
 	.SYNOPSIS
-		Deploys extracted PowerUp package from the specified location
+		Deploys extracted dbops package from the specified location
 	
 	.DESCRIPTION
-		Deploys an extracted PowerUp package or plain text scripts with optional parameters.
+		Deploys an extracted dbops package or plain text scripts with optional parameters.
 		Uses a table specified in SchemaVersionTable parameter to determine scripts to run.
 		Will deploy all the builds from the package that previously have not been deployed.
 	
 	.PARAMETER PackageFile
-		Path to the PowerUp package file (usually, PowerUp.package.json).
+		Path to the dbops package file (usually, dbops.package.json).
 
 	.PARAMETER InputObject
-		PowerUpPackage object to deploy. Supports pipelining.
+		DBOpsPackage object to deploy. Supports pipelining.
 	
 	.PARAMETER ScriptPath
 		A collection of script files to deploy to the server. Accepts Get-Item/Get-ChildItem objects and wildcards.
@@ -102,7 +102,7 @@
 		
 	.EXAMPLE
 		# Start the deployment of the extracted package using custom logging parameters and schema tracking table
-		Invoke-DBODeployment .\Extracted\PowerUp.package.json -SchemaVersionTable dbo.SchemaHistory -OutputFile .\out.log -Append
+		Invoke-DBODeployment .\Extracted\dbops.package.json -SchemaVersionTable dbo.SchemaHistory -OutputFile .\out.log -Append
 	
 	.EXAMPLE
 		# Start the deployment of the extracted package in the current folder using variables instead of specifying values directly
@@ -112,11 +112,11 @@
 	[CmdletBinding(SupportsShouldProcess = $true, DefaultParameterSetName = 'PackageFile')]
 	Param (
 		[parameter(ParameterSetName = 'PackageFile')]
-		[string]$PackageFile = ".\PowerUp.package.json",
+		[string]$PackageFile = ".\dbops.package.json",
 		[parameter(ParameterSetName = 'Script')]
 		[Alias('SourcePath')]
 		[string[]]$ScriptPath,
-		[parameter(ParameterSetName = 'PowerUpPackage')]
+		[parameter(ParameterSetName = 'DBOpsPackage')]
 		[Alias('Package')]
 		[object]$InputObject,
 		[Alias('Server', 'SqlServer', 'DBServer', 'Instance')]
@@ -142,20 +142,20 @@
 		if ($PsCmdlet.ParameterSetName -eq 'PackageFile') {
 			#Get package object from the json file
 			Write-Verbose "Loading package information from $pFile"
-			if ($package = [PowerUpPackageFile]::new((Get-Item $PackageFile))) {
+			if ($package = [DBOpsPackageFile]::new((Get-Item $PackageFile))) {
 				$config = $package.Configuration
 			}
 		}	
 		elseif ($PsCmdlet.ParameterSetName -eq 'Script') {
 			$config = Get-DBOConfig
 		}
-		elseif ($PsCmdlet.ParameterSetName -eq 'PowerUpPackage') {
-			if ($InputObject.GetType().Name -eq 'PowerUpPackage') {
+		elseif ($PsCmdlet.ParameterSetName -eq 'DBOpsPackage') {
+			if ($InputObject.GetType().Name -eq 'DBOpsPackage') {
 				$package = $InputObject
 				$config = $package.Configuration
 			}
 			else {
-				throw "PowerUpPackage type is expected as an input object"
+				throw "DBOpsPackage type is expected as an input object"
 			}
 		}
 
@@ -187,7 +187,7 @@
 		}
 	
 		#Apply default values if not set
-		if (!$config.ApplicationName) { $config.SetValue('ApplicationName', 'PowerUp') }
+		if (!$config.ApplicationName) { $config.SetValue('ApplicationName', 'dbops') }
 		if (!$config.SqlInstance) { $config.SetValue('SqlInstance', 'localhost') }
 		if ($config.ConnectionTimeout -eq $null) { $config.SetValue('ConnectionTimeout', 30) }
 		if ($config.ExecutionTimeout -eq $null) { $config.SetValue('ExecutionTimeout', 180) }
@@ -225,7 +225,7 @@
 	
 	
 		$scriptCollection = @()
-		if ($PsCmdlet.ParameterSetName -in 'PackageFile','PowerUpPackage') {		
+		if ($PsCmdlet.ParameterSetName -in 'PackageFile','DBOpsPackage') {		
 			# Get contents of the script files
 			foreach ($build in $package.builds) {
 				foreach ($script in $build.scripts) {
@@ -260,8 +260,8 @@
 			$dbUp = [StandardExtensions]::WithTransactionPerScript($dbUp)
 		}
 
-		# Enable logging using PowerUpConsoleLog class implementing a logging Interface
-		$dbUp = [StandardExtensions]::LogTo($dbUp, [PowerUpLog]::new($config.Silent, $OutputFile, $Append))
+		# Enable logging using dbopsConsoleLog class implementing a logging Interface
+		$dbUp = [StandardExtensions]::LogTo($dbUp, [DBOpsLog]::new($config.Silent, $OutputFile, $Append))
 		$dbUp = [StandardExtensions]::LogScriptOutput($dbUp)
 
 		# Configure schema versioning

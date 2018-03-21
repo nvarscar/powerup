@@ -21,7 +21,7 @@ services:
   - mssql2017
   
 # Set alternative clone folder
-clone_folder: c:\github\powerup
+clone_folder: c:\github\dbops
 
 before_test:
   # run preparation scripts

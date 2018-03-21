@@ -1,10 +1,10 @@
 ﻿function Get-DBOConfig {
 	<#
 	.SYNOPSIS
-	Returns a PowerUpConfig object
+	Returns a DBOpsConfig object
 	
 	.DESCRIPTION
-	Returns a PowerUpConfig object from an existing json file. If file was not specified, returns a blank PowerUpConfig object.
+	Returns a DBOpsConfig object from an existing json file. If file was not specified, returns a blank DBOpsConfig object.
 	Values of the config can be overwritten by the hashtable parameter -Configuration.
 	
 	.PARAMETER Path
@@ -25,11 +25,11 @@
 	
 	.EXAMPLE
 	# Returns configuration from existing file
-	Get-DBOConfig c:\package\powerup.config.json
+	Get-DBOConfig c:\package\dbops.config.json
 
 	.EXAMPLE
 	# Saves empty configuration to a file
-	(Get-DBOConfig).SaveToFile('c:\package\powerup.config.json')
+	(Get-DBOConfig).SaveToFile('c:\package\dbops.config.json')
 
 	#>
 	[CmdletBinding()]
@@ -40,11 +40,11 @@
 	)
 	if ($Path) {
 		Write-Verbose "Reading configuration from $Path"
-		$config = [PowerUpConfig]::FromFile($Path)
+		$config = [DBOpsConfig]::FromFile($Path)
 	}
 	else {
 		Write-Verbose "Generating blank configuration object"
-		$config = [PowerUpConfig]::new()
+		$config = [DBOpsConfig]::new()
 	}
 	if ($Configuration) {
 		Write-Verbose "Overwriting configuration keys $($Configuration.Keys -join ', ') with new values"

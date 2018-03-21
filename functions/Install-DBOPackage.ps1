@@ -1,19 +1,19 @@
 ﻿function Install-DBOPackage {
 	<#
 	.SYNOPSIS
-		Deploys an existing PowerUp package
+		Deploys an existing DBOps package
 	
 	.DESCRIPTION
-		Deploys an existing PowerUp package with optional parameters. 
+		Deploys an existing DBOps package with optional parameters. 
 		Uses a table specified in SchemaVersionTable parameter to determine scripts to run.
 		Will deploy all the builds from the package that previously have not been deployed.
 	
 	.PARAMETER Path
-		Path to the existing PowerUpPackage. 
+		Path to the existing DBOpsPackage. 
 		Aliases: Name, FileName, Package
 
 	.PARAMETER InputObject
-		Pipeline implementation of Path. Can also contain a PowerUpPackage object.
+		Pipeline implementation of Path. Can also contain a DBOpsPackage object.
 	
 	.PARAMETER SqlInstance
 		Database server to connect to. SQL Server only for now.
@@ -170,7 +170,7 @@
 			$params = @{ InputObject = $package }
 			foreach ($key in ($PSBoundParameters.Keys)) {
 				#If any custom properties were specified
-				if ($key -in @('OutputFile','Append') -or $key -in [PowerUpConfig]::EnumProperties()) {
+				if ($key -in @('OutputFile','Append') -or $key -in [DBOpsConfig]::EnumProperties()) {
 					$params += @{ $key = $PSBoundParameters[$key] }
 				}
 			}
