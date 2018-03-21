@@ -1,4 +1,4 @@
-Function Get-PowerUpModuleFileList {
+Function Get-DBOModuleFileList {
 	<#
 .SYNOPSIS
 Returns all module files based on json file in the module root
@@ -8,7 +8,7 @@ Returns objects from internal\json\dbops.json. Is used internally to load files 
 
 .EXAMPLE
 # Returns module files
-Get-PowerUpModuleFileList
+Get-DBOModuleFileList
 #>	
 	Param ()
 	Function ModuleFile {

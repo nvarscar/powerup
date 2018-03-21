@@ -1,4 +1,4 @@
-﻿function Install-PowerUpPackage {
+﻿function Install-DBOPackage {
 	<#
 	.SYNOPSIS
 		Deploys an existing PowerUp package
@@ -94,23 +94,23 @@
 
     .EXAMPLE
 		# Installs package with predefined configuration inside the package
-		Install-PowerUpPackage .\MyPackage.zip
+		Install-DBOPackage .\MyPackage.zip
 	
 	.EXAMPLE
 		# Installs package using specific connection parameters
-		.\MyPackage.zip | Install-PowerUpPackage -SqlInstance 'myserver\instance1' -Database 'MyDb' -ExecutionTimeout 3600 
+		.\MyPackage.zip | Install-DBOPackage -SqlInstance 'myserver\instance1' -Database 'MyDb' -ExecutionTimeout 3600 
 		
 	.EXAMPLE
 		# Installs package using custom logging parameters and schema tracking table
-		.\MyPackage.zip | Install-PowerUpPackage -SchemaVersionTable dbo.SchemaHistory -OutputFile .\out.log -Append
+		.\MyPackage.zip | Install-DBOPackage -SchemaVersionTable dbo.SchemaHistory -OutputFile .\out.log -Append
 
 	.EXAMPLE
 		# Installs package using custom configuration file
-		.\MyPackage.zip | Install-PowerUpPackage -ConfigurationFile .\localconfig.json
+		.\MyPackage.zip | Install-DBOPackage -ConfigurationFile .\localconfig.json
 
 	.EXAMPLE
 		# Installs package using variables instead of specifying values directly
-		.\MyPackage.zip | Install-PowerUpPackage -SqlInstance '#{server}' -Database '#{db}' -Variables @{server = 'myserver\instance1'; db = 'MyDb'}
+		.\MyPackage.zip | Install-DBOPackage -SqlInstance '#{server}' -Database '#{db}' -Variables @{server = 'myserver\instance1'; db = 'MyDb'}
 #>
 	
 	[CmdletBinding(SupportsShouldProcess = $true, DefaultParameterSetName = 'Default')]
@@ -155,11 +155,11 @@
 	begin {
 	}
 	process {
-		if ($package = Get-PowerUpPackage -Path $Path) {
+		if ($package = Get-DBOPackage -Path $Path) {
 
 			#Overwrite config file if specified
 			if ($ConfigurationFile) {
-				$config = Get-PowerUpConfig -Path $ConfigurationFile -Configuration $Configuration
+				$config = Get-DBOConfig -Path $ConfigurationFile -Configuration $Configuration
 				$package.Configuration.Merge($config)
 			}
 			if ($Configuration) {
@@ -176,7 +176,7 @@
 			}
 			Write-Verbose "Preparing to start the deployment with custom parameters: $($params.Keys -join ', ')"
 			if ($PSCmdlet.ShouldProcess($params.PackageFile, "Initiating the deployment of the package")) {
-				Invoke-PowerUpDeployment @params
+				Invoke-DBODeployment @params
 			}
 		}
 	}

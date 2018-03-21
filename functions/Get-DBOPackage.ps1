@@ -1,4 +1,4 @@
-Function Get-PowerUpPackage {
+Function Get-DBOPackage {
 	<#
 	.SYNOPSIS
 	Shows information about the existin PowerUp package
@@ -22,7 +22,7 @@ Function Get-PowerUpPackage {
 
 	.EXAMPLE
 	# Returns information about the package myPackage.zip, only including infomartion about builds 1.1 and 1.2
-	Get-PowerUpPackage -Path c:\temp\myPackage.zip -Build 1.1, 1.2
+	Get-DBOPackage -Path c:\temp\myPackage.zip -Build 1.1, 1.2
 	
 	.NOTES
 	

@@ -26,11 +26,11 @@ $packageName = Join-Path $workFolder 'TempDeployment.zip'
 $packageNameTest = "$packageName.test.zip"
 $packageNoPkgFile = Join-Path $workFolder "pkg_nopkgfile.zip"
 
-Describe "Add-PowerUpBuild tests" -Tag $commandName, UnitTests {
+Describe "Add-DBOBuild tests" -Tag $commandName, UnitTests {
 	BeforeAll {
 		$null = New-Item $workFolder -ItemType Directory -Force
 		$null = New-Item $unpackedFolder -ItemType Directory -Force
-		$null = New-PowerUpPackage -ScriptPath $v1scripts -Name $packageName -Build 1.0 -Force
+		$null = New-DBOPackage -ScriptPath $v1scripts -Name $packageName -Build 1.0 -Force
 	}
 	AfterAll {
 		if ((Test-Path $workFolder) -and $workFolder -like '*.Tests.PowerUp') { Remove-Item $workFolder -Recurse }
@@ -43,7 +43,7 @@ Describe "Add-PowerUpBuild tests" -Tag $commandName, UnitTests {
 			$null = Remove-Item $packageNameTest
 		}
 		It "should add new build to existing package" {
-			$results = Add-PowerUpBuild -ScriptPath $v2scripts -Name $packageNameTest -Build 2.0
+			$results = Add-DBOBuild -ScriptPath $v2scripts -Name $packageNameTest -Build 2.0
 			$results | Should Not Be $null
 			$results.Name | Should Be (Split-Path $packageNameTest -Leaf)
 			Test-Path $packageNameTest | Should Be $true
@@ -74,7 +74,7 @@ Describe "Add-PowerUpBuild tests" -Tag $commandName, UnitTests {
 			$null = Remove-Item $packageNameTest
 		}
 		It "should add new build to existing package" {
-			$results = Add-PowerUpBuild -ScriptPath $scriptFolder -Name $packageNameTest -Build 2.0 -Type 'New'
+			$results = Add-DBOBuild -ScriptPath $scriptFolder -Name $packageNameTest -Build 2.0 -Type 'New'
 			$results | Should Not Be $null
 			$results.Name | Should Be (Split-Path $packageNameTest -Leaf)
 			$results.Configuration | Should Not Be $null
@@ -114,7 +114,7 @@ Describe "Add-PowerUpBuild tests" -Tag $commandName, UnitTests {
 			$null = Remove-Item "$workFolder\Test.sql"
 		}
 		It "should add new build to existing package" {
-			$results = Add-PowerUpBuild -ScriptPath $scriptFolder, "$workFolder\Test.sql" -Name $packageNameTest -Build 2.0 -Type 'Unique'
+			$results = Add-DBOBuild -ScriptPath $scriptFolder, "$workFolder\Test.sql" -Name $packageNameTest -Build 2.0 -Type 'Unique'
 			$results | Should Not Be $null
 			$results.Name | Should Be (Split-Path $packageNameTest -Leaf)
 			$results.Configuration | Should Not Be $null
@@ -127,9 +127,9 @@ Describe "Add-PowerUpBuild tests" -Tag $commandName, UnitTests {
 			Test-Path $packageNameTest | Should Be $true
 		}
 		It "should add new build to existing package based on changes in the file" {
-			$null = Add-PowerUpBuild -ScriptPath "$workFolder\Test.sql" -Name $packageNameTest -Build 2.1
+			$null = Add-DBOBuild -ScriptPath "$workFolder\Test.sql" -Name $packageNameTest -Build 2.1
 			"nope" | Out-File "$workFolder\Test.sql" -Append
-			$results = Add-PowerUpBuild -ScriptPath $scriptFolder, "$workFolder\Test.sql" -Name $packageNameTest -Build 3.0 -Type 'Modified'
+			$results = Add-DBOBuild -ScriptPath $scriptFolder, "$workFolder\Test.sql" -Name $packageNameTest -Build 3.0 -Type 'Modified'
 			$results | Should Not Be $null
 			$results.Name | Should Be (Split-Path $packageNameTest -Leaf)
 			$results.Configuration | Should Not Be $null
@@ -170,7 +170,7 @@ Describe "Add-PowerUpBuild tests" -Tag $commandName, UnitTests {
 	Context "negative tests" {
 		BeforeAll {
 			$null = Copy-Item $packageName $packageNameTest
-			$null = New-PowerUpPackage -Name $packageNoPkgFile -Build 1.0 -ScriptPath $scriptFolder
+			$null = New-DBOPackage -Name $packageNoPkgFile -Build 1.0 -ScriptPath $scriptFolder
 			$null = Remove-ArchiveItem -Path $packageNoPkgFile -Item 'PowerUp.package.json'
 		}
 		AfterAll {
@@ -178,12 +178,12 @@ Describe "Add-PowerUpBuild tests" -Tag $commandName, UnitTests {
 			Remove-Item $packageNoPkgFile
 		}
 		It "should show warning when there are no new files" {
-			$null= Add-PowerUpBuild -Name $packageNameTest -ScriptPath $v1scripts -Type 'Unique' -WarningVariable warningResult 3>$null
+			$null= Add-DBOBuild -Name $packageNameTest -ScriptPath $v1scripts -Type 'Unique' -WarningVariable warningResult 3>$null
 			$warningResult.Message -join ';' | Should BeLike '*No scripts have been selected, the original file is unchanged.*'
 		}
 		It "should throw error when package data file does not exist" {
 			try {
-				$null = Add-PowerUpBuild -Name $packageNoPkgFile -ScriptPath $v2scripts
+				$null = Add-DBOBuild -Name $packageNoPkgFile -ScriptPath $v2scripts
 			}
 			catch {
 				$errorResult = $_
@@ -191,11 +191,11 @@ Describe "Add-PowerUpBuild tests" -Tag $commandName, UnitTests {
 			$errorResult.Exception.Message -join ';' | Should BeLike '*Incorrect package format*'
 		}
 		It "should throw error when package zip does not exist" {
-			{ Add-PowerUpBuild -Name ".\nonexistingpackage.zip" -ScriptPath $v1scripts -ErrorAction Stop} | Should Throw
+			{ Add-DBOBuild -Name ".\nonexistingpackage.zip" -ScriptPath $v1scripts -ErrorAction Stop} | Should Throw
 		}
 		It "should throw error when path cannot be resolved" {
 			try {
-				$null = Add-PowerUpBuild -Name $packageNameTest -ScriptPath ".\nonexistingsourcefiles.sql"
+				$null = Add-DBOBuild -Name $packageNameTest -ScriptPath ".\nonexistingsourcefiles.sql"
 			}
 			catch {
 				$errorResult = $_
@@ -204,7 +204,7 @@ Describe "Add-PowerUpBuild tests" -Tag $commandName, UnitTests {
 		}
 		It "should throw error when scripts with the same relative path is being added" {
 			try {
-				$null = Add-PowerUpBuild -Name $packageNameTest -ScriptPath "$scriptFolder\*", "$scriptFolder\..\transactional-failure\*"
+				$null = Add-DBOBuild -Name $packageNameTest -ScriptPath "$scriptFolder\*", "$scriptFolder\..\transactional-failure\*"
 			}
 			catch {
 				$errorResult = $_

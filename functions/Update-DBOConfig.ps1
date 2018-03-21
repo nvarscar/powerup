@@ -1,4 +1,4 @@
-﻿function Update-PowerUpConfig {
+﻿function Update-DBOConfig {
 	<#
 	.SYNOPSIS
 	Updates configuration file inside the existing PowerUp package
@@ -37,19 +37,19 @@
 
     .EXAMPLE
 	# Update a single parameter in the configuration file of the Package.zip package
-	Update-PowerUpConfig Package.zip -ConfigName ApplicationName -Value 'MyApp'
+	Update-DBOConfig Package.zip -ConfigName ApplicationName -Value 'MyApp'
 
 	.EXAMPLE
 	# Update several configuration parameters at once using a hashtable
-	Update-PowerUpConfig Package.zip -Configuration @{'ApplicationName' = 'MyApp'; 'Database' = 'MyDB'}
+	Update-DBOConfig Package.zip -Configuration @{'ApplicationName' = 'MyApp'; 'Database' = 'MyDB'}
 
 	.EXAMPLE
 	# Update parameters based on the contents of the json file myconfig.json
-	Update-PowerUpConfig Package.zip -ConfigurationFile 'myconfig.json'
+	Update-DBOConfig Package.zip -ConfigurationFile 'myconfig.json'
 	
 	.EXAMPLE
 	# Specifically update values of the Variables parameter
-	Update-PowerUpConfig Package.zip -Variables @{ foo = 'bar' }
+	Update-DBOConfig Package.zip -Variables @{ foo = 'bar' }
 	
 	#>
 	[CmdletBinding(DefaultParameterSetName = 'Value',
@@ -104,7 +104,7 @@
 					$newConfig = $Configuration
 				}
 				elseif ($PSCmdlet.ParameterSetName -eq 'File') {
-					$newConfig = (Get-PowerUpConfig -Path $ConfigurationFile).AsHashtable()
+					$newConfig = (Get-DBOConfig -Path $ConfigurationFile).AsHashtable()
 				}
 				#Overriding Variables
 				if ($Variables) {

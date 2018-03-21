@@ -45,27 +45,27 @@ Import-Module .\PowerUp
 
 ```powershell
 # Quick deployment without tracking deployment history
-Invoke-PowerUpDeployment -ScriptPath C:\temp\myscripts -SqlInstance server1 -Database MyDB -SchemaVersionTable $null
+Invoke-DBODeployment -ScriptPath C:\temp\myscripts -SqlInstance server1 -Database MyDB -SchemaVersionTable $null
 
 # Deployment using packages & builds with keeping track of deployment history in dbo.SchemaVersions
-New-PowerUpPackage Deploy.zip -ScriptPath C:\temp\myscripts | Install-PowerUpPackage -SqlInstance server1 -Database MyDB
+New-DBOPackage Deploy.zip -ScriptPath C:\temp\myscripts | Install-DBOPackage -SqlInstance server1 -Database MyDB
 
 # Create new deployment package with predefined configuration and deploy it replacing #{dbName} tokens with corresponding values
-New-PowerUpPackage -Path MyPackage.zip -ScriptPath .\Scripts -Configuration @{ Database = '#{dbName}'; ConnectionTimeout = 5 }
-Install-PowerUpPackage MyPackage.zip -Variables @{ dbName = 'myDB' }
+New-DBOPackage -Path MyPackage.zip -ScriptPath .\Scripts -Configuration @{ Database = '#{dbName}'; ConnectionTimeout = 5 }
+Install-DBOPackage MyPackage.zip -Variables @{ dbName = 'myDB' }
 
 # Adding builds to the package
-Add-PowerUpBuild Deploy.zip -ScriptPath .\myscripts -Type Unique -Build 2.0
-Get-ChildItem .\myscripts | Add-PowerUpBuild Deploy.zip -Type New,Modified -Build 3.0
+Add-DBOBuild Deploy.zip -ScriptPath .\myscripts -Type Unique -Build 2.0
+Get-ChildItem .\myscripts | Add-DBOBuild Deploy.zip -Type New,Modified -Build 3.0
 
 # Setting deployment options within the package to be able to deploy it without specifying options
-Update-PowerUpConfig Deploy.zip -Configuration @{ DeploymentMethod = 'SingleTransaction'; SqlInstance = 'localhost'; DatabaseName = 'MyDb2' }
-Install-PowerUpPackage Deploy.zip
+Update-DBOConfig Deploy.zip -Configuration @{ DeploymentMethod = 'SingleTransaction'; SqlInstance = 'localhost'; DatabaseName = 'MyDb2' }
+Install-DBOPackage Deploy.zip
 
 # Generating config files and using it later as a deployment template
-(Get-PowerUpConfig -Configuration @{ DeploymentMethod = 'SingleTransaction'; SqlInstance = 'devInstance'; DatabaseName = 'MyDB' }).SaveToFile('.\dev.json')
-(Get-PowerUpConfig -Path '.\dev.json' -Configuration @{ SqlInstance = 'prodInstance' }).SaveToFile('.\prod.json')
-Install-PowerUpPackage Deploy.zip -ConfigurationFile .\dev.json
+(Get-DBOConfig -Configuration @{ DeploymentMethod = 'SingleTransaction'; SqlInstance = 'devInstance'; DatabaseName = 'MyDB' }).SaveToFile('.\dev.json')
+(Get-DBOConfig -Path '.\dev.json' -Configuration @{ SqlInstance = 'prodInstance' }).SaveToFile('.\prod.json')
+Install-DBOPackage Deploy.zip -ConfigurationFile .\dev.json
 
 # Install package using internal script Deploy.ps1 - useable when module is not installed locally
 Expand-Archive Deploy.zip '.\MyTempFolder'

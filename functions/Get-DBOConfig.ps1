@@ -1,4 +1,4 @@
-﻿function Get-PowerUpConfig {
+﻿function Get-DBOConfig {
 	<#
 	.SYNOPSIS
 	Returns a PowerUpConfig object
@@ -21,15 +21,15 @@
 
     .EXAMPLE
 	# Returns empty configuration
-	Get-PowerUpConfig
+	Get-DBOConfig
 	
 	.EXAMPLE
 	# Returns configuration from existing file
-	Get-PowerUpConfig c:\package\powerup.config.json
+	Get-DBOConfig c:\package\powerup.config.json
 
 	.EXAMPLE
 	# Saves empty configuration to a file
-	(Get-PowerUpConfig).SaveToFile('c:\package\powerup.config.json')
+	(Get-DBOConfig).SaveToFile('c:\package\powerup.config.json')
 
 	#>
 	[CmdletBinding()]

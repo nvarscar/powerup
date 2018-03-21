@@ -1,4 +1,4 @@
-Function Remove-PowerUpBuild {
+Function Remove-DBOBuild {
 	<#
 	.SYNOPSIS
 	Removes one or more builds from the PowerUp package
@@ -21,12 +21,12 @@ Function Remove-PowerUpBuild {
 
     .EXAMPLE
 	# Removes builds 1.1 and 1.2 from the package
-	Remove-PowerUpBuild -Path c:\temp\myPackage.zip -Build 1.1, 1.2
+	Remove-DBOBuild -Path c:\temp\myPackage.zip -Build 1.1, 1.2
 
 	.EXAMPLE
 	# Removes all 1.* builds from the package
-	$builds = (Get-PowerUpPackage c:\temp\myPackage.zip).Builds
-	$builds.Build | Where { $_ -like '1.*' } | Remove-PowerUpBuild -Path c:\temp\myPackage.zip
+	$builds = (Get-DBOPackage c:\temp\myPackage.zip).Builds
+	$builds.Build | Where { $_ -like '1.*' } | Remove-DBOBuild -Path c:\temp\myPackage.zip
 	
 	.NOTES
 	
@@ -47,7 +47,7 @@ Function Remove-PowerUpBuild {
 	}
 	process {
 		Write-Verbose "Loading package information from $Path"
-		if ($package = Get-PowerUpPackage -Path $Path) {
+		if ($package = Get-DBOPackage -Path $Path) {
 			foreach ($currentBuild in $Build) {
 				#Verify that build exists
 				if ($currentBuild -notin $package.EnumBuilds()) {

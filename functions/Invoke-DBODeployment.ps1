@@ -1,4 +1,4 @@
-﻿function Invoke-PowerUpDeployment {
+﻿function Invoke-DBODeployment {
 	<#
 	.SYNOPSIS
 		Deploys extracted PowerUp package from the specified location
@@ -94,19 +94,19 @@
 
     .EXAMPLE
 		# Start the deployment of the extracted package from the current folder
-		Invoke-PowerUpDeployment
+		Invoke-DBODeployment
 	
 	.EXAMPLE
 		# Start the deployment of the extracted package from the current folder using specific connection parameters
-		Invoke-PowerUpDeployment -SqlInstance 'myserver\instance1' -Database 'MyDb' -ExecutionTimeout 3600 
+		Invoke-DBODeployment -SqlInstance 'myserver\instance1' -Database 'MyDb' -ExecutionTimeout 3600 
 		
 	.EXAMPLE
 		# Start the deployment of the extracted package using custom logging parameters and schema tracking table
-		Invoke-PowerUpDeployment .\Extracted\PowerUp.package.json -SchemaVersionTable dbo.SchemaHistory -OutputFile .\out.log -Append
+		Invoke-DBODeployment .\Extracted\PowerUp.package.json -SchemaVersionTable dbo.SchemaHistory -OutputFile .\out.log -Append
 	
 	.EXAMPLE
 		# Start the deployment of the extracted package in the current folder using variables instead of specifying values directly
-		Invoke-PowerUpDeployment -SqlInstance '#{server}' -Database '#{db}' -Variables @{server = 'myserver\instance1'; db = 'MyDb'}
+		Invoke-DBODeployment -SqlInstance '#{server}' -Database '#{db}' -Variables @{server = 'myserver\instance1'; db = 'MyDb'}
 #>
 	
 	[CmdletBinding(SupportsShouldProcess = $true, DefaultParameterSetName = 'PackageFile')]
@@ -147,7 +147,7 @@
 			}
 		}	
 		elseif ($PsCmdlet.ParameterSetName -eq 'Script') {
-			$config = Get-PowerUpConfig
+			$config = Get-DBOConfig
 		}
 		elseif ($PsCmdlet.ParameterSetName -eq 'PowerUpPackage') {
 			if ($InputObject.GetType().Name -eq 'PowerUpPackage') {

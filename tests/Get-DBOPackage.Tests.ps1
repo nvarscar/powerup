@@ -26,32 +26,32 @@ $v1scripts = Join-Path $scriptFolder '1.sql'
 $v2scripts = Join-Path $scriptFolder '2.sql'
 $v3scripts = Join-Path $scriptFolder '3.sql'
 
-Describe "Get-PowerUpPackage tests" -Tag $commandName, UnitTests {	
+Describe "Get-DBOPackage tests" -Tag $commandName, UnitTests {	
 	
 	BeforeAll {
 		$null = New-Item $workFolder -ItemType Directory -Force
 		$null = New-Item $unpackedFolder -ItemType Directory -Force
-		$null = New-PowerUpPackage -ScriptPath $v1scripts -Name $packageName -Build 1.0 -Force -ConfigurationFile "$here\etc\full_config.json"
-		$null = Add-PowerUpBuild -ScriptPath $v2scripts -Path $packageName -Build 2.0
-		$null = Add-PowerUpBuild -ScriptPath $v3scripts -Path $packageName -Build 3.0
+		$null = New-DBOPackage -ScriptPath $v1scripts -Name $packageName -Build 1.0 -Force -ConfigurationFile "$here\etc\full_config.json"
+		$null = Add-DBOBuild -ScriptPath $v2scripts -Path $packageName -Build 2.0
+		$null = Add-DBOBuild -ScriptPath $v3scripts -Path $packageName -Build 3.0
 	}
 	AfterAll {
 		if ((Test-Path $workFolder) -and $workFolder -like '*.Tests.PowerUp') { Remove-Item $workFolder -Recurse }
 	}
 	Context "Negative tests" {
 		It "returns error when path does not exist" {
-			{ Get-PowerUpPackage -Path 'asduwheiruwnfelwefo\sdfpoijfdsf.zip' -ErrorAction Stop} | Should Throw
+			{ Get-DBOPackage -Path 'asduwheiruwnfelwefo\sdfpoijfdsf.zip' -ErrorAction Stop} | Should Throw
 		}
 	}
 	Context "Returns package properties" {
 		It "returns existing builds" {
-			$result = Get-PowerUpPackage -Path $packageName
+			$result = Get-DBOPackage -Path $packageName
 			$result.Builds.Build | Should Be @('1.0', '2.0', '3.0')
 			$result.Builds.Scripts.Name | Should Be @('1.sql', '2.sql', '3.sql')
 			$result.Builds.Scripts.SourcePath | Should Be @((Get-Item $v1scripts).FullName, (Get-Item $v2scripts).FullName, (Get-Item $v3scripts).FullName)
 		}
 		It "should return package info" {
-			$result = Get-PowerUpPackage -Path $packageName
+			$result = Get-DBOPackage -Path $packageName
 			$result.Version | Should Be '3.0'
 			$result.ModuleVersion | Should Be (Get-Module PowerUp).Version
 
@@ -81,7 +81,7 @@ Describe "Get-PowerUpPackage tests" -Tag $commandName, UnitTests {
 
 		}
 		It "should return package config" {
-			$result = Get-PowerUpPackage -Path $packageName
+			$result = Get-DBOPackage -Path $packageName
 			$result.Configuration | Should Not Be $null
 			$result.Configuration.ApplicationName | Should Be "MyTestApp"
 			$result.Configuration.SqlInstance | Should Be "TestServer"
@@ -106,13 +106,13 @@ Describe "Get-PowerUpPackage tests" -Tag $commandName, UnitTests {
 			Remove-Item -Path (Join-Path $unpackedFolder *) -Force -Recurse
 		}
 		It "returns existing builds" {
-			$result = Get-PowerUpPackage -Path $unpackedFolder -Unpacked
+			$result = Get-DBOPackage -Path $unpackedFolder -Unpacked
 			$result.Builds.Build | Should Be @('1.0', '2.0', '3.0')
 			$result.Builds.Scripts.Name | Should Be @('1.sql', '2.sql', '3.sql')
 			$result.Builds.Scripts.SourcePath | Should Be @((Get-Item $v1scripts).FullName, (Get-Item $v2scripts).FullName, (Get-Item $v3scripts).FullName)
 		}
 		It "should return package info" {
-			$result = Get-PowerUpPackage -Path $unpackedFolder -Unpacked
+			$result = Get-DBOPackage -Path $unpackedFolder -Unpacked
 			$result.Name | Should Be 'Unpacked'
 			$result.FullName | Should Be $unpackedFolder
 			$result.CreationTime | Should Not Be $null
@@ -120,7 +120,7 @@ Describe "Get-PowerUpPackage tests" -Tag $commandName, UnitTests {
 			$result.ModuleVersion | Should Be (Get-Module PowerUp).Version
 		}
 		It "should return package config" {
-			$result = Get-PowerUpPackage -Path $unpackedFolder -Unpacked
+			$result = Get-DBOPackage -Path $unpackedFolder -Unpacked
 			$result.Configuration | Should Not Be $null
 			$result.Configuration.ApplicationName | Should Be "MyTestApp"
 			$result.Configuration.SqlInstance | Should Be "TestServer"

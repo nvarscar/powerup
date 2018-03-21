@@ -26,5 +26,5 @@ Import-Module "$PSScriptRoot\Modules\PowerUp\PowerUp.psd1" -Force
 #Invoke deployment using current parameters
 $params = $PSBoundParameters
 $params += @{ PackageFile = "$PSScriptRoot\PowerUp.package.json"}
-Invoke-PowerUpDeployment @params
+Invoke-DBODeployment @params
 

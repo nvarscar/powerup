@@ -25,13 +25,13 @@ $packageName = Join-Path $workFolder "TempDeployment.zip"
 $packageNameTest = "$packageName.test.zip"
 $packageNoPkgFile = Join-Path $workFolder "pkg_nopkgfile.zip"
 
-Describe "Remove-PowerUpBuild tests" -Tag $commandName, UnitTests {
+Describe "Remove-DBOBuild tests" -Tag $commandName, UnitTests {
 	BeforeAll {
 		if ((Test-Path $workFolder) -and $workFolder -like '*.Tests.PowerUp') { Remove-Item $workFolder -Recurse }
 		$null = New-Item $workFolder -ItemType Directory -Force
 		$null = New-Item $unpackedFolder -ItemType Directory -Force
-		$null = New-PowerUpPackage -ScriptPath $v1scripts -Name $packageName -Build 1.0 -Force
-		$null = Add-PowerUpBuild -ScriptPath $v2scripts -Path $packageName -Build 2.0
+		$null = New-DBOPackage -ScriptPath $v1scripts -Name $packageName -Build 1.0 -Force
+		$null = Add-DBOBuild -ScriptPath $v2scripts -Path $packageName -Build 2.0
 	}
 	AfterAll {
 		if ((Test-Path $workFolder) -and $workFolder -like '*.Tests.PowerUp') { Remove-Item $workFolder -Recurse }
@@ -44,7 +44,7 @@ Describe "Remove-PowerUpBuild tests" -Tag $commandName, UnitTests {
 			$null = Remove-Item $packageNameTest
 		}
 		It "should remove build from existing package" {
-			{ Remove-PowerUpBuild -Name $packageNameTest -Build 1.0 } | Should Not Throw
+			{ Remove-DBOBuild -Name $packageNameTest -Build 1.0 } | Should Not Throw
 			Test-Path $packageNameTest | Should Be $true
 		}
 		$results = Get-ArchiveItem $packageNameTest
@@ -71,7 +71,7 @@ Describe "Remove-PowerUpBuild tests" -Tag $commandName, UnitTests {
 			$null = Remove-Item $packageNameTest
 		}
 		It "should remove build from existing package" {
-			{ Remove-PowerUpBuild -Name $packageNameTest -Build 2.0 } | Should Not Throw
+			{ Remove-DBOBuild -Name $packageNameTest -Build 2.0 } | Should Not Throw
 			Test-Path $packageNameTest | Should Be $true
 		}
 		$results = Get-ArchiveItem $packageNameTest
@@ -98,7 +98,7 @@ Describe "Remove-PowerUpBuild tests" -Tag $commandName, UnitTests {
 			$null = Remove-Item $packageNameTest
 		}
 		It "should remove build from existing package" {
-			{ Remove-PowerUpBuild -Name $packageNameTest -Build "1.0", "2.0"  } | Should Not Throw
+			{ Remove-DBOBuild -Name $packageNameTest -Build "1.0", "2.0"  } | Should Not Throw
 			Test-Path $packageNameTest | Should Be $true
 		}
 		$results = Get-ArchiveItem $packageNameTest
@@ -125,7 +125,7 @@ Describe "Remove-PowerUpBuild tests" -Tag $commandName, UnitTests {
 			$null = Remove-Item $packageNameTest
 		}
 		It "should remove build from existing package" {
-			{ $packageNameTest | Remove-PowerUpBuild -Build '2.0' } | Should Not Throw
+			{ $packageNameTest | Remove-DBOBuild -Build '2.0' } | Should Not Throw
 			Test-Path $packageNameTest | Should Be $true
 		}
 		$results = Get-ArchiveItem $packageNameTest
@@ -147,7 +147,7 @@ Describe "Remove-PowerUpBuild tests" -Tag $commandName, UnitTests {
 	Context "negative tests" {
 		BeforeAll {
 			$null = Copy-Item $packageName $packageNameTest
-			$null = New-PowerUpPackage -Name $packageNoPkgFile -Build 1.0 -ScriptPath $scriptFolder
+			$null = New-DBOPackage -Name $packageNoPkgFile -Build 1.0 -ScriptPath $scriptFolder
 			$null = Remove-ArchiveItem -Path $packageNoPkgFile -Item 'PowerUp.package.json'
 		}
 		AfterAll {
@@ -155,7 +155,7 @@ Describe "Remove-PowerUpBuild tests" -Tag $commandName, UnitTests {
 		}
 		It "should throw error when package data file does not exist" {
 			try {
-				$null = Remove-PowerUpBuild -Name $packageNoPkgFile -Build 2.0
+				$null = Remove-DBOBuild -Name $packageNoPkgFile -Build 2.0
 			}
 			catch {
 				$errorResult = $_
@@ -163,10 +163,10 @@ Describe "Remove-PowerUpBuild tests" -Tag $commandName, UnitTests {
 			$errorResult.Exception.Message -join ';' | Should BeLike '*Incorrect package format*'
 		}
 		It "should throw error when package zip does not exist" {
-			{ Remove-PowerUpBuild -Name ".\nonexistingpackage.zip" -Build 2.0 -ErrorAction Stop } | Should Throw
+			{ Remove-DBOBuild -Name ".\nonexistingpackage.zip" -Build 2.0 -ErrorAction Stop } | Should Throw
 		}
 		It "should output warning when build does not exist" {
-			$null = Remove-PowerUpBuild -Name $packageNameTest -Build 3.0 -WarningVariable errorResult 3>$null
+			$null = Remove-DBOBuild -Name $packageNameTest -Build 3.0 -WarningVariable errorResult 3>$null
 			$errorResult.Message -join ';' | Should BeLike '*not found in the package*'
 		}
 	}

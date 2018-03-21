@@ -24,7 +24,7 @@
 	
 	.PARAMETER Build
 		A string that would be representing a build number of the first build in this package. 
-		A single package can span multiple builds - see Add-PowerUpBuild.
+		A single package can span multiple builds - see Add-DBOBuild.
 		Optional - can be genarated automatically.
 		Can only contain characters that will be valid on the filesystem.
 	
@@ -50,21 +50,21 @@
 
     .EXAMPLE
 		# Creates new package using files from .\Scripts\2.0. Initial build version will be 2.0
-		New-PowerUpPackage -Path MyPackage.zip -ScriptPath .\Scripts\2.0 -Build 2.0
+		New-DBOPackage -Path MyPackage.zip -ScriptPath .\Scripts\2.0 -Build 2.0
 
 	.EXAMPLE
 		# Creates new package using files from .\Scripts\2.0. Destination file will be overwritten.
-		Get-ChildItem .\Scripts\2.0 | New-PowerUpPackage -Path MyPackage.zip -Build 1.0 -Force
+		Get-ChildItem .\Scripts\2.0 | New-DBOPackage -Path MyPackage.zip -Build 1.0 -Force
 
 	.EXAMPLE
 		# Creates new package and applies custom configuration template to it
-		New-PowerUpPackage -Path MyPackage.zip -ScriptPath .\Scripts -ConfigurationFile .\config.json
+		New-DBOPackage -Path MyPackage.zip -ScriptPath .\Scripts -ConfigurationFile .\config.json
 	
 	.EXAMPLE
 		# Creates new package and uses predefined configuration parameters
-		New-PowerUpPackage -Path MyPackage.zip -ScriptPath .\Scripts -Configuration @{ Database = 'myDB'; ConnectionTimeout = 5 }
+		New-DBOPackage -Path MyPackage.zip -ScriptPath .\Scripts -Configuration @{ Database = 'myDB'; ConnectionTimeout = 5 }
 #>
-function New-PowerUpPackage {
+function New-DBOPackage {
 	[CmdletBinding(SupportsShouldProcess = $true)]
 	param
 	(
@@ -107,7 +107,7 @@ function New-PowerUpPackage {
 		$package = [PowerUpPackage]::new()
 
 		#Get configuration object according to current config options
-		$package.SetConfiguration((Get-PowerUpConfig -Path $ConfigurationFile -Configuration $configTable))
+		$package.SetConfiguration((Get-DBOConfig -Path $ConfigurationFile -Configuration $configTable))
 		
 		#Create new build
 		if ($Build) {

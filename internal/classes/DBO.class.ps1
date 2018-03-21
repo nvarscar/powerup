@@ -372,7 +372,7 @@ class PowerUpPackageBase : PowerUp {
 	}
 
 	hidden [void] SaveModuleToFile([ZipArchive]$zipArchive) {
-		foreach ($file in (Get-PowerUpModuleFileList)) {
+		foreach ($file in (Get-DBOModuleFileList)) {
 			[PowerUpHelper]::WriteZipFile($zipArchive, (Join-Path "Modules\PowerUp" $file.Path), [PowerUpHelper]::GetBinaryFile($file.FullName))
 		}
 	}
@@ -1136,6 +1136,6 @@ class PowerUpConfig : PowerUp {
 
 	#Returns deploy file name
 	static [object]GetDeployFile() {
-		return (Get-PowerUpModuleFileList | Where-Object { $_.Type -eq 'Misc' -and $_.Name -eq "Deploy.ps1"})
+		return (Get-DBOModuleFileList | Where-Object { $_.Type -eq 'Misc' -and $_.Name -eq "Deploy.ps1"})
 	}
 }

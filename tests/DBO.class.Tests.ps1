@@ -39,7 +39,7 @@ Describe "PowerUpPackage class tests" -Tag $commandName, UnitTests, PowerUpPacka
 			$script:pkg = [PowerUpPackage]::new()
 			$script:pkg.ScriptDirectory | Should Be 'content'
 			$script:pkg.DeployFile.ToString() | Should Be 'Deploy.ps1'
-			$script:pkg.DeployFile.GetContent() | Should BeLike '*Invoke-PowerUpDeployment @params*'
+			$script:pkg.DeployFile.GetContent() | Should BeLike '*Invoke-DBODeployment @params*'
 			$script:pkg.Configuration.SchemaVersionTable | Should Be 'dbo.SchemaVersions'
 			$script:pkg.FileName | Should BeNullOrEmpty
 			$script:pkg.$Version | Should BeNullOrEmpty
@@ -49,7 +49,7 @@ Describe "PowerUpPackage class tests" -Tag $commandName, UnitTests, PowerUpPacka
 		}
 		$results = Get-ArchiveItem $packageName
 		It "should contain module files" {
-			foreach ($file in (Get-PowerUpModuleFileList)) {
+			foreach ($file in (Get-DBOModuleFileList)) {
 				Join-Path 'Modules\PowerUp' $file.Path | Should BeIn $results.Path
 			}
 		}
@@ -73,7 +73,7 @@ Describe "PowerUpPackage class tests" -Tag $commandName, UnitTests, PowerUpPacka
 			$script:pkg = [PowerUpPackage]::new($packageName)
 			$script:pkg.ScriptDirectory | Should Be 'content'
 			$script:pkg.DeployFile.ToString() | Should Be 'Deploy.ps1'
-			$script:pkg.DeployFile.GetContent() | Should BeLike '*Invoke-PowerUpDeployment @params*'
+			$script:pkg.DeployFile.GetContent() | Should BeLike '*Invoke-DBODeployment @params*'
 			$script:pkg.ConfigurationFile.ToString() | Should Be 'PowerUp.config.json'
 			($script:pkg.ConfigurationFile.GetContent() | ConvertFrom-Json).SchemaVersionTable | Should Be 'dbo.SchemaVersions'
 			$script:pkg.Configuration.SchemaVersionTable | Should Be 'dbo.SchemaVersions'
@@ -215,7 +215,7 @@ Describe "PowerUpPackage class tests" -Tag $commandName, UnitTests, PowerUpPacka
 			{ $script:pkg.SaveToFile($packageName) } | Should Throw #File already exists
 			{ $script:pkg.Alter() } | Should Not Throw
 			$results = Get-ArchiveItem $packageName
-			foreach ($file in (Get-PowerUpModuleFileList)) {
+			foreach ($file in (Get-DBOModuleFileList)) {
 				Join-Path 'Modules\PowerUp' $file.Path | Should BeIn $results.Path
 			}
 			'PowerUp.config.json' | Should BeIn $results.Path
@@ -265,7 +265,7 @@ Describe "PowerUpPackageFile class tests" -Tag $commandName, UnitTests, PowerUpP
 			$p = [PowerUpPackageFile]::new("$here\etc\LoadFromFile\PowerUp.package.json")
 			$p.ScriptDirectory | Should Be 'content'
 			$p.DeployFile.ToString() | Should Be 'Deploy.ps1'
-			$p.DeployFile.GetContent() | Should BeLike '*Invoke-PowerUpDeployment @params*'
+			$p.DeployFile.GetContent() | Should BeLike '*Invoke-DBODeployment @params*'
 			$p.ConfigurationFile.ToString() | Should Be 'PowerUp.config.json'
 			($p.ConfigurationFile.GetContent() | ConvertFrom-Json).SchemaVersionTable | Should Be 'dbo.SchemaVersions'
 			$p.Configuration.SchemaVersionTable | Should Be 'dbo.SchemaVersions'
@@ -284,7 +284,7 @@ Describe "PowerUpPackageFile class tests" -Tag $commandName, UnitTests, PowerUpP
 			$p = [PowerUpPackageFile]::new("$here\etc\LoadFromFile\PowerUp.package.json")
 			$p.SaveToFile($packageName, $true)
 			$results = Get-ArchiveItem $packageName
-			foreach ($file in (Get-PowerUpModuleFileList)) {
+			foreach ($file in (Get-DBOModuleFileList)) {
 				Join-Path 'Modules\PowerUp' $file.Path | Should BeIn $results.Path
 			}
 			'PowerUp.config.json' | Should BeIn $results.Path
@@ -512,7 +512,7 @@ Describe "PowerUpBuild class tests" -Tag $commandName, UnitTests, PowerUpBuild {
 				$stream.Dispose()
 			}
 			$results = Get-ArchiveItem $packageName
-			foreach ($file in (Get-PowerUpModuleFileList)) {
+			foreach ($file in (Get-DBOModuleFileList)) {
 				Join-Path 'Modules\PowerUp' $file.Path | Should BeIn $results.Path
 			}
 			'PowerUp.config.json' | Should BeIn $results.Path
@@ -548,7 +548,7 @@ Describe "PowerUpBuild class tests" -Tag $commandName, UnitTests, PowerUpBuild {
 			$script:build.AddScript($f)
 			{ $script:build.Alter() } | Should Not Throw
 			$results = Get-ArchiveItem "$packageName.test.zip"
-			foreach ($file in (Get-PowerUpModuleFileList)) {
+			foreach ($file in (Get-DBOModuleFileList)) {
 				Join-Path 'Modules\PowerUp' $file.Path | Should BeIn $results.Path
 			}
 			'PowerUp.config.json' | Should BeIn $results.Path
@@ -1089,7 +1089,7 @@ Describe "PowerUpRootFile class tests" -Tag $commandName, UnitTests, PowerUpFile
 		It "should test ExportToJson method" {
 			$j = $script:file.ExportToJson() | ConvertFrom-Json
 			$j.PackagePath | Should Be 'Deploy.ps1'
-			$j.SourcePath | Should Be (Get-PowerUpModuleFileList | Where-Object {$_.Type -eq 'Misc' -and $_.Name -eq 'Deploy.ps1'}).FullName
+			$j.SourcePath | Should Be (Get-DBOModuleFileList | Where-Object {$_.Type -eq 'Misc' -and $_.Name -eq 'Deploy.ps1'}).FullName
 		}
 		It "should test Save method" {
 			#Save old file parameters
@@ -1320,7 +1320,7 @@ Describe "PowerUpConfig class tests" -Tag $commandName, UnitTests, PowerUpConfig
 				$stream.Dispose()
 			}
 			$results = Get-ArchiveItem $packageName
-			foreach ($file in (Get-PowerUpModuleFileList)) {
+			foreach ($file in (Get-DBOModuleFileList)) {
 				Join-Path 'Modules\PowerUp' $file.Path | Should BeIn $results.Path
 			}
 			'PowerUp.config.json' | Should BeIn $results.Path
@@ -1335,7 +1335,7 @@ Describe "PowerUpConfig class tests" -Tag $commandName, UnitTests, PowerUpConfig
 			$script:pkg.Configuration.ApplicationName = 'TestApp3'
 			$script:pkg.Configuration.Alter()
 			$results = Get-ArchiveItem "$packageName"
-			foreach ($file in (Get-PowerUpModuleFileList)) {
+			foreach ($file in (Get-DBOModuleFileList)) {
 				Join-Path 'Modules\PowerUp' $file.Path | Should BeIn $results.Path
 			}
 			'PowerUp.config.json' | Should BeIn $results.Path
