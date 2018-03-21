@@ -3,9 +3,9 @@
 | [![Build status](https://ci.appveyor.com/api/projects/status/m0ml0392r631tp60/branch/master?svg=true)](https://ci.appveyor.com/project/nvarscar/powerup/branch/master) | [![Build status](https://ci.appveyor.com/api/projects/status/m0ml0392r631tp60/branch/development?svg=true)](https://ci.appveyor.com/project/nvarscar/powerup/branch/development) |
 
 # DBOps
-DBOps is a Powershell module that provides SQL script deployment capabilities. It organizes scripts into builds and then deploys them in a repeatable manner into the database of your choice ensuring that all builds are deployed in proper order and only once.
+DBOps is a Powershell module that provides Continuous Integration/Continuous Deployment capabilities for SQL database deployments. In addition to easy-to-use deployment functions, it provides tracking functionality, ensuring that each script is deployed only once and in due order. It will also grant you with ability to organize scripts into builds and deploy them in a repeatable manner on top of any previously deployed version.
 
-The module is built around [DbUp](https://github.com/DbUp/DbUp) .Net library, which provides flexibility and reliability during deployments. 
+The deployment functionality of the module is provided by [DbUp](https://github.com/DbUp/DbUp) .Net library, which has proven its flexibility and reliability during deployments. 
 
 Currently supported RDBMS:
 * SQL Server
@@ -15,10 +15,10 @@ The most notable features of the module:
 
 * No scripting experience required - the module is designed around usability and functionality
 * Introduces an option to aggregate source scripts from multiple sources into a single ready-to-deploy file
-* Can detect new/changed files in your source code folder and generate a new build out of them
+* Can detect new/changed files in your source code folder and generate a new deployment build based on those files
+* Introduces optional internal build system: older builds are kept inside the deployment package ensuring smooth and errorless deployments
 * Reliably deploys the scripts in a consistent manner - all the scripts are executed in alphabetical order one build at a time
 * Can be deployed without the module installed in the system - module itself is integrated into the deployment package
-* Introduces optional internal build system: older builds are kept inside the deployment package ensuring smooth and errorless deployments
 * Transactionality of the deployments/migrations: every build can be deployed as a part of a single transaction, rolling back unsuccessful deployments
 * Dynamically change your code based on custom variables - use `#{customVarName}` tokens to define variables inside the scripts or execution parameters
 * Packages are fully compatible with Octopus Deploy deployments: all packages are in essence zip archives with Deploy.ps1 file that initiates deployment
@@ -30,7 +30,7 @@ The most notable features of the module:
 
 ## Installation
 ```powershell
-git clone https://github.com/nvarscar/powerup.git
+git clone https://github.com/nvarscar/powerup.git dbops
 Import-Module .\dbops
 ```
 
@@ -75,8 +75,10 @@ Expand-Archive Deploy.zip '.\MyTempFolder'
 ## Planned for future releases
 
 * Code analysis: know what kind of code makes its way into the package. Will find hidden sysadmin grants, USE statements and other undesired statements
+* Ready-to-go CI/CD functions
 * Support for other RDBMS (eventually, everything that DbUp libraries can talk with)
 * Integration with unit tests (tSQLt/Pester/...?)
 * Module for Ansible (right now can still be used as a powershell task)
 * Linux support
 * SQLCMD support
+* Deployments to multiple databases at once
