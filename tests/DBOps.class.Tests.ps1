@@ -18,8 +18,8 @@ else {
 
 Add-Type -AssemblyName System.IO.Compression
 Add-Type -AssemblyName System.IO.Compression.FileSystem
-. "$here\..\internal\classes\dbopsHelper.class.ps1"
-. "$here\..\internal\classes\dbops.class.ps1"
+. "$here\..\internal\classes\DBOpsHelper.class.ps1"
+. "$here\..\internal\classes\DBOps.class.ps1"
 
 $packageName = "$here\etc\$commandName.zip"
 $script:pkg = $script:build = $script:file = $null
