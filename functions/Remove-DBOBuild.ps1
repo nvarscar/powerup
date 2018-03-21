@@ -1,13 +1,13 @@
-Function Remove-PowerUpBuild {
+Function Remove-DBOBuild {
 	<#
 	.SYNOPSIS
-	Removes one or more builds from the PowerUp package
+	Removes one or more builds from the DBOps package
 	
 	.DESCRIPTION
-	Remove specific list of builds from the existing PowerUp package keeping all other parts of the package intact
+	Remove specific list of builds from the existing DBOps package keeping all other parts of the package intact
 	
 	.PARAMETER Path
-	Path to the existing PowerUpPackage.
+	Path to the existing DBOpsPackage.
 	Aliases: Name, FileName, Package
 	
 	.PARAMETER Build
@@ -21,12 +21,12 @@ Function Remove-PowerUpBuild {
 
     .EXAMPLE
 	# Removes builds 1.1 and 1.2 from the package
-	Remove-PowerUpBuild -Path c:\temp\myPackage.zip -Build 1.1, 1.2
+	Remove-DBOBuild -Path c:\temp\myPackage.zip -Build 1.1, 1.2
 
 	.EXAMPLE
 	# Removes all 1.* builds from the package
-	$builds = (Get-PowerUpPackage c:\temp\myPackage.zip).Builds
-	$builds.Build | Where { $_ -like '1.*' } | Remove-PowerUpBuild -Path c:\temp\myPackage.zip
+	$builds = (Get-DBOPackage c:\temp\myPackage.zip).Builds
+	$builds.Build | Where { $_ -like '1.*' } | Remove-DBOBuild -Path c:\temp\myPackage.zip
 	
 	.NOTES
 	
@@ -47,7 +47,7 @@ Function Remove-PowerUpBuild {
 	}
 	process {
 		Write-Verbose "Loading package information from $Path"
-		if ($package = Get-PowerUpPackage -Path $Path) {
+		if ($package = Get-DBOPackage -Path $Path) {
 			foreach ($currentBuild in $Build) {
 				#Verify that build exists
 				if ($currentBuild -notin $package.EnumBuilds()) {

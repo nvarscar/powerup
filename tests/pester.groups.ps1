@@ -3,13 +3,13 @@
 $TestsRunGroups = @{
     # run on scenario MSSQL
     "MSSQL" = @(
-        'Install-PowerUpPackage',
-		'Add-PowerUpBuild',
-		'Get-PowerUpConfig',
-		'New-PowerUpPackage',
-		'Remove-PowerUpBuild',
-		'Get-PowerUpPackage',
-		'Update-PowerUpConfig'
+        'Install-DBOPackage',
+		'Add-DBOBuild',
+		'Get-DBOConfig',
+		'New-DBOPackage',
+		'Remove-DBOBuild',
+		'Get-DBOPackage',
+		'Update-DBOConfig'
     )
     # do not run everywhere
     "disabled" = @()

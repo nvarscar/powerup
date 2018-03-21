@@ -8,7 +8,7 @@ else { $commandName = "_ManualExecution"; $here = (Get-Item . ).FullName }
 if (!$Batch) {
 	# Is not a part of the global batch => import module
 	#Explicitly import the module for testing
-	Import-Module "$here\..\PowerUp.psd1" -Force
+	Import-Module "$here\..\dbops.psd1" -Force
 	Import-Module "$here\etc\modules\ZipHelper" -Force
 }
 else {
@@ -19,7 +19,7 @@ else {
 . "$here\constants.ps1"
 . "$here\etc\Invoke-SqlCmd2.ps1"
 
-$workFolder = Join-Path "$here\etc" "$commandName.Tests.PowerUp"
+$workFolder = Join-Path "$here\etc" "$commandName.Tests.dbops"
 $unpackedFolder = Join-Path $workFolder 'unpacked'
 $logTable = "testdeploymenthistory"
 $cleanupScript = "$here\etc\install-tests\Cleanup.sql"
@@ -27,22 +27,22 @@ $tranFailScripts = "$here\etc\install-tests\transactional-failure"
 $v1scripts = "$here\etc\install-tests\success\1.sql"
 $v2scripts = "$here\etc\install-tests\success\2.sql"
 $verificationScript = "$here\etc\install-tests\verification\select.sql"
-$packageFileName = Join-Path $workFolder ".\PowerUp.package.json"
+$packageFileName = Join-Path $workFolder ".\dbops.package.json"
 $cleanupPackageName = "$here\etc\TempCleanup.zip"
 $outFile = "$here\etc\outLog.txt"
 
 
-Describe "Invoke-PowerUpDeployment integration tests" -Tag $commandName, IntegrationTests {
+Describe "Invoke-DBODeployment integration tests" -Tag $commandName, IntegrationTests {
 	BeforeAll {
-		if ((Test-Path $workFolder) -and $workFolder -like '*.Tests.PowerUp') { Remove-Item $workFolder -Recurse }
+		if ((Test-Path $workFolder) -and $workFolder -like '*.Tests.dbops') { Remove-Item $workFolder -Recurse }
 		$null = New-Item $workFolder -ItemType Directory -Force
 		$null = New-Item $unpackedFolder -ItemType Directory -Force
-		$packageName = New-PowerUpPackage -Path (Join-Path $workFolder 'tmp.zip') -ScriptPath $tranFailScripts -Build 1.0 -Force
+		$packageName = New-DBOPackage -Path (Join-Path $workFolder 'tmp.zip') -ScriptPath $tranFailScripts -Build 1.0 -Force
 		$null = Expand-Archive -Path $packageName -DestinationPath $workFolder -Force
 	}
 	AfterAll {
 		$null = Invoke-SqlCmd2 -ServerInstance $script:instance1 -Database $script:database1 -InputFile $cleanupScript
-		if ((Test-Path $workFolder) -and $workFolder -like '*.Tests.PowerUp') { Remove-Item $workFolder -Recurse }
+		if ((Test-Path $workFolder) -and $workFolder -like '*.Tests.dbops') { Remove-Item $workFolder -Recurse }
 	}
 	Context "testing transactional deployment of extracted package" {
 		BeforeEach {
@@ -51,7 +51,7 @@ Describe "Invoke-PowerUpDeployment integration tests" -Tag $commandName, Integra
 		It "Should throw an error and not create any objects" {
 			#Running package
 			try {
-				$null = Invoke-PowerUpDeployment -PackageFile $packageFileName -SqlInstance $script:instance1 -Database $script:database1 -SchemaVersionTable $logTable -DeploymentMethod SingleTransaction -Silent
+				$null = Invoke-DBODeployment -PackageFile $packageFileName -SqlInstance $script:instance1 -Database $script:database1 -SchemaVersionTable $logTable -DeploymentMethod SingleTransaction -Silent
 			}
 			catch {
 				$results = $_
@@ -73,7 +73,7 @@ Describe "Invoke-PowerUpDeployment integration tests" -Tag $commandName, Integra
 		It "Should throw an error and create one object" {
 			#Running package
 			try {
-				$null = Invoke-PowerUpDeployment -PackageFile $packageFileName -SqlInstance $script:instance1 -Database $script:database1 -SchemaVersionTable $logTable -DeploymentMethod NoTransaction -Silent
+				$null = Invoke-DBODeployment -PackageFile $packageFileName -SqlInstance $script:instance1 -Database $script:database1 -SchemaVersionTable $logTable -DeploymentMethod NoTransaction -Silent
 			}
 			catch {
 				$results = $_
@@ -93,7 +93,7 @@ Describe "Invoke-PowerUpDeployment integration tests" -Tag $commandName, Integra
 			$null = Invoke-SqlCmd2 -ServerInstance $script:instance1 -Database $script:database1 -InputFile $cleanupScript
 		}
 		It "should deploy version 1.0" {
-			$results = Invoke-PowerUpDeployment -ScriptPath $v1scripts -SqlInstance $script:instance1 -Database $script:database1 -SchemaVersionTable $logTable -Silent
+			$results = Invoke-DBODeployment -ScriptPath $v1scripts -SqlInstance $script:instance1 -Database $script:database1 -SchemaVersionTable $logTable -Silent
 			$results.Successful | Should Be $true
 			$results.Scripts.Name | Should Be (Resolve-Path $v1scripts).Path
 			#Verifying objects
@@ -105,7 +105,7 @@ Describe "Invoke-PowerUpDeployment integration tests" -Tag $commandName, Integra
 			'd' | Should Not BeIn $results.name
 		}
 		It "should deploy version 2.0" {
-			$results = Invoke-PowerUpDeployment -ScriptPath $v2scripts -SqlInstance $script:instance1 -Database $script:database1 -SchemaVersionTable $logTable -Silent
+			$results = Invoke-DBODeployment -ScriptPath $v2scripts -SqlInstance $script:instance1 -Database $script:database1 -SchemaVersionTable $logTable -Silent
 			$results.Successful | Should Be $true
 			$results.Scripts.Name | Should Be (Resolve-Path $v2scripts).Path
 			#Verifying objects
@@ -127,7 +127,7 @@ Describe "Invoke-PowerUpDeployment integration tests" -Tag $commandName, Integra
 		}
 		It "should throw timeout error" {
 			try {
-				$null = Invoke-PowerUpDeployment -ScriptPath "$workFolder\delay.sql" -SqlInstance $script:instance1 -Database $script:database1 -SchemaVersionTable $logTable -OutputFile "$workFolder\log.txt" -Silent -ExecutionTimeout 2
+				$null = Invoke-DBODeployment -ScriptPath "$workFolder\delay.sql" -SqlInstance $script:instance1 -Database $script:database1 -SchemaVersionTable $logTable -OutputFile "$workFolder\log.txt" -Silent -ExecutionTimeout 2
 			}
 			catch {
 				$results = $_
@@ -139,7 +139,7 @@ Describe "Invoke-PowerUpDeployment integration tests" -Tag $commandName, Integra
 			$output | Should Not BeLike '*Successful!*'
 		}
 		It "should successfully run within specified timeout" {
-			$results = Invoke-PowerUpDeployment -ScriptPath "$workFolder\delay.sql" -SqlInstance $script:instance1 -Database $script:database1 -SchemaVersionTable $logTable -OutputFile "$workFolder\log.txt" -Silent -ExecutionTimeout 6
+			$results = Invoke-DBODeployment -ScriptPath "$workFolder\delay.sql" -SqlInstance $script:instance1 -Database $script:database1 -SchemaVersionTable $logTable -OutputFile "$workFolder\log.txt" -Silent -ExecutionTimeout 6
 			$results.Successful | Should Be $true
 			$results.Scripts.Name | Should Be "$workFolder\delay.sql"
 			$output = Get-Content "$workFolder\log.txt" -Raw
@@ -147,7 +147,7 @@ Describe "Invoke-PowerUpDeployment integration tests" -Tag $commandName, Integra
 			$output | Should BeLike '*Successful!*'
 		}
 		It "should successfully run with infinite timeout" {
-			$results = Invoke-PowerUpDeployment -ScriptPath "$workFolder\delay.sql" -SqlInstance $script:instance1 -Database $script:database1 -SchemaVersionTable $logTable -OutputFile "$workFolder\log.txt" -Silent -ExecutionTimeout 0
+			$results = Invoke-DBODeployment -ScriptPath "$workFolder\delay.sql" -SqlInstance $script:instance1 -Database $script:database1 -SchemaVersionTable $logTable -OutputFile "$workFolder\log.txt" -Silent -ExecutionTimeout 0
 			$results.Successful | Should Be $true
 			$results.Scripts.Name | Should Be "$workFolder\delay.sql"
 			$output = Get-Content "$workFolder\log.txt" -Raw
@@ -162,7 +162,7 @@ Describe "Invoke-PowerUpDeployment integration tests" -Tag $commandName, Integra
 		AfterAll {
 		}
 		It "should deploy nothing" {
-			$results = Invoke-PowerUpDeployment -ScriptPath $v1scripts -SqlInstance $script:instance1 -Database $script:database1 -SchemaVersionTable $logTable -Silent -WhatIf
+			$results = Invoke-DBODeployment -ScriptPath $v1scripts -SqlInstance $script:instance1 -Database $script:database1 -SchemaVersionTable $logTable -Silent -WhatIf
 			$results | Should BeNullOrEmpty
 			#Verifying objects
 			$results = Invoke-SqlCmd2 -ServerInstance $script:instance1 -Database $script:database1 -InputFile $verificationScript
@@ -183,7 +183,7 @@ Describe "Invoke-PowerUpDeployment integration tests" -Tag $commandName, Integra
 		It "should deploy version 1.0" {
 			$before = Invoke-SqlCmd2 -ServerInstance $script:instance1 -Database $script:database1 -InputFile $verificationScript
 			$rowsBefore = ($before | Measure-Object).Count
-			$results = Invoke-PowerUpDeployment -ScriptPath $v1scripts -SqlInstance $script:instance1 -Database $script:database1 -Silent
+			$results = Invoke-DBODeployment -ScriptPath $v1scripts -SqlInstance $script:instance1 -Database $script:database1 -Silent
 			$results.Successful | Should Be $true
 			$results.Scripts.Name | Should Be (Resolve-Path $v1scripts).Path
 			#Verifying objects
@@ -198,7 +198,7 @@ Describe "Invoke-PowerUpDeployment integration tests" -Tag $commandName, Integra
 		It "should deploy version 2.0" {
 			$before = Invoke-SqlCmd2 -ServerInstance $script:instance1 -Database $script:database1 -InputFile $verificationScript
 			$rowsBefore = ($before | Measure-Object).Count
-			$results = Invoke-PowerUpDeployment -ScriptPath $v2scripts -SqlInstance $script:instance1 -Database $script:database1 -Silent
+			$results = Invoke-DBODeployment -ScriptPath $v2scripts -SqlInstance $script:instance1 -Database $script:database1 -Silent
 			$results.Successful | Should Be $true
 			$results.Scripts.Name | Should Be (Resolve-Path $v2scripts).Path
 			#Verifying objects
@@ -221,7 +221,7 @@ Describe "Invoke-PowerUpDeployment integration tests" -Tag $commandName, Integra
 		It "should deploy version 1.0 without creating SchemaVersions" {
 			$before = Invoke-SqlCmd2 -ServerInstance $script:instance1 -Database $script:database1 -InputFile $verificationScript
 			$rowsBefore = ($before | Measure-Object).Count
-			$results = Invoke-PowerUpDeployment -ScriptPath $v1scripts  -SqlInstance $script:instance1 -Database $script:database1 -Silent -SchemaVersionTable $null
+			$results = Invoke-DBODeployment -ScriptPath $v1scripts  -SqlInstance $script:instance1 -Database $script:database1 -Silent -SchemaVersionTable $null
 			$results.Successful | Should Be $true
 			$results.Scripts.Name | Should Be (Resolve-Path $v1scripts).Path
 			#Verifying objects
@@ -237,12 +237,12 @@ Describe "Invoke-PowerUpDeployment integration tests" -Tag $commandName, Integra
 	Context "deployments with errors should throw terminating errors" {
 		BeforeAll {
 			$null = Invoke-SqlCmd2 -ServerInstance $script:instance1 -Database $script:database1 -InputFile $cleanupScript
-			$null = Invoke-PowerUpDeployment -ScriptPath $v1scripts  -SqlInstance $script:instance1 -Database $script:database1 -Silent -SchemaVersionTable $null
+			$null = Invoke-DBODeployment -ScriptPath $v1scripts  -SqlInstance $script:instance1 -Database $script:database1 -Silent -SchemaVersionTable $null
 		}
 		It "Should return terminating error when object exists" {
 			#Running package
 			try {
-				$results = Invoke-PowerUpDeployment -PackageFile $packageFileName -SqlInstance $script:instance1 -Database $script:database1 -SchemaVersionTable $logTable -DeploymentMethod NoTransaction -Silent
+				$results = Invoke-DBODeployment -PackageFile $packageFileName -SqlInstance $script:instance1 -Database $script:database1 -SchemaVersionTable $logTable -DeploymentMethod NoTransaction -Silent
 			}
 			catch {
 				$errorObject = $_
@@ -254,8 +254,8 @@ Describe "Invoke-PowerUpDeployment integration tests" -Tag $commandName, Integra
 		It "should not deploy anything after throwing an error" {
 			#Running package
 			try {
-				$null = Invoke-PowerUpDeployment -PackageFile $packageFileName -SqlInstance $script:instance1 -Database $script:database1 -SchemaVersionTable $logTable -DeploymentMethod NoTransaction -Silent
-				$results = Invoke-PowerUpDeployment -ScriptPath $v2scripts -SqlInstance $script:instance1 -Database $script:database1 -SchemaVersionTable $logTable -Silent
+				$null = Invoke-DBODeployment -PackageFile $packageFileName -SqlInstance $script:instance1 -Database $script:database1 -SchemaVersionTable $logTable -DeploymentMethod NoTransaction -Silent
+				$results = Invoke-DBODeployment -ScriptPath $v2scripts -SqlInstance $script:instance1 -Database $script:database1 -SchemaVersionTable $logTable -Silent
 			}
 			catch {
 				$errorObject = $_

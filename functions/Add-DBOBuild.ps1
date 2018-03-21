@@ -1,11 +1,11 @@
 ﻿
-function Add-PowerUpBuild {
+function Add-DBOBuild {
 	<#
 	.SYNOPSIS
-		Creates a new build in existing PowerUp package
+		Creates a new build in existing DBOps package
 	
 	.DESCRIPTION
-		Creates a new build in existing PowerUp package from specified set of scripts.
+		Creates a new build in existing DBOps package from specified set of scripts.
 	
 	.PARAMETER ScriptPath
 		A collection of script files to add to the build. Accepts Get-Item/Get-ChildItem objects and wildcards.
@@ -18,7 +18,7 @@ function Add-PowerUpBuild {
 		Aliases: SourcePath
 	
 	.PARAMETER Path
-		Path to the existing PowerUpPackage.
+		Path to the existing DBOpsPackage.
 		Aliases: Name, FileName, Package
 	
 	.PARAMETER Build
@@ -45,18 +45,18 @@ function Add-PowerUpBuild {
 
     .EXAMPLE
 		# Add new build 2.0 to the existing package using files from .\Scripts\2.0
-		Add-PowerUpBuild -Path MyPackage.zip -ScriptPath .\Scripts\2.0 -Build 2.0
+		Add-DBOBuild -Path MyPackage.zip -ScriptPath .\Scripts\2.0 -Build 2.0
 
 	.EXAMPLE
 		# Add new build 2.1 to the existing package using modified files from .\Scripts\2.0
-		Get-ChildItem .\Scripts\2.0 | Add-PowerUpBuild -Path MyPackage.zip -Build 2.1 -UniqueOnly
+		Get-ChildItem .\Scripts\2.0 | Add-DBOBuild -Path MyPackage.zip -Build 2.1 -UniqueOnly
 
 	.EXAMPLE
 		# Add new build 3.0 to the existing package checking if there were any new files in the Scripts folder
-		Add-PowerUpBuild -Path MyPackage.zip -ScriptPath .\Scripts\* -Build 3.0 -NewOnly
+		Add-DBOBuild -Path MyPackage.zip -ScriptPath .\Scripts\* -Build 3.0 -NewOnly
 
 	.NOTES
-		See 'Get-Help New-PowerUpPackage' for additional info about packages.
+		See 'Get-Help New-DBOPackage' for additional info about packages.
 #>
 	[CmdletBinding(SupportsShouldProcess = $true)]
 	param
@@ -89,7 +89,7 @@ function Add-PowerUpBuild {
 	}
 	end {
 		Write-Verbose "Loading package information from $Path"
-		if ($package = Get-PowerUpPackage -Path $Path) {
+		if ($package = Get-DBOPackage -Path $Path) {
 			#Prepare the scripts that's going to be added to the build
 			$scriptsToAdd = @()
 			foreach ($childScript in $scriptCollection) { 

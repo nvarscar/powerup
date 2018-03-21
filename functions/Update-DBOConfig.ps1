@@ -1,13 +1,13 @@
-﻿function Update-PowerUpConfig {
+﻿function Update-DBOConfig {
 	<#
 	.SYNOPSIS
-	Updates configuration file inside the existing PowerUp package
+	Updates configuration file inside the existing DBOps package
 	
 	.DESCRIPTION
-	Overwrites configuration file inside the existing PowerUp package with the new values provided by user
+	Overwrites configuration file inside the existing DBOps package with the new values provided by user
 	
 	.PARAMETER Path
-	Path to the existing PowerUpPackage.
+	Path to the existing DBOpsPackage.
 	Aliases: Name, FileName, Package
 	
 	.PARAMETER ConfigurationFile
@@ -37,19 +37,19 @@
 
     .EXAMPLE
 	# Update a single parameter in the configuration file of the Package.zip package
-	Update-PowerUpConfig Package.zip -ConfigName ApplicationName -Value 'MyApp'
+	Update-DBOConfig Package.zip -ConfigName ApplicationName -Value 'MyApp'
 
 	.EXAMPLE
 	# Update several configuration parameters at once using a hashtable
-	Update-PowerUpConfig Package.zip -Configuration @{'ApplicationName' = 'MyApp'; 'Database' = 'MyDB'}
+	Update-DBOConfig Package.zip -Configuration @{'ApplicationName' = 'MyApp'; 'Database' = 'MyDB'}
 
 	.EXAMPLE
 	# Update parameters based on the contents of the json file myconfig.json
-	Update-PowerUpConfig Package.zip -ConfigurationFile 'myconfig.json'
+	Update-DBOConfig Package.zip -ConfigurationFile 'myconfig.json'
 	
 	.EXAMPLE
 	# Specifically update values of the Variables parameter
-	Update-PowerUpConfig Package.zip -Variables @{ foo = 'bar' }
+	Update-DBOConfig Package.zip -Variables @{ foo = 'bar' }
 	
 	#>
 	[CmdletBinding(DefaultParameterSetName = 'Value',
@@ -94,7 +94,7 @@
 	}
 	process {
 		foreach ($pFile in (Get-Item $Path)) {
-			if ($package = [PowerUpPackage]::new($pFile.FullName)) {
+			if ($package = [DBOpsPackage]::new($pFile.FullName)) {
 				$config = $package.Configuration
 				Write-Verbose "Assigning new values to the config"
 				if ($PSCmdlet.ParameterSetName -eq 'Value') {
@@ -104,7 +104,7 @@
 					$newConfig = $Configuration
 				}
 				elseif ($PSCmdlet.ParameterSetName -eq 'File') {
-					$newConfig = (Get-PowerUpConfig -Path $ConfigurationFile).AsHashtable()
+					$newConfig = (Get-DBOConfig -Path $ConfigurationFile).AsHashtable()
 				}
 				#Overriding Variables
 				if ($Variables) {
@@ -112,7 +112,7 @@
 					$newConfig += @{ Variables = $Variables}
 				}
 
-				Write-Verbose "Saving configuration in the PowerUpPackage object"
+				Write-Verbose "Saving configuration in the DBOpsPackage object"
 				$config.Merge($newConfig)
 
 				if ($pscmdlet.ShouldProcess($package, "Updating the package file")) {

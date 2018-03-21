@@ -35,7 +35,7 @@ param
 )
 
 #Explicitly import the module for testing
-Import-Module "$PSScriptRoot\..\PowerUp.psd1" -Force
+Import-Module "$PSScriptRoot\..\dbops.psd1" -Force
 #Import ZipHelper
 Import-Module "$PSScriptRoot\etc\modules\ZipHelper" -Force
 
@@ -54,7 +54,7 @@ if ($Tag) {
 Invoke-Pester @params
 
 #Sample Pester Test
-#Describe "Test PowerUp" {
+#Describe "Test dbops" {
 #	It "tests Write-HellowWorld" {
 #		Write-HelloWorld | Should BeExactly "Hello World"
 #	}	

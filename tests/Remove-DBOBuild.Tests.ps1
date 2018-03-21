@@ -7,7 +7,7 @@ else { $commandName = "_ManualExecution"; $here = (Get-Item . ).FullName }
 
 if (!$Batch) {
 	# Is not a part of the global batch => import module
-	Import-Module "$here\..\PowerUp.psd1" -Force
+	Import-Module "$here\..\dbops.psd1" -Force
 	Import-Module "$here\etc\modules\ZipHelper" -Force
 }
 else {
@@ -15,7 +15,7 @@ else {
 	Write-Host "Running $commandName tests" -ForegroundColor Cyan
 }
 
-$workFolder = Join-Path "$here\etc" "$commandName.Tests.PowerUp"
+$workFolder = Join-Path "$here\etc" "$commandName.Tests.dbops"
 $unpackedFolder = Join-Path $workFolder 'unpacked'
 
 $scriptFolder = "$here\etc\install-tests\success"
@@ -25,16 +25,16 @@ $packageName = Join-Path $workFolder "TempDeployment.zip"
 $packageNameTest = "$packageName.test.zip"
 $packageNoPkgFile = Join-Path $workFolder "pkg_nopkgfile.zip"
 
-Describe "Remove-PowerUpBuild tests" -Tag $commandName, UnitTests {
+Describe "Remove-DBOBuild tests" -Tag $commandName, UnitTests {
 	BeforeAll {
-		if ((Test-Path $workFolder) -and $workFolder -like '*.Tests.PowerUp') { Remove-Item $workFolder -Recurse }
+		if ((Test-Path $workFolder) -and $workFolder -like '*.Tests.dbops') { Remove-Item $workFolder -Recurse }
 		$null = New-Item $workFolder -ItemType Directory -Force
 		$null = New-Item $unpackedFolder -ItemType Directory -Force
-		$null = New-PowerUpPackage -ScriptPath $v1scripts -Name $packageName -Build 1.0 -Force
-		$null = Add-PowerUpBuild -ScriptPath $v2scripts -Path $packageName -Build 2.0
+		$null = New-DBOPackage -ScriptPath $v1scripts -Name $packageName -Build 1.0 -Force
+		$null = Add-DBOBuild -ScriptPath $v2scripts -Path $packageName -Build 2.0
 	}
 	AfterAll {
-		if ((Test-Path $workFolder) -and $workFolder -like '*.Tests.PowerUp') { Remove-Item $workFolder -Recurse }
+		if ((Test-Path $workFolder) -and $workFolder -like '*.Tests.dbops') { Remove-Item $workFolder -Recurse }
 	}
 	Context "removing version 1.0 from existing package" {
 		BeforeAll {
@@ -44,7 +44,7 @@ Describe "Remove-PowerUpBuild tests" -Tag $commandName, UnitTests {
 			$null = Remove-Item $packageNameTest
 		}
 		It "should remove build from existing package" {
-			{ Remove-PowerUpBuild -Name $packageNameTest -Build 1.0 } | Should Not Throw
+			{ Remove-DBOBuild -Name $packageNameTest -Build 1.0 } | Should Not Throw
 			Test-Path $packageNameTest | Should Be $true
 		}
 		$results = Get-ArchiveItem $packageNameTest
@@ -55,12 +55,12 @@ Describe "Remove-PowerUpBuild tests" -Tag $commandName, UnitTests {
 			'content\2.0\2.sql' | Should BeIn $results.Path
 		}
 		It "should contain module files" {
-			'Modules\PowerUp\PowerUp.psd1' | Should BeIn $results.Path
-			'Modules\PowerUp\bin\DbUp.dll' | Should BeIn $results.Path
+			'Modules\dbops\dbops.psd1' | Should BeIn $results.Path
+			'Modules\dbops\bin\DbUp.dll' | Should BeIn $results.Path
 		}
 		It "should contain config files" {
-			'PowerUp.config.json' | Should BeIn $results.Path
-			'PowerUp.package.json' | Should BeIn $results.Path
+			'dbops.config.json' | Should BeIn $results.Path
+			'dbops.package.json' | Should BeIn $results.Path
 		}
 	}
 	Context "removing version 2.0 from existing package" {
@@ -71,7 +71,7 @@ Describe "Remove-PowerUpBuild tests" -Tag $commandName, UnitTests {
 			$null = Remove-Item $packageNameTest
 		}
 		It "should remove build from existing package" {
-			{ Remove-PowerUpBuild -Name $packageNameTest -Build 2.0 } | Should Not Throw
+			{ Remove-DBOBuild -Name $packageNameTest -Build 2.0 } | Should Not Throw
 			Test-Path $packageNameTest | Should Be $true
 		}
 		$results = Get-ArchiveItem $packageNameTest
@@ -82,12 +82,12 @@ Describe "Remove-PowerUpBuild tests" -Tag $commandName, UnitTests {
 			'content\2.0' | Should Not BeIn $results.Path
 		}
 		It "should contain module files" {
-			'Modules\PowerUp\PowerUp.psd1' | Should BeIn $results.Path
-			'Modules\PowerUp\bin\DbUp.dll' | Should BeIn $results.Path
+			'Modules\dbops\dbops.psd1' | Should BeIn $results.Path
+			'Modules\dbops\bin\DbUp.dll' | Should BeIn $results.Path
 		}
 		It "should contain config files" {
-			'PowerUp.config.json' | Should BeIn $results.Path
-			'PowerUp.package.json' | Should BeIn $results.Path
+			'dbops.config.json' | Should BeIn $results.Path
+			'dbops.package.json' | Should BeIn $results.Path
 		}
 	}
 	Context "removing all versions from existing package" {
@@ -98,7 +98,7 @@ Describe "Remove-PowerUpBuild tests" -Tag $commandName, UnitTests {
 			$null = Remove-Item $packageNameTest
 		}
 		It "should remove build from existing package" {
-			{ Remove-PowerUpBuild -Name $packageNameTest -Build "1.0", "2.0"  } | Should Not Throw
+			{ Remove-DBOBuild -Name $packageNameTest -Build "1.0", "2.0"  } | Should Not Throw
 			Test-Path $packageNameTest | Should Be $true
 		}
 		$results = Get-ArchiveItem $packageNameTest
@@ -109,12 +109,12 @@ Describe "Remove-PowerUpBuild tests" -Tag $commandName, UnitTests {
 			'content\2.0' | Should Not BeIn $results.Path
 		}
 		It "should contain module files" {
-			'Modules\PowerUp\PowerUp.psd1' | Should BeIn $results.Path
-			'Modules\PowerUp\bin\DbUp.dll' | Should BeIn $results.Path
+			'Modules\dbops\dbops.psd1' | Should BeIn $results.Path
+			'Modules\dbops\bin\DbUp.dll' | Should BeIn $results.Path
 		}
 		It "should contain config files" {
-			'PowerUp.config.json' | Should BeIn $results.Path
-			'PowerUp.package.json' | Should BeIn $results.Path
+			'dbops.config.json' | Should BeIn $results.Path
+			'dbops.package.json' | Should BeIn $results.Path
 		}
 	}
 	Context "removing version 2.0 from existing package using pipeline" {
@@ -125,7 +125,7 @@ Describe "Remove-PowerUpBuild tests" -Tag $commandName, UnitTests {
 			$null = Remove-Item $packageNameTest
 		}
 		It "should remove build from existing package" {
-			{ $packageNameTest | Remove-PowerUpBuild -Build '2.0' } | Should Not Throw
+			{ $packageNameTest | Remove-DBOBuild -Build '2.0' } | Should Not Throw
 			Test-Path $packageNameTest | Should Be $true
 		}
 		$results = Get-ArchiveItem $packageNameTest
@@ -136,26 +136,26 @@ Describe "Remove-PowerUpBuild tests" -Tag $commandName, UnitTests {
 			'content\2.0' | Should Not BeIn $results.Path
 		}
 		It "should contain module files" {
-			'Modules\PowerUp\PowerUp.psd1' | Should BeIn $results.Path
-			'Modules\PowerUp\bin\DbUp.dll' | Should BeIn $results.Path
+			'Modules\dbops\dbops.psd1' | Should BeIn $results.Path
+			'Modules\dbops\bin\DbUp.dll' | Should BeIn $results.Path
 		}
 		It "should contain config files" {
-			'PowerUp.config.json' | Should BeIn $results.Path
-			'PowerUp.package.json' | Should BeIn $results.Path
+			'dbops.config.json' | Should BeIn $results.Path
+			'dbops.package.json' | Should BeIn $results.Path
 		}
 	}
 	Context "negative tests" {
 		BeforeAll {
 			$null = Copy-Item $packageName $packageNameTest
-			$null = New-PowerUpPackage -Name $packageNoPkgFile -Build 1.0 -ScriptPath $scriptFolder
-			$null = Remove-ArchiveItem -Path $packageNoPkgFile -Item 'PowerUp.package.json'
+			$null = New-DBOPackage -Name $packageNoPkgFile -Build 1.0 -ScriptPath $scriptFolder
+			$null = Remove-ArchiveItem -Path $packageNoPkgFile -Item 'dbops.package.json'
 		}
 		AfterAll {
 			$null = Remove-Item $packageNameTest
 		}
 		It "should throw error when package data file does not exist" {
 			try {
-				$null = Remove-PowerUpBuild -Name $packageNoPkgFile -Build 2.0
+				$null = Remove-DBOBuild -Name $packageNoPkgFile -Build 2.0
 			}
 			catch {
 				$errorResult = $_
@@ -163,10 +163,10 @@ Describe "Remove-PowerUpBuild tests" -Tag $commandName, UnitTests {
 			$errorResult.Exception.Message -join ';' | Should BeLike '*Incorrect package format*'
 		}
 		It "should throw error when package zip does not exist" {
-			{ Remove-PowerUpBuild -Name ".\nonexistingpackage.zip" -Build 2.0 -ErrorAction Stop } | Should Throw
+			{ Remove-DBOBuild -Name ".\nonexistingpackage.zip" -Build 2.0 -ErrorAction Stop } | Should Throw
 		}
 		It "should output warning when build does not exist" {
-			$null = Remove-PowerUpBuild -Name $packageNameTest -Build 3.0 -WarningVariable errorResult 3>$null
+			$null = Remove-DBOBuild -Name $packageNameTest -Build 3.0 -WarningVariable errorResult 3>$null
 			$errorResult.Message -join ';' | Should BeLike '*not found in the package*'
 		}
 	}
