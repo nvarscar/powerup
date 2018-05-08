@@ -139,7 +139,7 @@ class DBOpsPackageBase : DBOps {
 	}
 	[void] RefreshFileProperties() {
 		if ($this.FileName) {
-			$FileObject = Get-Item $this.FileName -ErrorAction Stop
+			$FileObject = Get-Item -LiteralPath $this.FileName -ErrorAction Stop
 			$this.PSPath = $FileObject.PSPath.ToString()
 			$this.PSParentPath = $FileObject.PSParentPath.ToString()
 			$this.PSChildName = $FileObject.PSChildName.ToString()
@@ -329,7 +329,7 @@ class DBOpsPackageBase : DBOps {
 			$parentFolder = (Get-Location).Path
 		}
 		else {
-			$parentFolder = (Get-Item $parentFolder -ErrorAction Stop).FullName
+			$parentFolder = (Get-Item -LiteralPath $parentFolder -ErrorAction Stop).FullName
 		}
 		$currentFileName = Join-Path $parentFolder (Split-Path $filename -Leaf)
 		#Open new file stream
@@ -530,7 +530,7 @@ class DBOpsPackageFile : DBOpsPackageBase {
 					if (!(Test-Path $filePackagePath)) {
 						$this.ThrowArgumentException($this, "File not found inside the package: $filePackagePath")
 					}
-					$newScript = [DBOpsScriptFile]::new($script, (Get-Item -Path $filePackagePath -ErrorAction Stop))
+					$newScript = [DBOpsScriptFile]::new($script, (Get-Item -LiteralPath $filePackagePath -ErrorAction Stop))
 					$newBuild.AddScript($newScript, $true)
 				}
 			}
@@ -542,7 +542,7 @@ class DBOpsPackageFile : DBOpsPackageBase {
 					if (!(Test-Path $filePackagePath)) {
 						$this.ThrowArgumentException($this, "File not found inside the package: $filePackagePath")
 					}
-					$newFile = [DBOpsRootFile]::new($jsonFileObject, (Get-Item -Path $filePackagePath -ErrorAction Stop))
+					$newFile = [DBOpsRootFile]::new($jsonFileObject, (Get-Item -LiteralPath $filePackagePath -ErrorAction Stop))
 					$this.AddFile($newFile, $fileType)
 				}
 			}
@@ -798,7 +798,7 @@ class DBOpsFile : DBOps {
 		}
 		$this.SourcePath = $SourcePath
 		$this.PackagePath = $PackagePath
-		$file = Get-Item $SourcePath -ErrorAction Stop
+		$file = Get-Item -LiteralPath $SourcePath -ErrorAction Stop
 		$this.Length = $file.Length
 		$this.Name = $file.Name
 		$this.LastWriteTime = $file.LastWriteTime
@@ -946,7 +946,7 @@ class DBOpsScriptFile : DBOpsFile {
 	#Mirroring base constructors adding Hash control pieces
 	DBOpsScriptFile () : base () { }
 	DBOpsScriptFile ([string]$SourcePath, [string]$PackagePath) : base($SourcePath, $PackagePath) {
-		$file = Get-Item $SourcePath -ErrorAction Stop
+		$file = Get-Item -LiteralPath $SourcePath -ErrorAction Stop
 		$this.Hash = [DBOpsHelper]::ToHexString([Security.Cryptography.HashAlgorithm]::Create( "MD5" ).ComputeHash([DBOpsHelper]::GetBinaryFile($file.FullName)))
 	}
 
