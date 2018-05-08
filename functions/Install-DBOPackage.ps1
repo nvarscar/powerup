@@ -40,7 +40,7 @@
 		Script execution timeout. The script will be aborted if the execution takes more than specified number of seconds.
 		If 0, the script is allowed to run until the end of times.
 
-		Default: 180
+		Default: 0
 	
 	.PARAMETER Encrypt
 		Enables connection encryption.

@@ -49,7 +49,7 @@
 		Script execution timeout. The script will be aborted if the execution takes more than specified number of seconds.
 		If 0, the script is allowed to run until the end of times.
 
-		Default: 180
+		Default: 0
 	
 	.PARAMETER Encrypt
 		Enables connection encryption.
@@ -190,7 +190,7 @@
 		if (!$config.ApplicationName) { $config.SetValue('ApplicationName', 'dbops') }
 		if (!$config.SqlInstance) { $config.SetValue('SqlInstance', 'localhost') }
 		if ($config.ConnectionTimeout -eq $null) { $config.SetValue('ConnectionTimeout', 30) }
-		if ($config.ExecutionTimeout -eq $null) { $config.SetValue('ExecutionTimeout', 180) }
+		if ($config.ExecutionTimeout -eq $null) { $config.SetValue('ExecutionTimeout', 0) }
 	
 	
 		#Build connection string
@@ -289,7 +289,7 @@
 		}
 
 
-		#Adding execution timeout - defaults to 180 seconds
+		#Adding execution timeout - defaults to unlimited execution
 		$dbUp = [StandardExtensions]::WithExecutionTimeout($dbUp, [timespan]::FromSeconds($config.ExecutionTimeout))
 
 		#Build and Upgrade
