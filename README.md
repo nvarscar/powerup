@@ -29,9 +29,15 @@ The most notable features of the module:
 * Powershell 5.0 or higher
 
 ## Installation
+### Using git
 ```powershell
 git clone https://github.com/nvarscar/powerup.git dbops
 Import-Module .\dbops
+```
+
+### Using PSGallery (Powershell 5+)
+```powershell
+Install-Module dbops
 ```
 
 ## Usage scenarios
@@ -67,7 +73,7 @@ Install-DBOPackage Deploy.zip
 (Get-DBOConfig -Path '.\dev.json' -Configuration @{ SqlInstance = 'prodInstance' }).SaveToFile('.\prod.json')
 Install-DBOPackage Deploy.zip -ConfigurationFile .\dev.json
 
-# Install package using internal script Deploy.ps1 - useable when module is not installed locally
+# Install package using internal script Deploy.ps1 - to use when module is not installed locally
 Expand-Archive Deploy.zip '.\MyTempFolder'
 .\MyTempFolder\Deploy.ps1 -SqlInstance server1 -Database MyDB
 ```
@@ -82,3 +88,4 @@ Expand-Archive Deploy.zip '.\MyTempFolder'
 * Linux support
 * SQLCMD support
 * Deployments to multiple databases at once
+* Optional rollback scripts

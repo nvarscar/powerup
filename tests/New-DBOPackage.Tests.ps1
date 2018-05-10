@@ -49,7 +49,7 @@ Describe "New-DBOPackage tests" -Tag $commandName, UnitTests {
 		It "should contain module files" {
 			$results = Get-ArchiveItem $packageName
 			'Modules\dbops\dbops.psd1' | Should BeIn $results.Path
-			'Modules\dbops\bin\DbUp.dll' | Should BeIn $results.Path
+			'Modules\dbops\bin\dbup-sqlserver.dll' | Should BeIn $results.Path
 		}
 		It "should contain config files" {
 			$results = Get-ArchiveItem $packageName
