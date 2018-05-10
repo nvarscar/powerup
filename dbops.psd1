@@ -95,7 +95,7 @@
 		PSData = @{
 		
 			# Tags applied to this module. These help with module discovery in online galleries.
-			Tags = @('Sql Server','SQL','Deployment','Deploy','Automation','dbops','DbUp','CI','DevOps')
+			Tags = @('SqlServer','SQL','Deployment','Deploy','Automation','dbops','DbUp','CI','DevOps')
 		
 			# A URL to the license for this module.
 			LicenseUri = 'https://github.com/nvarscar/powerup/blob/master/license.txt'
