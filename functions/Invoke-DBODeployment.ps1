@@ -1,5 +1,5 @@
 ﻿function Invoke-DBODeployment {
-	<#
+    <#
 	.SYNOPSIS
 		Deploys extracted dbops package from the specified location
 	
@@ -81,8 +81,18 @@
 		Will augment and/or overwrite Variables defined inside the package.
 
 	.PARAMETER OutputFile
-		Log output into specified file.
-	
+        Log output into specified file.
+        
+	.PARAMETER ConnectionType
+        Defines the driver to use when connecting to the database server.
+        Available options: SqlServer (default), Oracle
+        
+	.PARAMETER ConnectionString
+		Use a custom connection string to connect to the database server.
+    
+	.PARAMETER Schema
+        Deploy into a specific schema (if supported by RDBMS)
+        
 	.PARAMETER Append
 		Append output to the -OutputFile instead of overwriting it.
 
@@ -109,200 +119,234 @@
 		Invoke-DBODeployment -SqlInstance '#{server}' -Database '#{db}' -Variables @{server = 'myserver\instance1'; db = 'MyDb'}
 #>
 	
-	[CmdletBinding(SupportsShouldProcess = $true, DefaultParameterSetName = 'PackageFile')]
-	Param (
-		[parameter(ParameterSetName = 'PackageFile')]
-		[string]$PackageFile = ".\dbops.package.json",
-		[parameter(ParameterSetName = 'Script')]
-		[Alias('SourcePath')]
-		[string[]]$ScriptPath,
-		[parameter(ParameterSetName = 'DBOpsPackage')]
-		[Alias('Package')]
-		[object]$InputObject,
-		[Alias('Server', 'SqlServer', 'DBServer', 'Instance')]
-		[string]$SqlInstance,
-		[string]$Database,
-		[ValidateSet('SingleTransaction', 'TransactionPerScript', 'NoTransaction')]
-		[string]$DeploymentMethod = 'NoTransaction',
-		[int]$ConnectionTimeout,
-		[int]$ExecutionTimeout,
-		[switch]$Encrypt,
-		[pscredential]$Credential,
-		[string]$UserName,
-		[securestring]$Password,
-		[AllowNull()]
-		[string]$SchemaVersionTable,
-		[switch]$Silent,
-		[string]$OutputFile,
-		[switch]$Append,
-		[hashtable]$Variables
-	)
-	begin {}
-	process {
-		if ($PsCmdlet.ParameterSetName -eq 'PackageFile') {
-			#Get package object from the json file
-			Write-Verbose "Loading package information from $pFile"
-			if ($package = [DBOpsPackageFile]::new((Get-Item $PackageFile))) {
-				$config = $package.Configuration
-			}
-		}	
-		elseif ($PsCmdlet.ParameterSetName -eq 'Script') {
-			$config = Get-DBOConfig
-		}
-		elseif ($PsCmdlet.ParameterSetName -eq 'DBOpsPackage') {
-			if ($InputObject.GetType().Name -eq 'DBOpsPackage') {
-				$package = $InputObject
-				$config = $package.Configuration
-			}
-			else {
-				throw "DBOpsPackage type is expected as an input object"
-			}
-		}
+    [CmdletBinding(SupportsShouldProcess = $true, DefaultParameterSetName = 'PackageFile')]
+    Param (
+        [parameter(ParameterSetName = 'PackageFile')]
+        [string]$PackageFile = ".\dbops.package.json",
+        [parameter(ParameterSetName = 'Script')]
+        [Alias('SourcePath')]
+        [string[]]$ScriptPath,
+        [parameter(ParameterSetName = 'DBOpsPackage')]
+        [Alias('Package')]
+        [object]$InputObject,
+        [Alias('Server', 'SqlServer', 'DBServer', 'Instance')]
+        [string]$SqlInstance,
+        [string]$Database,
+        [ValidateSet('SingleTransaction', 'TransactionPerScript', 'NoTransaction')]
+        [string]$DeploymentMethod = 'NoTransaction',
+        [int]$ConnectionTimeout,
+        [int]$ExecutionTimeout,
+        [switch]$Encrypt,
+        [pscredential]$Credential,
+        [string]$UserName,
+        [securestring]$Password,
+        [AllowNull()]
+        [string]$SchemaVersionTable,
+        [switch]$Silent,
+        [string]$OutputFile,
+        [switch]$Append,
+        [hashtable]$Variables,
+        [ValidateSet('SqlServer', 'Oracle')]
+        [Alias('Type', 'ServerType')]
+        [string]$ConnectionType = 'SqlServer',
+        [string]$ConnectionString,
+        [string]$Schema
+    )
+    begin {}
+    process {
+        if ($PsCmdlet.ParameterSetName -eq 'PackageFile') {
+            #Get package object from the json file
+            Write-Verbose "Loading package information from $pFile"
+            if ($package = [DBOpsPackageFile]::new((Get-Item $PackageFile))) {
+                $config = $package.Configuration
+            }
+        }	
+        elseif ($PsCmdlet.ParameterSetName -eq 'Script') {
+            $config = Get-DBOConfig
+        }
+        elseif ($PsCmdlet.ParameterSetName -eq 'DBOpsPackage') {
+            if ($InputObject.GetType().Name -eq 'DBOpsPackage') {
+                $package = $InputObject
+                $config = $package.Configuration
+            }
+            else {
+                throw "DBOpsPackage type is expected as an input object"
+            }
+        }
 
-		#Join variables from config and parameters
-		$runtimeVariables = @{ }
-		if ($Variables) {
-			$runtimeVariables += $Variables
-		}
-		if ($config.Variables) {
-			foreach ($variable in $config.Variables.psobject.Properties.Name) {
-				if ($variable -notin $runtimeVariables.Keys) {
-					$runtimeVariables += @{
-						$variable = $config.Variables.$variable
-					}
-				}
-			}
-		}
+        #Join variables from config and parameters
+        $runtimeVariables = @{ }
+        if ($Variables) {
+            $runtimeVariables += $Variables
+        }
+        if ($config.Variables) {
+            foreach ($variable in $config.Variables.psobject.Properties.Name) {
+                if ($variable -notin $runtimeVariables.Keys) {
+                    $runtimeVariables += @{
+                        $variable = $config.Variables.$variable
+                    }
+                }
+            }
+        }
 	
-		#Replace tokens if any
-		foreach ($property in $config.psobject.Properties.Name | Where-Object { $_ -ne 'Variables' }) {
-			$config.SetValue($property, (Resolve-VariableToken $config.$property $runtimeVariables))
-		}
+        #Replace tokens if any
+        foreach ($property in $config.psobject.Properties.Name | Where-Object { $_ -ne 'Variables' }) {
+            $config.SetValue($property, (Resolve-VariableToken $config.$property $runtimeVariables))
+        }
 	
-		#Apply overrides if any
-		foreach ($key in ($PSBoundParameters.Keys | Where-Object { $_ -ne 'Variables' })) {
-			if ($key -in $config.psobject.Properties.Name) {
-				$config.SetValue($key, (Resolve-VariableToken $PSBoundParameters[$key] $runtimeVariables))
-			}
-		}
+        #Apply overrides if any
+        foreach ($key in ($PSBoundParameters.Keys | Where-Object { $_ -ne 'Variables' })) {
+            if ($key -in $config.psobject.Properties.Name) {
+                $config.SetValue($key, (Resolve-VariableToken $PSBoundParameters[$key] $runtimeVariables))
+            }
+        }
 	
-		#Apply default values if not set
-		if (!$config.ApplicationName) { $config.SetValue('ApplicationName', 'dbops') }
-		if (!$config.SqlInstance) { $config.SetValue('SqlInstance', 'localhost') }
-		if ($config.ConnectionTimeout -eq $null) { $config.SetValue('ConnectionTimeout', 30) }
-		if ($config.ExecutionTimeout -eq $null) { $config.SetValue('ExecutionTimeout', 0) }
-	
-	
-		#Build connection string
-		$CSBuilder = New-Object -TypeName System.Data.SqlClient.SqlConnectionStringBuilder
-		$CSBuilder["Server"] = $config.SqlInstance
-		if ($config.Database) { $CSBuilder["Database"] = $config.Database }
-		if ($config.Encrypt) { $CSBuilder["Encrypt"] = $true }
-		$CSBuilder["Connection Timeout"] = $config.ConnectionTimeout
-	
-		if ($config.Credential) {
-			$CSBuilder["Trusted_Connection"] = $false
-			$CSBuilder["User ID"] = $config.Credential.UserName
-			$BSTR = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($config.Credential.Password)
-			$CSBuilder["Password"] = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR)
-		}
-		elseif ($config.Username) {
-			$CSBuilder["Trusted_Connection"] = $false
-			$CSBuilder["User ID"] = $config.UserName
-			if ($config.Password.GetType() -eq [securestring]) {
-				$BSTR = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($config.Password)
-				$CSBuilder["Password"] = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR)
-			}
-			else {
-				$CSBuilder["Password"] = $config.Password
-			}
-		}
-		else {
-			$CSBuilder["Integrated Security"] = $true
-		}
-	
-		$CSBuilder["Application Name"] = $config.ApplicationName
+        #Apply default values if not set
+        if (!$config.ApplicationName) { $config.SetValue('ApplicationName', 'dbops') }
+        if (!$config.SqlInstance) { $config.SetValue('SqlInstance', 'localhost') }
+        if ($config.ConnectionTimeout -eq $null) { $config.SetValue('ConnectionTimeout', 30) }
+        if ($config.ExecutionTimeout -eq $null) { $config.SetValue('ExecutionTimeout', 0) }
 	
 	
-		$scriptCollection = @()
-		if ($PsCmdlet.ParameterSetName -in 'PackageFile','DBOpsPackage') {		
-			# Get contents of the script files
-			foreach ($build in $package.builds) {
-				foreach ($script in $build.scripts) {
-					# Replace tokens in the scripts
-					$scriptPackagePath = $script.GetPackagePath().TrimStart($package.GetPackagePath()).TrimStart('\')
-					$scriptContent = Resolve-VariableToken $script.GetContent() $runtimeVariables
-					$scriptCollection += [DbUp.Engine.SqlScript]::new($scriptPackagePath, $scriptContent)
-				}
-			}
-		}
-		elseif ($PsCmdlet.ParameterSetName -eq 'Script') {
-			foreach ($scriptItem in (Get-ChildScriptItem $ScriptPath)) {
-				# Replace tokens in the scripts
-				$scriptContent = Resolve-VariableToken (Get-Content $scriptItem.FullName -Raw) $runtimeVariables
-				$scriptCollection += [DbUp.Engine.SqlScript]::new($scriptItem.SourcePath, $scriptContent)
-			}
-		}
+        #Build connection string
+        if ($ConnectionType -eq 'SqlServer' -and !$ConnectionString) {
+            $CSBuilder = New-Object -TypeName System.Data.SqlClient.SqlConnectionStringBuilder
+            $CSBuilder["Server"] = $config.SqlInstance
+            if ($config.Database) { $CSBuilder["Database"] = $config.Database }
+            if ($config.Encrypt) { $CSBuilder["Encrypt"] = $true }
+            $CSBuilder["Connection Timeout"] = $config.ConnectionTimeout
+		
+            if ($config.Credential) {
+                $CSBuilder["Trusted_Connection"] = $false
+                $CSBuilder["User ID"] = $config.Credential.UserName
+                $BSTR = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($config.Credential.Password)
+                $CSBuilder["Password"] = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR)
+            }
+            elseif ($config.Username) {
+                $CSBuilder["Trusted_Connection"] = $false
+                $CSBuilder["User ID"] = $config.UserName
+                if ($config.Password.GetType() -eq [securestring]) {
+                    $BSTR = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($config.Password)
+                    $CSBuilder["Password"] = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR)
+                }
+                else {
+                    $CSBuilder["Password"] = $config.Password
+                }
+            }
+            else {
+                $CSBuilder["Integrated Security"] = $true
+            }
+		
+            $CSBuilder["Application Name"] = $config.ApplicationName
+            $connString = $CSBuilder.ToString()
+        }
+        else {
+            $connString = $ConnectionString
+        }
+	
+        $scriptCollection = @()
+        if ($PsCmdlet.ParameterSetName -in 'PackageFile', 'DBOpsPackage') {		
+            # Get contents of the script files
+            foreach ($build in $package.builds) {
+                foreach ($script in $build.scripts) {
+                    # Replace tokens in the scripts
+                    $scriptPackagePath = $script.GetPackagePath().TrimStart($package.GetPackagePath()).TrimStart('\')
+                    $scriptContent = Resolve-VariableToken $script.GetContent() $runtimeVariables
+                    $scriptCollection += [DbUp.Engine.SqlScript]::new($scriptPackagePath, $scriptContent)
+                }
+            }
+        }
+        elseif ($PsCmdlet.ParameterSetName -eq 'Script') {
+            foreach ($scriptItem in (Get-ChildScriptItem $ScriptPath)) {
+                # Replace tokens in the scripts
+                $scriptContent = Resolve-VariableToken (Get-Content $scriptItem.FullName -Raw) $runtimeVariables
+                $scriptCollection += [DbUp.Engine.SqlScript]::new($scriptItem.SourcePath, $scriptContent)
+            }
+        }
+
+        #Build dbUp object
+        $dbUp = [DbUp.DeployChanges]::To
+        if ($ConnectionType -eq 'SqlServer') {
+            $dbUpConnection = [DbUp.SqlServer.SqlConnectionManager]::new($connString)
+            if ($Schema) {
+                $dbUp = [SqlServerExtensions]::SqlDatabase($dbUp, $dbUpConnection, $Schema)
+            }
+            else {
+                $dbUp = [SqlServerExtensions]::SqlDatabase($dbUp, $dbUpConnection)
+            }
+        }
+        elseif ($ConnectionType -eq 'Oracle') {
+            $dbUpConnection = [DbUp.Oracle.OracleConnectionManager]::new($connString)
+            if ($Schema) {
+                $dbUp = [DbUp.Oracle.OracleExtensions]::OracleDatabase($dbUp, $dbUpConnection, $Schema)
+            }
+            else {
+                $dbUp = [DbUp.Oracle.OracleExtensions]::OracleDatabase($dbUp, $dbUpConnection)
+            }
+        }
+        #Add deployment scripts to the object
+        $dbUp = [StandardExtensions]::WithScripts($dbUp, $scriptCollection)
 
 
-		#Build dbUp object
-		$dbUp = [DbUp.DeployChanges]::To
-		$dbUp = [SqlServerExtensions]::SqlDatabase($dbUp, $CSBuilder.ToString())
+        if ($config.DeploymentMethod -eq 'SingleTransaction') {
+            $dbUp = [StandardExtensions]::WithTransaction($dbUp)
+        }
+        elseif ($config.DeploymentMethod -eq 'TransactionPerScript') {
+            $dbUp = [StandardExtensions]::WithTransactionPerScript($dbUp)
+        }
 
-		#Add deployment scripts to the object
-		$dbUp = [StandardExtensions]::WithScripts($dbUp, $scriptCollection)
+        # Enable logging using dbopsConsoleLog class implementing a logging Interface
+        $dbUpLog = [DBOpsLog]::new($config.Silent, $OutputFile, $Append)
+        $dbUp = [StandardExtensions]::LogTo($dbUp, $dbUpLog)
+        $dbUp = [StandardExtensions]::LogScriptOutput($dbUp)
 
+        # Configure schema versioning
+        if (!$config.SchemaVersionTable) {
+            $dbUpTableJournal = [DbUp.Helpers.NullJournal]::new()
+        }
+        elseif ($config.SchemaVersionTable) {
+            $table = $config.SchemaVersionTable.Split('.')
+            if (($table | Measure-Object).Count -gt 2) {
+                throw 'Incorrect table name - use the following syntax: schema.table'
+            }
+            elseif (($table | Measure-Object).Count -eq 2) {
+                $tableName = $table[1]
+                $schemaName = $table[0]
+            }
+            elseif (($table | Measure-Object).Count -eq 1) {
+                $tableName = $table[0]
+                $schemaName = $Schema
+            }
+            else {
+                throw 'No table name specified'
+            }
+            # Set default schema for known DB Types
+            if (!$schemaName) {
+                if ($ConnectionType -eq 'SqlServer') { $schemaName = 'dbo' }
+            }
+            if ($ConnectionType -eq 'SqlServer') { $dbUpJournalType = [DbUp.SqlServer.SqlTableJournal] }
+            elseif ($ConnectionType -eq 'Oracle') { $dbUpJournalType = [DbUp.Oracle.OracleTableJournal] }
+			
+            $dbUpTableJournal = $dbUpJournalType::new( { $dbUpConnection }, { $dbUpLog }, $schemaName, $tableName)
+            
+            #$dbUp = [SqlServerExtensions]::JournalToSqlTable($dbUp, $schemaName, $tableName)
+        }
+        $dbUp = [StandardExtensions]::JournalTo($dbUp, $dbUpTableJournal)
 
-		if ($config.DeploymentMethod -eq 'SingleTransaction') {
-			$dbUp = [StandardExtensions]::WithTransaction($dbUp)
-		}
-		elseif ($config.DeploymentMethod -eq 'TransactionPerScript') {
-			$dbUp = [StandardExtensions]::WithTransactionPerScript($dbUp)
-		}
+        #Adding execution timeout - defaults to unlimited execution
+        $dbUp = [StandardExtensions]::WithExecutionTimeout($dbUp, [timespan]::FromSeconds($config.ExecutionTimeout))
 
-		# Enable logging using dbopsConsoleLog class implementing a logging Interface
-		$dbUp = [StandardExtensions]::LogTo($dbUp, [DBOpsLog]::new($config.Silent, $OutputFile, $Append))
-		$dbUp = [StandardExtensions]::LogScriptOutput($dbUp)
+        #Build and Upgrade
+        if ($PSCmdlet.ShouldProcess($package, "Deploying the package")) {
+            $build = $dbUp.Build()
+            $upgradeResult = $build.PerformUpgrade() 
+            $upgradeResult
+            if (!$upgradeResult.Successful) {
+                #Throw output error if unsuccessful
+                throw $upgradeResult.Error
+            }
+        }
 
-		# Configure schema versioning
-		if (!$config.SchemaVersionTable) {
-			$dbUp = [StandardExtensions]::JournalTo($dbUp, ([DbUp.Helpers.NullJournal]::new()))
-		}
-		elseif ($config.SchemaVersionTable) {
-			$table = $config.SchemaVersionTable.Split('.')
-			if (($table | Measure-Object).Count -gt 2) {
-				throw 'Incorrect table name - use the following syntax: schema.table'
-			}
-			elseif (($table | Measure-Object).Count -eq 2) {
-				$tableName = $table[1]
-				$schemaName = $table[0]
-			}
-			elseif (($table | Measure-Object).Count -eq 1) {
-				$tableName = $table[0]
-				$schemaName = 'dbo'
-			}
-			else {
-				throw 'No table name specified'
-			}
-
-			$dbUp = [SqlServerExtensions]::JournalToSqlTable($dbUp, $schemaName, $tableName)
-		}
-
-
-		#Adding execution timeout - defaults to unlimited execution
-		$dbUp = [StandardExtensions]::WithExecutionTimeout($dbUp, [timespan]::FromSeconds($config.ExecutionTimeout))
-
-		#Build and Upgrade
-		if ($PSCmdlet.ShouldProcess($package, "Deploying the package")) {
-			$build = $dbUp.Build()
-			$upgradeResult = $build.PerformUpgrade() 
-			$upgradeResult
-			if (!$upgradeResult.Successful) {
-				#Throw output error if unsuccessful
-				throw $upgradeResult.Error
-			}
-		}
-
-	}
-	end {}
+    }
+    end {}
 }

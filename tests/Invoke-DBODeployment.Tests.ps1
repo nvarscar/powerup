@@ -254,13 +254,14 @@ Describe "Invoke-DBODeployment integration tests" -Tag $commandName, Integration
 		}
 		It "should not deploy anything after throwing an error" {
 			#Running package
-			try {
-				$null = Invoke-DBODeployment -PackageFile $packageFileName -SqlInstance $script:instance1 -Database $script:database1 -SchemaVersionTable $logTable -DeploymentMethod NoTransaction -Silent
-				$results = Invoke-DBODeployment -ScriptPath $v2scripts -SqlInstance $script:instance1 -Database $script:database1 -SchemaVersionTable $logTable -Silent
-			}
-			catch {
-				$errorObject = $_
-			}
+            try {
+                $results = $null
+                $null = Invoke-DBODeployment -PackageFile $packageFileName -SqlInstance $script:instance1 -Database $script:database1 -SchemaVersionTable $logTable -DeploymentMethod NoTransaction -Silent
+                $results = Invoke-DBODeployment -ScriptPath $v2scripts -SqlInstance $script:instance1 -Database $script:database1 -SchemaVersionTable $logTable -Silent
+            }
+            catch {
+                $errorObject = $_
+            }
 			$results | Should Be $null
 			$errorObject | Should Not BeNullOrEmpty
 			$errorObject.Exception.Message | Should Be "There is already an object named 'a' in the database."
