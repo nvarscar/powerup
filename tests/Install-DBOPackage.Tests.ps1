@@ -98,7 +98,10 @@ Describe "Install-DBOPackage integration tests" -Tag $commandName, IntegrationTe
 	Context "testing regular deployment" {
 		BeforeAll {
 			$p1 = New-DBOPackage -ScriptPath $v1scripts -Name "$workFolder\pv1" -Build 1.0 -Force
-			$p2 = New-DBOPackage -ScriptPath $v2scripts -Name "$workFolder\pv2" -Build 2.0 -Force
+            $p2 = New-DBOPackage -ScriptPath $v2scripts -Name "$workFolder\pv2" -Build 2.0 -Force
+			#versions should not be sorted by default - creating a package where 1.0 is the second build
+            $p3 = New-DBOPackage -ScriptPath $v1scripts -Name "$workFolder\pv3" -Build 2.0 -Force
+            $null = Add-DBOBuild -ScriptPath $v2scripts -Name $p3 -Build 1.0
 			$outputFile = "$workFolder\log.txt"
 			$null = Invoke-SqlCmd2 -ServerInstance $script:instance1 -Database $script:database1 -InputFile $cleanupScript
 		}
@@ -116,20 +119,32 @@ Describe "Install-DBOPackage integration tests" -Tag $commandName, IntegrationTe
 			'c' | Should Not BeIn $results.name
 			'd' | Should Not BeIn $results.name
 		}
-		It "should deploy version 2.0" {
-			$results = Install-DBOPackage "$workFolder\pv2.zip" -SqlInstance $script:instance1 -Database $script:database1 -SchemaVersionTable $logTable -OutputFile "$workFolder\log.txt" -Silent
-			$results.Successful | Should Be $true
-			$results.Scripts.Name | Should Be ((Get-Item $v2scripts).Name | ForEach-Object { '2.0\' + $_ })
-			$output = Get-Content "$workFolder\log.txt" | Select-Object -Skip 1
-			$output | Should Be (Get-Content "$here\etc\log2.txt")
-			#Verifying objects
-			$results = Invoke-SqlCmd2 -ServerInstance $script:instance1 -Database $script:database1 -InputFile $verificationScript
-			$logTable | Should BeIn $results.name
-			'a' | Should BeIn $results.name
-			'b' | Should BeIn $results.name
-			'c' | Should BeIn $results.name
-			'd' | Should BeIn $results.name
-		}
+        It "should deploy version 2.0" {
+            $results = Install-DBOPackage "$workFolder\pv2.zip" -SqlInstance $script:instance1 -Database $script:database1 -SchemaVersionTable $logTable -OutputFile "$workFolder\log.txt" -Silent
+            $results.Successful | Should Be $true
+            $results.Scripts.Name | Should Be ((Get-Item $v2scripts).Name | ForEach-Object { '2.0\' + $_ })
+            $output = Get-Content "$workFolder\log.txt" | Select-Object -Skip 1
+            $output | Should Be (Get-Content "$here\etc\log2.txt")
+            #Verifying objects
+            $results = Invoke-SqlCmd2 -ServerInstance $script:instance1 -Database $script:database1 -InputFile $verificationScript
+            $logTable | Should BeIn $results.name
+            'a' | Should BeIn $results.name
+            'b' | Should BeIn $results.name
+            'c' | Should BeIn $results.name
+            'd' | Should BeIn $results.name
+        }
+        It "should deploy in a reversed order if 2.0 before 1.0 if 1.0 was added later" {
+            $null = Invoke-SqlCmd2 -ServerInstance $script:instance1 -Database $script:database1 -InputFile $cleanupScript
+            $results = Install-DBOPackage "$workFolder\pv3.zip" -SqlInstance $script:instance1 -Database $script:database1 -SchemaVersionTable $logTable -OutputFile "$workFolder\log.txt" -Silent
+            $results.Successful | Should Be $true
+            $results.Scripts.Name | Should Be (@((Get-Item $v1scripts).Name | ForEach-Object { '2.0\' + $_ }),((Get-Item $v2scripts).Name | ForEach-Object { '1.0\' + $_ }))
+            $results = Invoke-SqlCmd2 -ServerInstance $script:instance1 -Database $script:database1 -InputFile $verificationScript
+            $logTable | Should BeIn $results.name
+            'a' | Should BeIn $results.name
+            'b' | Should BeIn $results.name
+            'c' | Should BeIn $results.name
+            'd' | Should BeIn $results.name
+        }
 	}
 	Context "testing timeouts" {
 		BeforeAll {
