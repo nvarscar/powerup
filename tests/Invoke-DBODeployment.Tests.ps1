@@ -88,35 +88,55 @@ Describe "Invoke-DBODeployment integration tests" -Tag $commandName, Integration
 			'd' | Should Not BeIn $results.name
 		}
 	}
-	Context "testing script deployment" {
-		BeforeAll {
-			$null = Invoke-SqlCmd2 -ServerInstance $script:instance1 -Database $script:database1 -InputFile $cleanupScript
-		}
-		It "should deploy version 1.0" {
-			$results = Invoke-DBODeployment -ScriptPath $v1scripts -SqlInstance $script:instance1 -Database $script:database1 -SchemaVersionTable $logTable -Silent
-			$results.Successful | Should Be $true
-			$results.Scripts.Name | Should Be (Resolve-Path $v1scripts).Path
-			#Verifying objects
-			$results = Invoke-SqlCmd2 -ServerInstance $script:instance1 -Database $script:database1 -InputFile $verificationScript
-			$logTable | Should BeIn $results.name
-			'a' | Should BeIn $results.name
-			'b' | Should BeIn $results.name
-			'c' | Should Not BeIn $results.name
-			'd' | Should Not BeIn $results.name
-		}
-		It "should deploy version 2.0" {
-			$results = Invoke-DBODeployment -ScriptPath $v2scripts -SqlInstance $script:instance1 -Database $script:database1 -SchemaVersionTable $logTable -Silent
-			$results.Successful | Should Be $true
-			$results.Scripts.Name | Should Be (Resolve-Path $v2scripts).Path
-			#Verifying objects
-			$results = Invoke-SqlCmd2 -ServerInstance $script:instance1 -Database $script:database1 -InputFile $verificationScript
-			$logTable | Should BeIn $results.name
-			'a' | Should BeIn $results.name
-			'b' | Should BeIn $results.name
-			'c' | Should BeIn $results.name
-			'd' | Should BeIn $results.name
-		}
-	}
+    Context "testing script deployment" {
+        BeforeAll {
+            $null = Invoke-SqlCmd2 -ServerInstance $script:instance1 -Database $script:database1 -InputFile $cleanupScript
+        }
+        It "should deploy version 1.0" {
+            $results = Invoke-DBODeployment -ScriptPath $v1scripts -SqlInstance $script:instance1 -Database $script:database1 -SchemaVersionTable $logTable -Silent
+            $results.Successful | Should Be $true
+            $results.Scripts.Name | Should Be (Resolve-Path $v1scripts).Path
+            #Verifying objects
+            $results = Invoke-SqlCmd2 -ServerInstance $script:instance1 -Database $script:database1 -InputFile $verificationScript
+            $logTable | Should BeIn $results.name
+            'a' | Should BeIn $results.name
+            'b' | Should BeIn $results.name
+            'c' | Should Not BeIn $results.name
+            'd' | Should Not BeIn $results.name
+        }
+        It "should deploy version 2.0" {
+            $results = Invoke-DBODeployment -ScriptPath $v2scripts -SqlInstance $script:instance1 -Database $script:database1 -SchemaVersionTable $logTable -Silent
+            $results.Successful | Should Be $true
+            $results.Scripts.Name | Should Be (Resolve-Path $v2scripts).Path
+            #Verifying objects
+            $results = Invoke-SqlCmd2 -ServerInstance $script:instance1 -Database $script:database1 -InputFile $verificationScript
+            $logTable | Should BeIn $results.name
+            'a' | Should BeIn $results.name
+            'b' | Should BeIn $results.name
+            'c' | Should BeIn $results.name
+            'd' | Should BeIn $results.name
+        }
+    }
+    Context "testing deployment order" {
+        BeforeAll {
+            $null = Invoke-SqlCmd2 -ServerInstance $script:instance1 -Database $script:database1 -InputFile $cleanupScript
+        }
+        It "should deploy 2.sql before 1.sql" {
+            $results = Invoke-DBODeployment -ScriptPath $v2scripts, $v1scripts -SqlInstance $script:instance1 -Database $script:database1 -SchemaVersionTable $logTable -Silent
+            $results.Successful | Should Be $true
+            $results.Scripts.Name | Should Be (Resolve-Path $v2scripts, $v1scripts).Path
+            #Verifying objects
+            $results = Invoke-SqlCmd2 -ServerInstance $script:instance1 -Database $script:database1 -InputFile $verificationScript
+            $logTable | Should BeIn $results.name
+            'a' | Should BeIn $results.name
+            'b' | Should BeIn $results.name
+            'c' | Should BeIn $results.name
+            'd' | Should BeIn $results.name
+            #Verifying order
+            $r1 = Invoke-SqlCmd2 -ServerInstance $script:instance1 -Database $script:database1 -Query "SELECT ScriptName FROM $logtable ORDER BY Id"
+            $r1.ScriptName | Should Be (Get-Item $v2scripts, $v1scripts).FullName
+        }
+    }
 	Context "testing timeouts" {
 		BeforeAll {
 			$file = "$workFolder\delay.sql"
@@ -255,6 +275,7 @@ Describe "Invoke-DBODeployment integration tests" -Tag $commandName, Integration
 		It "should not deploy anything after throwing an error" {
 			#Running package
 			try {
+				$results = $null
 				$null = Invoke-DBODeployment -PackageFile $packageFileName -SqlInstance $script:instance1 -Database $script:database1 -SchemaVersionTable $logTable -DeploymentMethod NoTransaction -Silent
 				$results = Invoke-DBODeployment -ScriptPath $v2scripts -SqlInstance $script:instance1 -Database $script:database1 -SchemaVersionTable $logTable -Silent
 			}
