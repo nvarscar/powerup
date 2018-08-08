@@ -146,9 +146,9 @@
         [string]$OutputFile,
         [switch]$Append,
         [hashtable]$Variables,
-        [ValidateSet('SqlServer', 'Oracle')]
+        [ValidateSet('SQLServer', 'Oracle')]
         [Alias('Type', 'ServerType')]
-        [string]$ConnectionType = 'SqlServer',
+        [string]$ConnectionType = 'SQLServer',
         [string]$ConnectionString,
         [string]$Schema
     )
@@ -174,7 +174,7 @@
             foreach ($dPackage in $dependencies) {
                 $localPackage = Get-Package -Name $dPackage.Name -MinimumVersion $dPackage.Version -ErrorAction Stop
                 foreach ($dPath in $dPackage.Path) {
-                    Add-Type -Path (Join-Path (Split-Path $localPackage -Parent) $dPath)
+                    Add-Type -Path (Join-Path (Split-Path $localPackage.Source -Parent) $dPath)
                 }
             }
         }
@@ -203,7 +203,7 @@
         }
 	
         #Apply overrides if any
-        foreach ($key in ($PSBoundParameters.Keys | Where-Object { $_ -ne 'Variables' })) {
+        foreach ($key in ($PSBoundParameters.Keys | Where-Object { $_ -notin 'Variables', 'Password' })) {
             if ($key -in $config.psobject.Properties.Name) {
                 $config.SetValue($key, (Resolve-VariableToken $PSBoundParameters[$key] $runtimeVariables))
             }
@@ -216,7 +216,7 @@
         if ($config.ExecutionTimeout -eq $null) { $config.SetValue('ExecutionTimeout', 0) }
 	
         #Build connection string
-        if ($ConnectionType -eq 'SqlServer' -and !$ConnectionString) {
+        if (!$ConnectionString) {
             $CSBuilder = New-Object -TypeName System.Data.SqlClient.SqlConnectionStringBuilder
             $CSBuilder["Server"] = $config.SqlInstance
             if ($config.Database) { $CSBuilder["Database"] = $config.Database }
@@ -224,27 +224,26 @@
             $CSBuilder["Connection Timeout"] = $config.ConnectionTimeout
 		
             if ($config.Credential) {
-                $CSBuilder["Trusted_Connection"] = $false
                 $CSBuilder["User ID"] = $config.Credential.UserName
                 $BSTR = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($config.Credential.Password)
                 $CSBuilder["Password"] = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR)
             }
             elseif ($config.Username) {
-                $CSBuilder["Trusted_Connection"] = $false
                 $CSBuilder["User ID"] = $config.UserName
-                if ($config.Password.GetType() -eq [securestring]) {
-                    $BSTR = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($config.Password)
+                if ($Password) {
+                    $BSTR = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($Password)
                     $CSBuilder["Password"] = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR)
                 }
-                else {
+                elseif ($config.Password) {
                     $CSBuilder["Password"] = $config.Password
                 }
             }
             else {
                 $CSBuilder["Integrated Security"] = $true
             }
-		
-            $CSBuilder["Application Name"] = $config.ApplicationName
+            if ($ConnectionType -eq 'SQLServer') {
+                $CSBuilder["Application Name"] = $config.ApplicationName
+            }
             $connString = $CSBuilder.ToString()
         }
         else {
