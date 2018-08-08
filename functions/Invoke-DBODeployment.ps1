@@ -126,7 +126,7 @@
         [parameter(ParameterSetName = 'Script')]
         [Alias('SourcePath')]
         [string[]]$ScriptPath,
-        [parameter(ParameterSetName = 'DBOpsPackage')]
+        [parameter(ParameterSetName = 'Pipeline')]
         [Alias('Package')]
         [object]$InputObject,
         [Alias('Server', 'SqlServer', 'DBServer', 'Instance')]
@@ -156,22 +156,15 @@
     process {
         if ($PsCmdlet.ParameterSetName -eq 'PackageFile') {
             #Get package object from the json file
-            Write-Verbose "Loading package information from $pFile"
-            if ($package = [DBOpsPackageFile]::new((Get-Item $PackageFile))) {
-                $config = $package.Configuration
-            }
+            $package = Get-DBOPackage $PackageFile -Unpacked
+            $config = $package.Configuration
         }	
         elseif ($PsCmdlet.ParameterSetName -eq 'Script') {
             $config = Get-DBOConfig
         }
-        elseif ($PsCmdlet.ParameterSetName -eq 'DBOpsPackage') {
-            if ($InputObject.GetType().Name -eq 'DBOpsPackage') {
-                $package = $InputObject
-                $config = $package.Configuration
-            }
-            else {
-                throw "DBOpsPackage type is expected as an input object"
-            }
+        elseif ($PsCmdlet.ParameterSetName -eq 'Pipeline') {
+            $package = Get-DBOPackage -InputObject $InputObject
+            $config = $package.Configuration
         }
 
         #Join variables from config and parameters
@@ -206,7 +199,6 @@
         if (!$config.SqlInstance) { $config.SetValue('SqlInstance', 'localhost') }
         if ($config.ConnectionTimeout -eq $null) { $config.SetValue('ConnectionTimeout', 30) }
         if ($config.ExecutionTimeout -eq $null) { $config.SetValue('ExecutionTimeout', 0) }
-	
 	
         #Build connection string
         if ($ConnectionType -eq 'SqlServer' -and !$ConnectionString) {
@@ -245,7 +237,7 @@
         }
 	
         $scriptCollection = @()
-        if ($PsCmdlet.ParameterSetName -in 'PackageFile', 'DBOpsPackage') {		
+        if ($PsCmdlet.ParameterSetName -ne 'Script') {		
             # Get contents of the script files
             foreach ($build in $package.builds) {
                 foreach ($script in $build.scripts) {
@@ -256,7 +248,7 @@
                 }
             }
         }
-        elseif ($PsCmdlet.ParameterSetName -eq 'Script') {
+        else {
             foreach ($scriptItem in (Get-ChildScriptItem $ScriptPath)) {
                 # Replace tokens in the scripts
                 $scriptContent = Resolve-VariableToken (Get-Content $scriptItem.FullName -Raw) $runtimeVariables
@@ -287,6 +279,9 @@
         #Add deployment scripts to the object
         $dbUp = [StandardExtensions]::WithScripts($dbUp, $scriptCollection)
 
+        #Disable automatic sorting by using a custom comparer
+        $comparer = [DBOpsScriptComparer]::new($scriptCollection.Name) 
+        $dbUp = [StandardExtensions]::WithScriptNameComparer($dbUp, $comparer)
 
         if ($config.DeploymentMethod -eq 'SingleTransaction') {
             $dbUp = [StandardExtensions]::WithTransaction($dbUp)
