@@ -155,29 +155,33 @@
 	begin {
 	}
 	process {
-		if ($package = Get-DBOPackage -Path $Path) {
+        if ($PsCmdlet.ParameterSetName -eq 'Default') {
+            $package = Get-DBOPackage -Path $Path
+        }
+        elseif ($PsCmdlet.ParameterSetName -eq 'Pipeline') {
+            $package = Get-DBOPackage -InputObject $InputObject
+        }
 
-			#Overwrite config file if specified
-			if ($ConfigurationFile) {
-				$config = Get-DBOConfig -Path $ConfigurationFile -Configuration $Configuration
-				$package.Configuration.Merge($config)
+		#Overwrite config file if specified
+		if ($ConfigurationFile) {
+			$config = Get-DBOConfig -Path $ConfigurationFile -Configuration $Configuration
+			$package.Configuration.Merge($config)
+		}
+		if ($Configuration) {
+			$package.Configuration.Merge($Configuration)
+		}
+		
+		#Start deployment
+		$params = @{ InputObject = $package }
+		foreach ($key in ($PSBoundParameters.Keys)) {
+			#If any custom properties were specified
+			if ($key -in @('OutputFile','Append') -or $key -in [DBOpsConfig]::EnumProperties()) {
+				$params += @{ $key = $PSBoundParameters[$key] }
 			}
-			if ($Configuration) {
-				$package.Configuration.Merge($Configuration)
-			}
-			
-			#Start deployment
-			$params = @{ InputObject = $package }
-			foreach ($key in ($PSBoundParameters.Keys)) {
-				#If any custom properties were specified
-				if ($key -in @('OutputFile','Append') -or $key -in [DBOpsConfig]::EnumProperties()) {
-					$params += @{ $key = $PSBoundParameters[$key] }
-				}
-			}
-			Write-Verbose "Preparing to start the deployment with custom parameters: $($params.Keys -join ', ')"
-			if ($PSCmdlet.ShouldProcess($params.PackageFile, "Initiating the deployment of the package")) {
-				Invoke-DBODeployment @params
-			}
+		}
+		Write-Verbose "Preparing to start the deployment with custom parameters: $($params.Keys -join ', ')"
+		if ($PSCmdlet.ShouldProcess($params.PackageFile, "Initiating the deployment of the package")) {
+			Invoke-DBODeployment @params
 		}
 	}
 	end {
