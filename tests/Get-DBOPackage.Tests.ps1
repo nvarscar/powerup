@@ -39,9 +39,18 @@ Describe "Get-DBOPackage tests" -Tag $commandName, UnitTests {
 		if ((Test-Path $workFolder) -and $workFolder -like '*.Tests.dbops') { Remove-Item $workFolder -Recurse }
 	}
 	Context "Negative tests" {
-		It "returns error when path does not exist" {
-			{ Get-DBOPackage -Path 'asduwheiruwnfelwefo\sdfpoijfdsf.zip' -ErrorAction Stop} | Should Throw
+        It "returns error when path does not exist" {
+            { Get-DBOPackage -Path 'asduwheiruwnfelwefo\sdfpoijfdsf.zip' -ErrorAction Stop} | Should Throw
+        }
+        It "returns error when path is an empty string" {
+            { Get-DBOPackage -Path '' -ErrorAction Stop} | Should Throw
 		}
+        It "returns error when null is pipelined" {
+            { $null | Get-DBOPackage -ErrorAction Stop } | Should Throw
+        }
+        It "returns error when unsupported object is pipelined" {
+            { @{a=1} | Get-DBOPackage -ErrorAction Stop } | Should Throw
+        }
 	}
 	Context "Returns package properties" {
 		It "returns existing builds" {
@@ -80,22 +89,46 @@ Describe "Get-DBOPackage tests" -Tag $commandName, UnitTests {
 			$result.Attributes | Should Be $FileObject.Attributes
 
 		}
-		It "should return package config" {
-			$result = Get-DBOPackage -Path $packageName
-			$result.Configuration | Should Not Be $null
-			$result.Configuration.ApplicationName | Should Be "MyTestApp"
-			$result.Configuration.SqlInstance | Should Be "TestServer"
-			$result.Configuration.Database | Should Be "MyTestDB"
-			$result.Configuration.DeploymentMethod | Should Be "SingleTransaction"
-			$result.Configuration.ConnectionTimeout | Should Be 40
-			$result.Configuration.Encrypt | Should Be $null
-			$result.Configuration.Credential | Should Be $null
-			$result.Configuration.Username | Should Be "TestUser"
-			$result.Configuration.Password | Should Be "TestPassword"
-			$result.Configuration.SchemaVersionTable | Should Be "test.Table"
-			$result.Configuration.Silent | Should Be $true
-			$result.Configuration.Variables | Should Be $null
-		}
+        It "should return package config" {
+            $result = Get-DBOPackage -Path $packageName
+            $result.Configuration | Should Not Be $null
+            $result.Configuration.ApplicationName | Should Be "MyTestApp"
+            $result.Configuration.SqlInstance | Should Be "TestServer"
+            $result.Configuration.Database | Should Be "MyTestDB"
+            $result.Configuration.DeploymentMethod | Should Be "SingleTransaction"
+            $result.Configuration.ConnectionTimeout | Should Be 40
+            $result.Configuration.Encrypt | Should Be $null
+            $result.Configuration.Credential | Should Be $null
+            $result.Configuration.Username | Should Be "TestUser"
+            $result.Configuration.Password | Should Be "TestPassword"
+            $result.Configuration.SchemaVersionTable | Should Be "test.Table"
+            $result.Configuration.Silent | Should Be $true
+            $result.Configuration.Variables | Should Be $null
+        }
+        It "properly returns pipelined package object" {
+            $result = Get-DBOPackage -Path $packageName | Get-DBOPackage 
+            $result.Builds.Build | Should Be @('1.0', '2.0', '3.0')
+            $result.Builds.Scripts.Name | Should Be @('1.sql', '2.sql', '3.sql')
+            $result.Builds.Scripts.SourcePath | Should Be @((Get-Item $v1scripts).FullName, (Get-Item $v2scripts).FullName, (Get-Item $v3scripts).FullName)
+        }
+        It "properly returns pipelined filesystem object" {
+            $result = Get-Item $packageName | Get-DBOPackage 
+            $result.Builds.Build | Should Be @('1.0', '2.0', '3.0')
+            $result.Builds.Scripts.Name | Should Be @('1.sql', '2.sql', '3.sql')
+            $result.Builds.Scripts.SourcePath | Should Be @((Get-Item $v1scripts).FullName, (Get-Item $v2scripts).FullName, (Get-Item $v3scripts).FullName)
+        }
+        It "properly returns pipelined filesystem child object" {
+            $result = Get-ChildItem $packageName | Get-DBOPackage 
+            $result.Builds.Build | Should Be @('1.0', '2.0', '3.0')
+            $result.Builds.Scripts.Name | Should Be @('1.sql', '2.sql', '3.sql')
+            $result.Builds.Scripts.SourcePath | Should Be @((Get-Item $v1scripts).FullName, (Get-Item $v2scripts).FullName, (Get-Item $v3scripts).FullName)
+        }
+        It "properly returns pipelined string" {
+            $result = $packageName | Get-DBOPackage 
+            $result.Builds.Build | Should Be @('1.0', '2.0', '3.0')
+            $result.Builds.Scripts.Name | Should Be @('1.sql', '2.sql', '3.sql')
+            $result.Builds.Scripts.SourcePath | Should Be @((Get-Item $v1scripts).FullName, (Get-Item $v2scripts).FullName, (Get-Item $v3scripts).FullName)
+        }
 	}
 	Context "Returns unpacked package properties" {
 		BeforeAll {

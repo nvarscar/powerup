@@ -105,22 +105,35 @@ Describe "Install-DBOPackage integration tests" -Tag $commandName, IntegrationTe
 			$outputFile = "$workFolder\log.txt"
 			$null = Invoke-SqlCmd2 -ServerInstance $script:instance1 -Database $script:database1 -InputFile $cleanupScript
 		}
-		It "should deploy version 1.0" {
-			$results = Install-DBOPackage "$workFolder\pv1.zip" -SqlInstance $script:instance1 -Database $script:database1 -SchemaVersionTable $logTable -OutputFile "$workFolder\log.txt" -Silent
-			$results.Successful | Should Be $true
-			$results.Scripts.Name | Should Be ((Get-Item $v1scripts).Name | ForEach-Object {'1.0\' + $_})
-			$output = Get-Content "$workFolder\log.txt" | Select-Object -Skip 1
-			$output | Should Be (Get-Content "$here\etc\log1.txt")
-			#Verifying objects
-			$results = Invoke-SqlCmd2 -ServerInstance $script:instance1 -Database $script:database1 -InputFile $verificationScript
-			$logTable | Should BeIn $results.name
-			'a' | Should BeIn $results.name
-			'b' | Should BeIn $results.name
-			'c' | Should Not BeIn $results.name
-			'd' | Should Not BeIn $results.name
-		}
-        It "should deploy version 2.0" {
-            $results = Install-DBOPackage "$workFolder\pv2.zip" -SqlInstance $script:instance1 -Database $script:database1 -SchemaVersionTable $logTable -OutputFile "$workFolder\log.txt" -Silent
+        It "should deploy version 1.0" {
+            $results = Install-DBOPackage "$workFolder\pv1.zip" -SqlInstance $script:instance1 -Database $script:database1 -SchemaVersionTable $logTable -OutputFile "$workFolder\log.txt" -Silent
+            $results.Successful | Should Be $true
+            $results.Scripts.Name | Should Be ((Get-Item $v1scripts).Name | ForEach-Object {'1.0\' + $_})
+            $output = Get-Content "$workFolder\log.txt" | Select-Object -Skip 1
+            $output | Should Be (Get-Content "$here\etc\log1.txt")
+            #Verifying objects
+            $results = Invoke-SqlCmd2 -ServerInstance $script:instance1 -Database $script:database1 -InputFile $verificationScript
+            $logTable | Should BeIn $results.name
+            'a' | Should BeIn $results.name
+            'b' | Should BeIn $results.name
+            'c' | Should Not BeIn $results.name
+            'd' | Should Not BeIn $results.name
+        }
+        It "should re-deploy version 1.0 pipelining a string" {
+            $results = "$workFolder\pv1.zip" | Install-DBOPackage -SqlInstance $script:instance1 -Database $script:database1 -SchemaVersionTable $logTable -OutputFile "$workFolder\log.txt" -Silent
+            $results.Successful | Should Be $true
+            $results.Scripts.Name | Should BeNullOrEmpty
+            'No new scripts need to be executed - completing.' | Should BeIn (Get-Content "$workFolder\log.txt" | Select-Object -Skip 1)
+            #Verifying objects
+            $results = Invoke-SqlCmd2 -ServerInstance $script:instance1 -Database $script:database1 -InputFile $verificationScript
+            $logTable | Should BeIn $results.name
+            'a' | Should BeIn $results.name
+            'b' | Should BeIn $results.name
+            'c' | Should Not BeIn $results.name
+            'd' | Should Not BeIn $results.name
+        }
+        It "should deploy version 2.0 using pipelined Get-DBOPackage" {
+            $results = Get-DBOPackage "$workFolder\pv2.zip" | Install-DBOPackage -SqlInstance $script:instance1 -Database $script:database1 -SchemaVersionTable $logTable -OutputFile "$workFolder\log.txt" -Silent
             $results.Successful | Should Be $true
             $results.Scripts.Name | Should Be ((Get-Item $v2scripts).Name | ForEach-Object { '2.0\' + $_ })
             $output = Get-Content "$workFolder\log.txt" | Select-Object -Skip 1
@@ -133,7 +146,20 @@ Describe "Install-DBOPackage integration tests" -Tag $commandName, IntegrationTe
             'c' | Should BeIn $results.name
             'd' | Should BeIn $results.name
         }
-        It "should deploy in a reversed order if 2.0 before 1.0 if 1.0 was added later" {
+        It "should re-deploy version 2.0 using pipelined FileSystemObject" {
+            $results = Get-Item "$workFolder\pv2.zip" | Install-DBOPackage -SqlInstance $script:instance1 -Database $script:database1 -SchemaVersionTable $logTable -OutputFile "$workFolder\log.txt" -Silent
+            $results.Successful | Should Be $true
+            $results.Scripts.Name | Should BeNullOrEmpty
+            'No new scripts need to be executed - completing.' | Should BeIn (Get-Content "$workFolder\log.txt" | Select-Object -Skip 1)
+            #Verifying objects
+            $results = Invoke-SqlCmd2 -ServerInstance $script:instance1 -Database $script:database1 -InputFile $verificationScript
+            $logTable | Should BeIn $results.name
+            'a' | Should BeIn $results.name
+            'b' | Should BeIn $results.name
+            'c' | Should BeIn $results.name
+            'd' | Should BeIn $results.name
+        }
+        It "should deploy in a reversed order: 2.0 before 1.0" {
             $null = Invoke-SqlCmd2 -ServerInstance $script:instance1 -Database $script:database1 -InputFile $cleanupScript
             $results = Install-DBOPackage "$workFolder\pv3.zip" -SqlInstance $script:instance1 -Database $script:database1 -SchemaVersionTable $logTable -OutputFile "$workFolder\log.txt" -Silent
             $results.Successful | Should Be $true
