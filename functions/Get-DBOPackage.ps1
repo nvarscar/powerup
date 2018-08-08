@@ -10,6 +10,9 @@ Function Get-DBOPackage {
 	Path to the DBOps package
 
 	Aliases: Name, FileName, Package
+	
+	.PARAMETER InputObject
+	Pipeline implementation of Path. Can also accept a DBOpsPackage object.
 
 	.PARAMETER Unpacked
 	Mostly intended for internal use. Gets package information from extracted package.
@@ -59,7 +62,7 @@ Function Get-DBOPackage {
                 }
             }
             else {
-				throw "The object was not found"
+                throw "The object was not found"
             }
         }
         elseif ($PSBoundParameters.ContainsKey('Path')) {
