@@ -167,6 +167,21 @@
             $config = $package.Configuration
         }
 
+        #Test if the selected Connection type is supported
+        if (Test-DBOSupportedSystem -Type $ConnectionType) {
+            #Load external libraries
+            $dependencies = Get-ExternalLibrary -Type $ConnectionType
+            foreach ($dPackage in $dependencies) {
+                $localPackage = Get-Package -Name $dPackage.Name -MinimumVersion $dPackage.Version -ErrorAction Stop
+                foreach ($dPath in $dPackage.Path) {
+                    Add-Type -Path (Join-Path (Split-Path $localPackage -Parent) $dPath)
+                }
+            }
+        }
+        else {
+            throw "Prerequisites have not been met to run the deployment."
+        }
+
         #Join variables from config and parameters
         $runtimeVariables = @{ }
         if ($Variables) {

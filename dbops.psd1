@@ -62,15 +62,17 @@
 	
 	# Functions to export from this module
 	FunctionsToExport = @(
-		'Add-DBOBuild',
-		'Get-DBOConfig',
-		'Install-DBOPackage',
-		'Invoke-DBODeployment',
-		'New-DBOPackage',
-		'Remove-DBOBuild',
-		'Get-DBOPackage',
-		'Update-DBOConfig',
-		'Get-DBOModuleFileList'
+        'Add-DBOBuild',
+        'Get-DBOConfig',
+        'Install-DBOPackage',
+        'Invoke-DBODeployment',
+        'New-DBOPackage',
+        'Remove-DBOBuild',
+        'Get-DBOPackage',
+        'Update-DBOConfig',
+        'Get-DBOModuleFileList',
+        'Test-DBOSupportedSystem',
+		'Install-DBOSupportLibrary'
 	)
 	
 	# Cmdlets to export from this module
