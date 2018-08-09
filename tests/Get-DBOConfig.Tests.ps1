@@ -32,7 +32,7 @@ Describe "Get-DBOConfig tests" -Tag $commandName, UnitTests {
 		$result.Credential | Should Be $null
 		$result.Username | Should Be $null
 		$result.Password | Should Be $null
-		$result.SchemaVersionTable | Should Be 'dbo.SchemaVersions'
+		$result.SchemaVersionTable | Should Be 'SchemaVersions'
 		$result.Silent | Should Be $null
 		$result.Variables | Should Be $null
 	}
@@ -48,7 +48,7 @@ Describe "Get-DBOConfig tests" -Tag $commandName, UnitTests {
 		$result.Credential | Should Be $null
 		$result.Username | Should Be $null
 		$result.Password | Should Be $null
-		$result.SchemaVersionTable | Should Be 'dbo.SchemaVersions'
+		$result.SchemaVersionTable | Should Be 'SchemaVersions'
 		$result.Silent | Should Be $null
 		$result.Variables | Should Be $null
 	}
@@ -82,7 +82,8 @@ Describe "Get-DBOConfig tests" -Tag $commandName, UnitTests {
 		$result.Password | Should Be "TestPassword"
 		$result.SchemaVersionTable | Should Be "test.Table"
 		$result.Silent | Should Be $true
-		$result.Variables | Should Be $null
+        $result.Variables | Should Be $null
+        $result.Schema | Should Be 'testschema'
 	}
 
 	It "Should override configurations of the config file" {
@@ -98,7 +99,8 @@ Describe "Get-DBOConfig tests" -Tag $commandName, UnitTests {
 		$result.Password | Should Be "TestPassword"
 		$result.SchemaVersionTable | Should Be "test.Table"
 		$result.Silent | Should Be $true
-		$result.Variables | Should Be $null
+        $result.Variables | Should Be $null
+        $result.Schema | Should Be 'testschema'
 	}
 
 	

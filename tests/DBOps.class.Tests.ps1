@@ -40,7 +40,7 @@ Describe "DBOpsPackage class tests" -Tag $commandName, UnitTests, DBOpsPackage {
 			$script:pkg.ScriptDirectory | Should Be 'content'
 			$script:pkg.DeployFile.ToString() | Should Be 'Deploy.ps1'
 			$script:pkg.DeployFile.GetContent() | Should BeLike '*Invoke-DBODeployment @params*'
-			$script:pkg.Configuration.SchemaVersionTable | Should Be 'dbo.SchemaVersions'
+			$script:pkg.Configuration.SchemaVersionTable | Should Be 'SchemaVersions'
 			$script:pkg.FileName | Should BeNullOrEmpty
 			$script:pkg.$Version | Should BeNullOrEmpty
 		}
@@ -75,8 +75,8 @@ Describe "DBOpsPackage class tests" -Tag $commandName, UnitTests, DBOpsPackage {
 			$script:pkg.DeployFile.ToString() | Should Be 'Deploy.ps1'
 			$script:pkg.DeployFile.GetContent() | Should BeLike '*Invoke-DBODeployment @params*'
 			$script:pkg.ConfigurationFile.ToString() | Should Be 'dbops.config.json'
-			($script:pkg.ConfigurationFile.GetContent() | ConvertFrom-Json).SchemaVersionTable | Should Be 'dbo.SchemaVersions'
-			$script:pkg.Configuration.SchemaVersionTable | Should Be 'dbo.SchemaVersions'
+			($script:pkg.ConfigurationFile.GetContent() | ConvertFrom-Json).SchemaVersionTable | Should Be 'SchemaVersions'
+			$script:pkg.Configuration.SchemaVersionTable | Should Be 'SchemaVersions'
 			$script:pkg.FileName | Should Be $packageName
 			$script:pkg.$Version | Should BeNullOrEmpty
 			$script:pkg.PackagePath | Should BeNullOrEmpty
@@ -267,8 +267,8 @@ Describe "DBOpsPackageFile class tests" -Tag $commandName, UnitTests, DBOpsPacka
 			$p.DeployFile.ToString() | Should Be 'Deploy.ps1'
 			$p.DeployFile.GetContent() | Should BeLike '*Invoke-DBODeployment @params*'
 			$p.ConfigurationFile.ToString() | Should Be 'dbops.config.json'
-			($p.ConfigurationFile.GetContent() | ConvertFrom-Json).SchemaVersionTable | Should Be 'dbo.SchemaVersions'
-			$p.Configuration.SchemaVersionTable | Should Be 'dbo.SchemaVersions'
+			($p.ConfigurationFile.GetContent() | ConvertFrom-Json).SchemaVersionTable | Should Be 'SchemaVersions'
+			$p.Configuration.SchemaVersionTable | Should Be 'SchemaVersions'
 			$p.FileName | Should Be "$here\etc\LoadFromFile"
 			$p.PackagePath | Should Be "$here\etc\LoadFromFile"
 			$p.$Version | Should BeNullOrEmpty
@@ -709,7 +709,7 @@ Describe "DBOpsFile class tests" -Tag $commandName, UnitTests, DBOpsFile {
 			$script:file.ToString() | Should Be 'success\1.sql'  
 		}
 		It "should test GetContent method" {
-			$script:file.GetContent() | Should BeLike 'CREATE TABLE dbo.a (a int)*'
+			$script:file.GetContent() | Should BeLike 'CREATE TABLE a (a int)*'
 			#ToDo: add files with different encodings
 		}
 		It "should test SetContent method" {
@@ -959,7 +959,7 @@ Describe "dbopsScriptFile class tests" -Tag $commandName, UnitTests, DBOpsFile, 
 			$results = Get-ArchiveItem $packageName | Where-Object Path -eq 'content\1.0\success\1.sql'
 			$oldResults.LastWriteTime -lt ($results | Where-Object Path -eq $oldResults.Path).LastWriteTime | Should Be $true
 			$p = [DBOpsPackage]::new($packageName)
-			$p.Builds[0].Scripts[0].GetContent() | Should BeLike 'CREATE TABLE dbo.c (a int)*'
+			$p.Builds[0].Scripts[0].GetContent() | Should BeLike 'CREATE TABLE c (a int)*'
 		}
 	}
 }
@@ -1154,9 +1154,10 @@ Describe "DBOpsConfig class tests" -Tag $commandName, UnitTests, DBOpsConfig {
 			$result.Credential | Should Be $null
 			$result.Username | Should Be $null
 			$result.Password | Should Be $null
-			$result.SchemaVersionTable | Should Be 'dbo.SchemaVersions'
+			$result.SchemaVersionTable | Should Be 'SchemaVersions'
 			$result.Silent | Should Be $null
 			$result.Variables | Should Be $null
+			$result.Schema | Should BeNullOrEmpty
 		}
 		It "Should return empty configuration from empty config file" {
 			$result = [DBOpsConfig]::new((Get-Content "$here\etc\empty_config.json" -Raw))
@@ -1173,6 +1174,7 @@ Describe "DBOpsConfig class tests" -Tag $commandName, UnitTests, DBOpsConfig {
 			$result.SchemaVersionTable | Should Be $null
 			$result.Silent | Should Be $null
 			$result.Variables | Should Be $null
+			$result.Variables | Should BeNullOrEmpty
 		}
 		It "Should return all configurations from the config file" {
 			$result = [DBOpsConfig]::new((Get-Content "$here\etc\full_config.json" -Raw))
@@ -1189,6 +1191,7 @@ Describe "DBOpsConfig class tests" -Tag $commandName, UnitTests, DBOpsConfig {
 			$result.SchemaVersionTable | Should Be "test.Table"
 			$result.Silent | Should Be $true
 			$result.Variables | Should Be $null
+			$result.Schema | Should Be "testschema"
 		}
 	}
 	Context "tests other methods of DBOpsConfig" {
@@ -1208,6 +1211,7 @@ Describe "DBOpsConfig class tests" -Tag $commandName, UnitTests, DBOpsConfig {
 			$result.SchemaVersionTable | Should Be "test.Table"
 			$result.Silent | Should Be $true
 			$result.Variables | Should Be $null
+			$result.Schema | Should Be "testschema"
 		}
 		It "should test SetValue method" {
 			$config = [DBOpsConfig]::new((Get-Content "$here\etc\full_config.json" -Raw))
@@ -1254,7 +1258,8 @@ Describe "DBOpsConfig class tests" -Tag $commandName, UnitTests, DBOpsConfig {
 			$result.Password | Should Be "TestPassword"
 			$result.SchemaVersionTable | Should Be "test.Table"
 			$result.Silent | Should Be $true
-			$result.Variables | Should Be $null
+            $result.Variables | Should Be $null
+            $result.Schema | Should Be "testschema"
 		}
 		It "should test Merge method" {
 			$config = [DBOpsConfig]::new((Get-Content "$here\etc\full_config.json" -Raw))
@@ -1264,6 +1269,7 @@ Describe "DBOpsConfig class tests" -Tag $commandName, UnitTests, DBOpsConfig {
 				SqlInstance = $null
 				Silent = $false
 				ExecutionTimeout = 20
+				Schema = "test3"
 			}
 			$config.Merge($hashtable)
 			$config.ApplicationName | Should Be "MyTestApp2"
@@ -1278,7 +1284,8 @@ Describe "DBOpsConfig class tests" -Tag $commandName, UnitTests, DBOpsConfig {
 			$config.Password | Should Be "TestPassword"
 			$config.SchemaVersionTable | Should Be "test.Table"
 			$config.Silent | Should Be $false
-			$config.Variables | Should Be $null
+            $config.Variables | Should Be $null
+            $config.Schema | Should Be "test3"
 			#negative
 			{ $config.Merge(@{foo = 'bar'}) } | Should Throw
 			{ $config.Merge($null) } | Should Throw
@@ -1368,7 +1375,8 @@ Describe "DBOpsConfig class tests" -Tag $commandName, UnitTests, DBOpsConfig {
 			$result.Password | Should Be "TestPassword"
 			$result.SchemaVersionTable | Should Be "test.Table"
 			$result.Silent | Should Be $true
-			$result.Variables | Should Be $null
+            $result.Variables | Should Be $null
+            $result.Schema | Should Be "testschema"
 			#negatives
 			{ [DBOpsConfig]::FromFile("$here\etc\notajsonfile.json") } | Should Throw
 			{ [DBOpsConfig]::FromFile("nonexisting\file") } | Should Throw
@@ -1388,7 +1396,8 @@ Describe "DBOpsConfig class tests" -Tag $commandName, UnitTests, DBOpsConfig {
 			$result.Password | Should Be "TestPassword"
 			$result.SchemaVersionTable | Should Be "test.Table"
 			$result.Silent | Should Be $true
-			$result.Variables | Should Be $null
+            $result.Variables | Should Be $null
+            $result.Schema | Should Be "testschema"
 			#negatives
 			{ [DBOpsConfig]::FromJsonString((Get-Content "$here\etc\notajsonfile.json" -Raw)) } | Should Throw
 			{ [DBOpsConfig]::FromJsonString($null) } | Should Throw

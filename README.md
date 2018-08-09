@@ -9,6 +9,7 @@ The deployment functionality of the module is provided by [DbUp](https://github.
 
 Currently supported RDBMS:
 * SQL Server
+* Oracle
 
 ## Features
 The most notable features of the module:
@@ -53,7 +54,7 @@ Install-Module dbops
 # Quick deployment without tracking deployment history
 Invoke-DBODeployment -ScriptPath C:\temp\myscripts -SqlInstance server1 -Database MyDB -SchemaVersionTable $null
 
-# Deployment using packages & builds with keeping track of deployment history in dbo.SchemaVersions
+# Deployment using packages & builds with keeping track of deployment history in the SchemaVersions table
 New-DBOPackage Deploy.zip -ScriptPath C:\temp\myscripts | Install-DBOPackage -SqlInstance server1 -Database MyDB
 
 # Create new deployment package with predefined configuration and deploy it replacing #{dbName} tokens with corresponding values
@@ -76,6 +77,12 @@ Install-DBOPackage Deploy.zip -ConfigurationFile .\dev.json
 # Install package using internal script Deploy.ps1 - to use when module is not installed locally
 Expand-Archive Deploy.zip '.\MyTempFolder'
 .\MyTempFolder\Deploy.ps1 -SqlInstance server1 -Database MyDB
+
+# Invoke package deployment using custom connection string
+Install-DBOPackage -Path Deploy.zip -ConnectionString 'Server=myServerAddress;Database=myDataBase;Trusted_Connection=True;'
+
+# Invoke package deployment to an Oracle database OracleDB into the AppSchema1 schema
+Install-DBOPackage -Path Deploy.zip -Server OracleDB -Schema AppSchema1 -ConnectionType Oracle
 ```
 
 ## Planned for future releases

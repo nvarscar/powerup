@@ -104,6 +104,7 @@ Describe "Get-DBOPackage tests" -Tag $commandName, UnitTests {
             $result.Configuration.SchemaVersionTable | Should Be "test.Table"
             $result.Configuration.Silent | Should Be $true
             $result.Configuration.Variables | Should Be $null
+            $result.Configuration.Schema | Should Be 'testschema'
         }
         It "properly returns pipelined package object" {
             $result = Get-DBOPackage -Path $packageName | Get-DBOPackage 
@@ -166,7 +167,8 @@ Describe "Get-DBOPackage tests" -Tag $commandName, UnitTests {
 			$result.Configuration.Password | Should Be "TestPassword"
 			$result.Configuration.SchemaVersionTable | Should Be "test.Table"
 			$result.Configuration.Silent | Should Be $true
-			$result.Configuration.Variables | Should Be $null
+            $result.Configuration.Variables | Should Be $null
+            $result.Configuration.Schema | Should Be 'testschema'
 		}
 	}
 }

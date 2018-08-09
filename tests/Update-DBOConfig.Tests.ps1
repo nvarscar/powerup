@@ -88,6 +88,7 @@ Describe "Update-DBOConfig tests" -Tag $commandName, UnitTests {
             $results.SchemaVersionTable | Should Be $null
             $results.Silent | Should Be $null
             $results.Variables | Should Be $null
+            $results.Schema | Should Be $null
         }
 		It "updates config items with a proper config file" {
 			Update-DBOConfig -Path $packageName -ConfigurationFile "$here\etc\full_config.json"
@@ -104,6 +105,7 @@ Describe "Update-DBOConfig tests" -Tag $commandName, UnitTests {
             $results.SchemaVersionTable | Should Be "test.Table"
             $results.Silent | Should Be $true
             $results.Variables | Should Be $null
+            $results.Schema | Should Be 'testschema'
         }
 		It "should throw when config file is not specified" {
 			{ Update-DBOConfig -Path $packageName -ConfigurationFile $null } | Should throw
