@@ -283,12 +283,11 @@
         }
         elseif ($ConnectionType -eq 'Oracle') {
             $dbUpConnection = [DbUp.Oracle.OracleConnectionManager]::new($connString)
-            $extensionClass = [DbUp.Oracle.OracleExtensions]
             if ($config.Schema) {
-                $dbUp = [DbUp.Oracle.OracleExtensions]::OracleDatabase($dbUp, $dbUpConnection, $config.Schema)
+                $dbUp = [DbUp.Oracle.OracleExtensions]::OracleDatabase($dbUpConnection, $config.Schema)
             }
             else {
-                $dbUp = [DbUp.Oracle.OracleExtensions]::OracleDatabase($dbUp, $dbUpConnection)
+                $dbUp = [DbUp.Oracle.OracleExtensions]::OracleDatabase($dbUpConnection)
             }
         }
         #Add deployment scripts to the object
