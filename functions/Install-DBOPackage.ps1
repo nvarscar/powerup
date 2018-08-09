@@ -60,7 +60,7 @@
 		If set to $null, the deployment will not be tracked in the database. That will also mean that all the scripts 
 		and all the builds from the package are going to be deployed regardless of any previous deployment history.
 
-		Default: dbo.SchemaVersions
+		Default: SchemaVersions
 	
 	.PARAMETER Silent
 		Will supress all output from the command.
@@ -85,6 +85,9 @@
 	
 	.PARAMETER Configuration
 		Hashtable containing necessary configuration items. Will override parameters in ConfigurationFile
+
+	.PARAMETER Schema
+        Deploy into a specific schema (if supported by RDBMS)
 	
 	.PARAMETER Confirm
         Prompts to confirm certain actions
@@ -149,7 +152,8 @@
 		[switch]$Append,
 		[Alias('Config')]
 		[string]$ConfigurationFile,
-		[hashtable]$Configuration
+        [hashtable]$Configuration,
+        [string]$Schema
 	)
 	
 	begin {

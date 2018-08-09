@@ -69,7 +69,7 @@
 		If set to $null, the deployment will not be tracked in the database. That will also mean that all the scripts 
 		and all the builds from the package are going to be deployed regardless of any previous deployment history.
 
-		Default: dbo.SchemaVersions
+		Default: SchemaVersions
 	
 	.PARAMETER Silent
 		Will supress all output from the command.
@@ -204,7 +204,7 @@
 	
         #Apply overrides if any
         foreach ($key in ($PSBoundParameters.Keys | Where-Object { $_ -notin 'Variables', 'Password' })) {
-            if ($key -in $config.psobject.Properties.Name) {
+            if ($key -in [DBOpsConfig]::EnumProperties()) {
                 $config.SetValue($key, (Resolve-VariableToken $PSBoundParameters[$key] $runtimeVariables))
             }
         }
@@ -274,8 +274,8 @@
         $dbUp = [DbUp.DeployChanges]::To
         if ($ConnectionType -eq 'SqlServer') {
             $dbUpConnection = [DbUp.SqlServer.SqlConnectionManager]::new($connString)
-            if ($Schema) {
-                $dbUp = [SqlServerExtensions]::SqlDatabase($dbUp, $dbUpConnection, $Schema)
+            if ($config.Schema) {
+                $dbUp = [SqlServerExtensions]::SqlDatabase($dbUp, $dbUpConnection, $config.Schema)
             }
             else {
                 $dbUp = [SqlServerExtensions]::SqlDatabase($dbUp, $dbUpConnection)
@@ -283,8 +283,9 @@
         }
         elseif ($ConnectionType -eq 'Oracle') {
             $dbUpConnection = [DbUp.Oracle.OracleConnectionManager]::new($connString)
-            if ($Schema) {
-                $dbUp = [DbUp.Oracle.OracleExtensions]::OracleDatabase($dbUp, $dbUpConnection, $Schema)
+            $extensionClass = [DbUp.Oracle.OracleExtensions]
+            if ($config.Schema) {
+                $dbUp = [DbUp.Oracle.OracleExtensions]::OracleDatabase($dbUp, $dbUpConnection, $config.Schema)
             }
             else {
                 $dbUp = [DbUp.Oracle.OracleExtensions]::OracleDatabase($dbUp, $dbUpConnection)
@@ -324,7 +325,10 @@
             }
             elseif (($table | Measure-Object).Count -eq 1) {
                 $tableName = $table[0]
-                $schemaName = $Schema
+                if ($config.Schema) {
+                    $schemaName = $config.Schema
+                }
+                else {}
             }
             else {
                 throw 'No table name specified'
@@ -333,6 +337,7 @@
             if (!$schemaName) {
                 if ($ConnectionType -eq 'SqlServer') { $schemaName = 'dbo' }
             }
+            #Enable schema versioning
             if ($ConnectionType -eq 'SqlServer') { $dbUpJournalType = [DbUp.SqlServer.SqlTableJournal] }
             elseif ($ConnectionType -eq 'Oracle') { $dbUpJournalType = [DbUp.Oracle.OracleTableJournal] }
 			

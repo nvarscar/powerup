@@ -106,7 +106,8 @@ Describe "New-DBOPackage tests" -Tag $commandName, UnitTests {
 			$config.Password | Should Be "TestPassword"
 			$config.SchemaVersionTable | Should Be "test.Table"
 			$config.Silent | Should Be $true
-			$config.Variables | Should Be $null
+            $config.Variables | Should Be $null
+            $config.Schema | Should Be 'testschema'
 		}
 		It "should be able to apply custom config" {
 			$null = New-DBOPackage -ScriptPath "$here\etc\query1.sql" -Name $packageName -Configuration @{ApplicationName = "MyTestApp2"; ConnectionTimeout = 4; Database = $null } -Force
@@ -121,7 +122,7 @@ Describe "New-DBOPackage tests" -Tag $commandName, UnitTests {
 			$config.Credential | Should Be $null
 			$config.Username | Should Be $null
 			$config.Password | Should Be $null
-			$config.SchemaVersionTable | Should Be 'dbo.SchemaVersions'
+			$config.SchemaVersionTable | Should Be 'SchemaVersions'
 			$config.Silent | Should Be $null
 			$config.Variables | Should Be $null
 		}
@@ -138,7 +139,7 @@ Describe "New-DBOPackage tests" -Tag $commandName, UnitTests {
 			$config.Credential | Should Be $null
 			$config.Username | Should Be $null
 			$config.Password | Should Be $null
-			$config.SchemaVersionTable | Should Be 'dbo.SchemaVersions'
+			$config.SchemaVersionTable | Should Be 'SchemaVersions'
 			$config.Silent | Should Be $null
 			$config.Variables.MyVar | Should Be 'foo'
 			$config.Variables.MyBar | Should Be 1

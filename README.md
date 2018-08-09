@@ -53,7 +53,7 @@ Install-Module dbops
 # Quick deployment without tracking deployment history
 Invoke-DBODeployment -ScriptPath C:\temp\myscripts -SqlInstance server1 -Database MyDB -SchemaVersionTable $null
 
-# Deployment using packages & builds with keeping track of deployment history in dbo.SchemaVersions
+# Deployment using packages & builds with keeping track of deployment history in the SchemaVersions table
 New-DBOPackage Deploy.zip -ScriptPath C:\temp\myscripts | Install-DBOPackage -SqlInstance server1 -Database MyDB
 
 # Create new deployment package with predefined configuration and deploy it replacing #{dbName} tokens with corresponding values
