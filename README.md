@@ -9,6 +9,7 @@ The deployment functionality of the module is provided by [DbUp](https://github.
 
 Currently supported RDBMS:
 * SQL Server
+* Oracle
 
 ## Features
 The most notable features of the module:
@@ -76,6 +77,12 @@ Install-DBOPackage Deploy.zip -ConfigurationFile .\dev.json
 # Install package using internal script Deploy.ps1 - to use when module is not installed locally
 Expand-Archive Deploy.zip '.\MyTempFolder'
 .\MyTempFolder\Deploy.ps1 -SqlInstance server1 -Database MyDB
+
+# Invoke package deployment using custom connection string
+Install-DBOPackage -Path Deploy.zip -ConnectionString 'Server=myServerAddress;Database=myDataBase;Trusted_Connection=True;'
+
+# Invoke package deployment to an Oracle database OracleDB into the AppSchema1 schema
+Install-DBOPackage -Path Deploy.zip -Server OracleDB -Schema AppSchema1 -ConnectionType Oracle
 ```
 
 ## Planned for future releases
