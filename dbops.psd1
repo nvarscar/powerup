@@ -41,7 +41,9 @@
 	
 	# Modules that must be imported into the global environment prior to importing
 	# this module
-	RequiredModules = @()
+	RequiredModules = @(
+        @{ ModuleName = 'PSFramework'; ModuleVersion = '0.9.24.91'}
+	)
 	
 	# Assemblies that must be loaded prior to importing this module
 	RequiredAssemblies = @()
@@ -72,7 +74,9 @@
         'Update-DBOConfig',
         'Get-DBOModuleFileList',
         'Test-DBOSupportedSystem',
-		'Install-DBOSupportLibrary'
+        'Install-DBOSupportLibrary',
+		'Get-DBODefaultSetting',
+		'Set-DBODefaultSetting'
 	)
 	
 	# Cmdlets to export from this module

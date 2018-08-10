@@ -13,3 +13,5 @@ Write-Host -Object "appveyor.prep: Install Pester" -ForegroundColor DarkGreen
 Install-Module -Name Pester -Repository PSGallery -Force | Out-Null
 Write-Host -Object "appveyor.prep: Install Assert" -ForegroundColor DarkGreen
 Install-Module -Name Assert -Repository PSGallery -Force | Out-Null
+Write-Host -Object "appveyor.prep: Install PSFramework" -ForegroundColor DarkGreen
+Install-Module -Name PSFramework -Repository PSGallery -Force | Out-Null
