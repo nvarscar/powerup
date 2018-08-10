@@ -1025,15 +1025,10 @@ class DBOpsConfig : DBOps {
     }
     #Hidden methods 
     hidden [void] Init () {
-        #Defining default values
-        $this.ApplicationName = [NullString]::Value
-        $this.SqlInstance = [NullString]::Value
-        $this.Database = [NullString]::Value
-        $this.DeploymentMethod = [NullString]::Value
-        $this.Username = [NullString]::Value
-        $this.Password = [NullString]::Value
-        $this.SchemaVersionTable = 'SchemaVersions'
-        $this.Schema = [NullString]::Value
+        #Reading default values from PSF
+        foreach ($prop in [DBOpsConfig]::EnumProperties()) {
+			$this.SetValue($prop, (Get-PSFConfigValue -FullName dbops.$prop))
+        }
     }
 
     #Methods 

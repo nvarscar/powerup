@@ -23,7 +23,14 @@ function Set-DBODefaultSetting {
         .PARAMETER Temporary
             The setting is not persisted outside the current session.
             By default, settings will be remembered across all powershell sessions.
-       
+
+        .PARAMETER Scope
+            Choose if the setting should be stored in current user's registry or will be shared between all users.
+            Allowed values: CurrentUser, AllUsers.
+            AllUsers will require administrative access to the computer (elevated session).
+            
+            Default: CurrentUser.
+            
         .EXAMPLE
             Set-DbcConfig -Name Lists.SqlServers -Value sql2016, sql2017, sqlcluster
         
@@ -44,7 +51,7 @@ function Set-DBODefaultSetting {
         [System.Management.Automation.ScriptBlock]$Handler,
         [switch]$Append,
         [switch]$Temporary,
-        [ValidateSet('CurrentUser','AllUsers')]
+        [ValidateSet('CurrentUser', 'AllUsers')]
         [string]$Scope = 'CurrentUser'
     )
 

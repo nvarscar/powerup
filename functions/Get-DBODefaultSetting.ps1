@@ -14,7 +14,9 @@ function Get-DBODefaultSetting {
 
         .PARAMETER Force
             Overrides the default behavior and also displays hidden configuration values.
-
+        
+        .PARAMETER Value
+            Extracts the value instead of returning the configuration object.
         .NOTES
 
         .EXAMPLE

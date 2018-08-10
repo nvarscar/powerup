@@ -210,10 +210,10 @@
         }
 	
         #Apply default values if not set
-        if (!$config.ApplicationName) { $config.SetValue('ApplicationName', 'dbops') }
-        if (!$config.SqlInstance) { $config.SetValue('SqlInstance', 'localhost') }
-        if ($config.ConnectionTimeout -eq $null) { $config.SetValue('ConnectionTimeout', 30) }
-        if ($config.ExecutionTimeout -eq $null) { $config.SetValue('ExecutionTimeout', 0) }
+        # if (!$config.ApplicationName) { $config.SetValue('ApplicationName', 'dbops') }
+        # if (!$config.SqlInstance) { $config.SetValue('SqlInstance', 'localhost') }
+        # if ($config.ConnectionTimeout -eq $null) { $config.SetValue('ConnectionTimeout', 30) }
+        # if ($config.ExecutionTimeout -eq $null) { $config.SetValue('ExecutionTimeout', 0) }
 	
         #Build connection string
         if (!$ConnectionString) {
