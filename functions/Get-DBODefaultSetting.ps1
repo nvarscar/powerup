@@ -47,7 +47,7 @@ function Get-DBODefaultSetting {
         }
         $false {
             foreach ($n in $Name) {
-                Get-PSFConfig -Module dbops -Name $n -Force:$Force | Select-Object @{ Name = "Name"; Expression = {$_.FullName.TrimStart('dbops.')} }, Value, Description
+                Get-PSFConfig -Module dbops -Name $n -Force:$Force | Select-Object @{ Name = "Name"; Expression = {$_.FullName -replace '^dbops\.', '' } }, Value, Description
             }
         }
     }
