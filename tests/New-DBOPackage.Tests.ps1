@@ -61,7 +61,7 @@ Describe "New-DBOPackage tests" -Tag $commandName, UnitTests {
 			'Deploy.ps1' | Should BeIn $results.Path
 		}
 		It "should create a zip package based on name without extension" {
-			$results = New-DBOPackage -ScriptPath "$here\etc\query1.sql" -Name $packageName.TrimEnd('.zip') -Force
+			$results = New-DBOPackage -ScriptPath "$here\etc\query1.sql" -Name ($packageName -replace '\.zip$','') -Force
 			$results | Should Not Be $null
 			$results.Name | Should Be (Split-Path $packageName -Leaf)
 			$results.FullName | Should Be (Get-Item $packageName).FullName
