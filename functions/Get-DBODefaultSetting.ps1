@@ -20,9 +20,9 @@ function Get-DBODefaultSetting {
         .NOTES
 
         .EXAMPLE
-            PS C:\> Get-DBODefaultSetting 'Execution.Timeout'
+            PS C:\> Get-DBODefaultSetting 'ExecutionTimeout'
 
-            Retrieves the configuration element for the key "Execution.Timeout"
+            Retrieves the configuration element for the key "ExecutionTimeout"
 
         .EXAMPLE
             PS C:\> Get-DBODefaultSetting -Force

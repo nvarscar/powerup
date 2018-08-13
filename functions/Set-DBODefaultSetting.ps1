@@ -28,18 +28,18 @@ function Set-DBODefaultSetting {
             Choose if the setting should be stored in current user's registry or will be shared between all users.
             Allowed values: CurrentUser, AllUsers.
             AllUsers will require administrative access to the computer (elevated session).
-            
+
             Default: CurrentUser.
             
         .EXAMPLE
-            Set-DbcConfig -Name Lists.SqlServers -Value sql2016, sql2017, sqlcluster
+            Set-DBODefaultSetting -Name ConnectionTimeout -Value 5 -Temporary
         
-            Resets the lists.sqlservers entry to sql2016, sql2017, sqlcluster
+            Change connection timeout setting for the current Powershell session to 5 seconds.
     
         .EXAMPLE
-            Set-DbcConfig -Name Lists.SqlServers -Value sql2016, sql2017, sqlcluster -Append
+            Set-DBODefaultSetting -Name SchemaVersionTable -Value $null
         
-            Addds on to the current lists.sqlservers entry with sql2016, sql2017, sqlcluster
+            Change the default SchemaVersionTable setting to null, disabling the deployment logging by default
     #>
     [CmdletBinding(DefaultParameterSetName = "FullName")]
     param (
@@ -64,9 +64,7 @@ function Set-DBODefaultSetting {
         if ($append) {
             $newValue += (Get-DBODefaultSetting -Name $Name -Value)
         }
-        
-        $Name = $Name.ToLower()
-        
+               
         Set-PSFConfig -Module dbops -Name $Name -Value $newValue -EnableException
 
         $newScope = switch ($Scope) {
