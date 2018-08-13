@@ -35,6 +35,9 @@ The most notable features of the module:
 git clone https://github.com/nvarscar/powerup.git dbops
 Import-Module .\dbops
 ```
+Make sure to have the following modules installed as well:
+- [PSFramework](https://github.com/PowershellFrameworkCollective/psframework)
+- [ZipHelper](https://www.powershellgallery.com/packages/ziphelper) - only if you intend to run module tests
 
 ### Using PSGallery (Powershell 5+)
 ```powershell
