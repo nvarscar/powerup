@@ -35,6 +35,9 @@ The most notable features of the module:
 git clone https://github.com/nvarscar/powerup.git dbops
 Import-Module .\dbops
 ```
+Make sure to have the following modules installed as well:
+- [PSFramework](https://github.com/PowershellFrameworkCollective/psframework)
+- [ZipHelper](https://www.powershellgallery.com/packages/ziphelper) - only if you intend to run module tests
 
 ### Using PSGallery (Powershell 5+)
 ```powershell
@@ -81,8 +84,15 @@ Expand-Archive Deploy.zip '.\MyTempFolder'
 # Invoke package deployment using custom connection string
 Install-DBOPackage -Path Deploy.zip -ConnectionString 'Server=myServerAddress;Database=myDataBase;Trusted_Connection=True;'
 
-# Invoke package deployment to an Oracle database OracleDB into the AppSchema1 schema
-Install-DBOPackage -Path Deploy.zip -Server OracleDB -Schema AppSchema1 -ConnectionType Oracle
+# Invoke package deployment to an Oracle database OracleDB
+Install-DBOPackage -Path Deploy.zip -Server OracleDB -ConnectionType Oracle
+
+# Get a list of all the default settings
+Get-DBODefaultSetting
+
+# Change the default SchemaVersionTable setting to null, disabling the deployment logging by default
+Set-DBODefaultSetting -Name SchemaVersionTable -Value $null
+
 ```
 
 ## Planned for future releases

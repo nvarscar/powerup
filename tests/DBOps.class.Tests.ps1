@@ -1143,21 +1143,10 @@ Describe "DBOpsRootFile class tests" -Tag $commandName, UnitTests, DBOpsFile, DB
 Describe "DBOpsConfig class tests" -Tag $commandName, UnitTests, DBOpsConfig {
 	Context "tests DBOpsConfig constructors" {
 		It "Should return an empty config by default" {
-			$result = [DBOpsConfig]::new()
-			$result.ApplicationName | Should Be $null
-			$result.SqlInstance | Should Be $null
-			$result.Database | Should Be $null
-			$result.DeploymentMethod | Should Be $null
-			$result.ConnectionTimeout | Should Be $null
-			$result.ExecutionTimeout | Should Be $null
-			$result.Encrypt | Should Be $null
-			$result.Credential | Should Be $null
-			$result.Username | Should Be $null
-			$result.Password | Should Be $null
-			$result.SchemaVersionTable | Should Be 'SchemaVersions'
-			$result.Silent | Should Be $null
-			$result.Variables | Should Be $null
-			$result.Schema | Should BeNullOrEmpty
+            $result = [DBOpsConfig]::new()
+            foreach ($prop in $result.psobject.properties.name) {
+                $result.$prop | Should Be (Get-PSFConfigValue -FullName dbops.$prop)
+            }
 		}
 		It "Should return empty configuration from empty config file" {
 			$result = [DBOpsConfig]::new((Get-Content "$here\etc\empty_config.json" -Raw))
@@ -1166,7 +1155,7 @@ Describe "DBOpsConfig class tests" -Tag $commandName, UnitTests, DBOpsConfig {
 			$result.Database | Should Be $null
 			$result.DeploymentMethod | Should Be $null
 			$result.ConnectionTimeout | Should Be $null
-			$result.ExecutionTimeout | Should Be $null
+			$result.ExecutionTimeout | Should Be 0
 			$result.Encrypt | Should Be $null
 			$result.Credential | Should Be $null
 			$result.Username | Should Be $null
@@ -1174,7 +1163,7 @@ Describe "DBOpsConfig class tests" -Tag $commandName, UnitTests, DBOpsConfig {
 			$result.SchemaVersionTable | Should Be $null
 			$result.Silent | Should Be $null
 			$result.Variables | Should Be $null
-			$result.Variables | Should BeNullOrEmpty
+            $result.Schema | Should BeNullOrEmpty
 		}
 		It "Should return all configurations from the config file" {
 			$result = [DBOpsConfig]::new((Get-Content "$here\etc\full_config.json" -Raw))
@@ -1183,7 +1172,7 @@ Describe "DBOpsConfig class tests" -Tag $commandName, UnitTests, DBOpsConfig {
 			$result.Database | Should Be "MyTestDB"
 			$result.DeploymentMethod | Should Be "SingleTransaction"
 			$result.ConnectionTimeout | Should Be 40
-			$result.ExecutionTimeout | Should Be $null
+			$result.ExecutionTimeout | Should Be 0
 			$result.Encrypt | Should Be $null
 			$result.Credential | Should Be $null
 			$result.Username | Should Be "TestUser"
@@ -1203,7 +1192,7 @@ Describe "DBOpsConfig class tests" -Tag $commandName, UnitTests, DBOpsConfig {
 			$result.Database | Should Be "MyTestDB"
 			$result.DeploymentMethod | Should Be "SingleTransaction"
 			$result.ConnectionTimeout | Should Be 40
-			$result.ExecutionTimeout | Should Be $null
+			$result.ExecutionTimeout | Should Be 0
 			$result.Encrypt | Should Be $null
 			$result.Credential | Should Be $null
 			$result.Username | Should Be "TestUser"
@@ -1251,7 +1240,7 @@ Describe "DBOpsConfig class tests" -Tag $commandName, UnitTests, DBOpsConfig {
 			$result.Database | Should Be "MyTestDB"
 			$result.DeploymentMethod | Should Be "SingleTransaction"
 			$result.ConnectionTimeout | Should Be 40
-			$result.ExecutionTimeout | Should Be $null
+			$result.ExecutionTimeout | Should Be 0
 			$result.Encrypt | Should Be $null
 			$result.Credential | Should Be $null
 			$result.Username | Should Be "TestUser"
@@ -1368,7 +1357,7 @@ Describe "DBOpsConfig class tests" -Tag $commandName, UnitTests, DBOpsConfig {
 			$result.Database | Should Be "MyTestDB"
 			$result.DeploymentMethod | Should Be "SingleTransaction"
 			$result.ConnectionTimeout | Should Be 40
-			$result.ExecutionTimeout | Should Be $null
+			$result.ExecutionTimeout | Should Be 0
 			$result.Encrypt | Should Be $null
 			$result.Credential | Should Be $null
 			$result.Username | Should Be "TestUser"
@@ -1389,7 +1378,7 @@ Describe "DBOpsConfig class tests" -Tag $commandName, UnitTests, DBOpsConfig {
 			$result.Database | Should Be "MyTestDB"
 			$result.DeploymentMethod | Should Be "SingleTransaction"
 			$result.ConnectionTimeout | Should Be 40
-			$result.ExecutionTimeout | Should Be $null
+			$result.ExecutionTimeout | Should Be 0
 			$result.Encrypt | Should Be $null
 			$result.Credential | Should Be $null
 			$result.Username | Should Be "TestUser"

@@ -17,22 +17,28 @@
 	#>
 	[CmdletBinding()]
 	Param (
-		[string[]]$InputString,
+		[object[]]$InputObject,
 		[hashtable]$Runtime
 	)
-	foreach ($str in $InputString) {
-		Write-Debug "Processing string: $str"
-		foreach ($token in (Get-VariableTokens $str)) {
-			Write-Debug "Processing token: $token"
-			#Replace variables found in the config
-			$tokenRegEx = "\#\{$token\}"
-			if ($Runtime) {
-				if ($Runtime.Keys -contains $token) {
-					$str = $str -replace $tokenRegEx, $Runtime.$token
-				}
-			}
-			Write-Debug "String after replace: $str"
-		}
-		$str
+    foreach ($obj in $InputObject) {
+        if ($obj -is [string]) {
+            Write-Debug "Processing string: $obj"
+            $output = $obj
+            foreach ($token in (Get-VariableTokens $obj)) {
+                Write-Debug "Processing token: $token"
+                #Replace variables found in the config
+                $tokenRegEx = "\#\{$token\}"
+                if ($Runtime) {
+                    if ($Runtime.Keys -contains $token) {
+                        $output = $obj -replace $tokenRegEx, $Runtime.$token
+                    }
+                }
+                Write-Debug "String after replace: $obj"
+            }
+            $output
+        }
+        else {
+            $obj
+        }
 	}
 }

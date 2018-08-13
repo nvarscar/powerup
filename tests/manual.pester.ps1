@@ -8,7 +8,7 @@
 #Explicitly import the module for testing
 Import-Module "$PSScriptRoot\..\dbops.psd1" -Force
 #Import ZipHelper
-Import-Module "$PSScriptRoot\etc\modules\ZipHelper" -Force
+Import-Module ziphelper -Force
 
 #Run each module function
 $params = @{

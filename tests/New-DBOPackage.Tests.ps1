@@ -61,7 +61,7 @@ Describe "New-DBOPackage tests" -Tag $commandName, UnitTests {
 			'Deploy.ps1' | Should BeIn $results.Path
 		}
 		It "should create a zip package based on name without extension" {
-			$results = New-DBOPackage -ScriptPath "$here\etc\query1.sql" -Name $packageName.TrimEnd('.zip') -Force
+			$results = New-DBOPackage -ScriptPath "$here\etc\query1.sql" -Name ($packageName -replace '\.zip$','') -Force
 			$results | Should Not Be $null
 			$results.Name | Should Be (Split-Path $packageName -Leaf)
 			$results.FullName | Should Be (Get-Item $packageName).FullName
@@ -114,16 +114,17 @@ Describe "New-DBOPackage tests" -Tag $commandName, UnitTests {
 			$null = Expand-ArchiveItem -Path $packageName -DestinationPath $workFolder -Item 'dbops.config.json'
 			$config = Get-Content "$workFolder\dbops.config.json" | ConvertFrom-Json
 			$config.ApplicationName | Should Be "MyTestApp2"
-			$config.SqlInstance | Should Be $null
+			$config.SqlInstance | Should Be 'localhost'
 			$config.Database | Should Be $null
-			$config.DeploymentMethod | Should Be $null
+			$config.DeploymentMethod | Should Be 'NoTransaction'
 			$config.ConnectionTimeout | Should Be 4
-			$config.Encrypt | Should Be $null
+			$config.ExecutionTimeout | Should Be 0
+			$config.Encrypt | Should Be $false
 			$config.Credential | Should Be $null
 			$config.Username | Should Be $null
 			$config.Password | Should Be $null
 			$config.SchemaVersionTable | Should Be 'SchemaVersions'
-			$config.Silent | Should Be $null
+			$config.Silent | Should Be $false
 			$config.Variables | Should Be $null
 		}
 		It "should be able to store variables" {
@@ -131,16 +132,17 @@ Describe "New-DBOPackage tests" -Tag $commandName, UnitTests {
 			$null = Expand-ArchiveItem -Path $packageName -DestinationPath $workFolder -Item 'dbops.config.json'
 			$config = Get-Content "$workFolder\dbops.config.json" | ConvertFrom-Json
 			$config.ApplicationName | Should Be 'FooBar'
-			$config.SqlInstance | Should Be $null
+            $config.SqlInstance | Should Be 'localhost'
 			$config.Database | Should Be $null
-			$config.DeploymentMethod | Should Be $null
-			$config.ConnectionTimeout | Should Be $null
-			$config.Encrypt | Should Be $null
+            $config.DeploymentMethod | Should Be 'NoTransaction'
+            $config.ConnectionTimeout | Should Be 30
+            $config.ExecutionTimeout | Should Be 0
+            $config.Encrypt | Should Be $false
 			$config.Credential | Should Be $null
 			$config.Username | Should Be $null
 			$config.Password | Should Be $null
 			$config.SchemaVersionTable | Should Be 'SchemaVersions'
-			$config.Silent | Should Be $null
+            $config.Silent | Should Be $false
 			$config.Variables.MyVar | Should Be 'foo'
 			$config.Variables.MyBar | Should Be 1
 			$config.Variables.MyNull | Should Be $null			

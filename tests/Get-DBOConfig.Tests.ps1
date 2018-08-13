@@ -21,35 +21,38 @@ Describe "Get-DBOConfig tests" -Tag $commandName, UnitTests {
 		{ Get-DBOConfig 'asdqweqsdfwer' } | Should throw
 	}
 
-	It "Should return an empty config by default" {
-		$result = Get-DBOConfig
-		$result.ApplicationName | Should Be $null
-		$result.SqlInstance | Should Be $null
-		$result.Database | Should Be $null
-		$result.DeploymentMethod | Should Be $null
-		$result.ConnectionTimeout | Should Be $null
-		$result.Encrypt | Should Be $null
-		$result.Credential | Should Be $null
-		$result.Username | Should Be $null
-		$result.Password | Should Be $null
-		$result.SchemaVersionTable | Should Be 'SchemaVersions'
-		$result.Silent | Should Be $null
-		$result.Variables | Should Be $null
+	It "Should return a default config by default" {
+        $result = Get-DBOConfig
+        foreach ($prop in $result.psobject.properties.name) {
+			$result.$prop | Should Be (Get-PSFConfigValue -FullName dbops.$prop)
+		}
+		# $result.ApplicationName | Should Be $null
+		# $result.SqlInstance | Should Be $null
+		# $result.Database | Should Be $null
+		# $result.DeploymentMethod | Should Be $null
+		# $result.ConnectionTimeout | Should Be $null
+		# $result.Encrypt | Should Be $null
+		# $result.Credential | Should Be $null
+		# $result.Username | Should Be $null
+		# $result.Password | Should Be $null
+		# $result.SchemaVersionTable | Should Be 'SchemaVersions'
+		# $result.Silent | Should Be $null
+		# $result.Variables | Should Be $null
 	}
 
 	It "Should override properties in an empty config" {
 		$result = Get-DBOConfig -Configuration @{ApplicationName = 'MyNewApp'; ConnectionTimeout = 3}
 		$result.ApplicationName | Should Be 'MyNewApp'
-		$result.SqlInstance | Should Be $null
+		$result.SqlInstance | Should Be 'localhost'
 		$result.Database | Should Be $null
-		$result.DeploymentMethod | Should Be $null
+		$result.DeploymentMethod | Should Be 'NoTransaction'
 		$result.ConnectionTimeout | Should Be 3
-		$result.Encrypt | Should Be $null
+		$result.Encrypt | Should Be $false
 		$result.Credential | Should Be $null
 		$result.Username | Should Be $null
 		$result.Password | Should Be $null
 		$result.SchemaVersionTable | Should Be 'SchemaVersions'
-		$result.Silent | Should Be $null
+		$result.Silent | Should Be $false
 		$result.Variables | Should Be $null
 	}
 
