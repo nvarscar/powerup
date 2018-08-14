@@ -75,8 +75,9 @@
         'Get-DBOModuleFileList',
         'Test-DBOSupportedSystem',
         'Install-DBOSupportLibrary',
-		'Get-DBODefaultSetting',
-		'Set-DBODefaultSetting'
+        'Get-DBODefaultSetting',
+        'Set-DBODefaultSetting',
+		'Invoke-DBOPackageCI'
 	)
 	
 	# Cmdlets to export from this module
