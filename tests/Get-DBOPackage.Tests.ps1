@@ -9,7 +9,6 @@ if (!$Batch) {
 	# Is not a part of the global batch => import module
 	#Explicitly import the module for testing
 	Import-Module "$here\..\dbops.psd1" -Force
-	Import-Module "$here\etc\modules\ZipHelper" -Force
 }
 else {
 	# Is a part of a batch, output some eye-catching happiness
@@ -29,6 +28,7 @@ $v3scripts = Join-Path $scriptFolder '3.sql'
 Describe "Get-DBOPackage tests" -Tag $commandName, UnitTests {	
 	
 	BeforeAll {
+		if ((Test-Path $workFolder) -and $workFolder -like '*.Tests.dbops') { Remove-Item $workFolder -Recurse }
 		$null = New-Item $workFolder -ItemType Directory -Force
 		$null = New-Item $unpackedFolder -ItemType Directory -Force
 		$null = New-DBOPackage -ScriptPath $v1scripts -Name $packageName -Build 1.0 -Force -ConfigurationFile "$here\etc\full_config.json"
