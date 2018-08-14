@@ -77,7 +77,8 @@
         'Install-DBOSupportLibrary',
         'Get-DBODefaultSetting',
         'Set-DBODefaultSetting',
-		'Invoke-DBOPackageCI'
+        'Invoke-DBOPackageCI',
+		'Get-DBOPackageArtifact'
 	)
 	
 	# Cmdlets to export from this module
