@@ -39,6 +39,10 @@ Describe "Get-DBOPackage tests" -Tag $commandName, UnitTests {
 		if ((Test-Path $workFolder) -and $workFolder -like '*.Tests.dbops') { Remove-Item $workFolder -Recurse }
 	}
 	Context "Negative tests" {
+		BeforeAll { 
+			Copy-Item $packageName "$packageName.Temp.zip"
+			Remove-ArchiveItem -Path "$packageName.Temp.zip" -Item dbops.package.json
+		}
         It "returns error when path does not exist" {
             { Get-DBOPackage -Path 'asduwheiruwnfelwefo\sdfpoijfdsf.zip' -ErrorAction Stop} | Should Throw
         }
@@ -50,7 +54,11 @@ Describe "Get-DBOPackage tests" -Tag $commandName, UnitTests {
         }
         It "returns error when unsupported object is pipelined" {
             { @{a=1} | Get-DBOPackage -ErrorAction Stop } | Should Throw
-        }
+		}
+		It "returns error when package is in an incorrect format" {
+			{ $null = Get-DBOPackage -Path $v1scripts } | Should Throw
+			{ $null = Get-DBOPackage -Path "$packageName.Temp.zip" } | Should Throw
+		}
 	}
 	Context "Returns package properties" {
 		It "returns existing builds" {
