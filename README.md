@@ -16,6 +16,7 @@ The most notable features of the module:
 
 * No scripting experience required - the module is designed around usability and functionality
 * Introduces an option to aggregate source scripts from multiple sources into a single ready-to-deploy file
+* CI/CD pipelining functionality: builds, artifact management, deployment
 * Can detect new/changed files in your source code folder and generate a new deployment build based on those files
 * Introduces optional internal build system: older builds are kept inside the deployment package ensuring smooth and errorless deployments
 * Reliably deploys the scripts in a consistent manner - all the scripts are executed in alphabetical order one build at a time
@@ -46,17 +47,19 @@ Install-Module dbops
 
 ## Usage scenarios
 
-* Ad-hoc deployments of any scale without the necessity of executing the code manually
+* Ad-hoc deployments of any scale without manual code execution
 * Delivering new version of the database schema in a consistent manner to multiple environments
-* Build/Test/Deploy stage inside of Continuous Integration/Continuous Delivery pipelines
+* Build/Test/Deploy scenarios inside the Continuous Integration/Continuous Delivery pipeline
 * Dynamic deployment based on modified files in the source folder
 
 ## Examples
-
+### Simple deployment
 ```powershell
 # Quick deployment without tracking deployment history
 Invoke-DBODeployment -ScriptPath C:\temp\myscripts -SqlInstance server1 -Database MyDB -SchemaVersionTable $null
-
+```
+### Package management
+```powershell
 # Deployment using packages & builds with keeping track of deployment history in the SchemaVersions table
 New-DBOPackage Deploy.zip -ScriptPath C:\temp\myscripts | Install-DBOPackage -SqlInstance server1 -Database MyDB
 
@@ -66,8 +69,14 @@ Install-DBOPackage MyPackage.zip -Variables @{ dbName = 'myDB' }
 
 # Adding builds to the package
 Add-DBOBuild Deploy.zip -ScriptPath .\myscripts -Type Unique -Build 2.0
-Get-ChildItem .\myscripts | Add-DBOBuild Deploy.zip -Type New,Modified -Build 3.0
+Get-ChildItem .\myscripts | Add-DBOBuild Deploy.zip -Type New,Modified -Build 3.0\
 
+# Install package using internal script Deploy.ps1 - to use when module is not installed locally
+Expand-Archive Deploy.zip '.\MyTempFolder'
+.\MyTempFolder\Deploy.ps1 -SqlInstance server1 -Database MyDB
+```
+### Configurations and defaults
+```powershell
 # Setting deployment options within the package to be able to deploy it without specifying options
 Update-DBOConfig Deploy.zip -Configuration @{ DeploymentMethod = 'SingleTransaction'; SqlInstance = 'localhost'; DatabaseName = 'MyDb2' }
 Install-DBOPackage Deploy.zip
@@ -76,10 +85,6 @@ Install-DBOPackage Deploy.zip
 (Get-DBOConfig -Configuration @{ DeploymentMethod = 'SingleTransaction'; SqlInstance = 'devInstance'; DatabaseName = 'MyDB' }).SaveToFile('.\dev.json')
 (Get-DBOConfig -Path '.\dev.json' -Configuration @{ SqlInstance = 'prodInstance' }).SaveToFile('.\prod.json')
 Install-DBOPackage Deploy.zip -ConfigurationFile .\dev.json
-
-# Install package using internal script Deploy.ps1 - to use when module is not installed locally
-Expand-Archive Deploy.zip '.\MyTempFolder'
-.\MyTempFolder\Deploy.ps1 -SqlInstance server1 -Database MyDB
 
 # Invoke package deployment using custom connection string
 Install-DBOPackage -Path Deploy.zip -ConnectionString 'Server=myServerAddress;Database=myDataBase;Trusted_Connection=True;'
@@ -92,13 +97,24 @@ Get-DBODefaultSetting
 
 # Change the default SchemaVersionTable setting to null, disabling the deployment logging by default
 Set-DBODefaultSetting -Name SchemaVersionTable -Value $null
+```
+### CI/CD features
+```powershell
+# Invoke CI/CD build of the package MyPackage.zip using scripts from the source folder .\Scripts
+# Each execution of the command will only pick up new files from the ScriptPath folder
+Invoke-DBOPackageCI -Path MyPackage.zip -ScriptPath .\Scripts -Version 1.0
+
+# Store the package in a DBOps package repository in a folder \\data\repo
+Publish-DBOPackageArtifact -Path myPackage.zip -Repository \\data\repo
+
+# Retrieve the latest package version from the repository and install it
+Get-DBOPackageArtifact -Path myPackage.zip -Repository \\data\repo | Install-DBOPackage -Server MyDBServer -Database MyDB
 
 ```
 
 ## Planned for future releases
 
 * Code analysis: know what kind of code makes its way into the package. Will find hidden sysadmin grants, USE statements and other undesired statements
-* Ready-to-go CI/CD functions
 * Support for other RDBMS (eventually, everything that DbUp libraries can talk with)
 * Integration with unit tests (tSQLt/Pester/...?)
 * Module for Ansible (right now can still be used as a powershell task)

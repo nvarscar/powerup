@@ -62,10 +62,6 @@ function Invoke-DBOPackageCI {
 		# Will invoke CI build for version 1.0.x of the package MyPackage.zip using scripts from the source folder .\Scripts
 		Invoke-DBOPackageCI -Path MyPackage.zip -ScriptPath .\Scripts -Version 1.0
 
-	.EXAMPLE
-		# Will invoke CI build for version 2.1 of the package MyPackage.zip using only new files from the source folder .\Scripts
-		Invoke-DBOPackageCI -ScriptPath .\Scripts -Path MyPackage.zip -Version 2.1 -NewOnly
-
 	.NOTES
 		See 'Get-Help New-DBOPackage' for additional info about packages.
 #>
