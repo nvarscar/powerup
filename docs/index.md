@@ -1,10 +1,5 @@
-| master | development |
-|---|---|
-| [![Build status](https://ci.appveyor.com/api/projects/status/m0ml0392r631tp60/branch/master?svg=true)](https://ci.appveyor.com/project/nvarscar/powerup/branch/master) | [![Build status](https://ci.appveyor.com/api/projects/status/m0ml0392r631tp60/branch/development?svg=true)](https://ci.appveyor.com/project/nvarscar/powerup/branch/development) |
-
-![dbops](https://nvarscar.github.io/powerup/img/dbops.jpg)
 # DBOps
-DBOps is a Powershell module that provides Continuous Integration/Continuous Deployment capabilities for SQL database deployments. In addition to easy-to-use deployment functions, it provides tracking functionality, ensuring that each script is deployed only once and in due order. It will also grant you with ability to organize scripts into builds and deploy them in a repeatable manner on top of any previously deployed version.
+![dbops](https://nvarscar.github.io/powerup/img/dbops.jpg) DBOps is a Powershell module that provides Continuous Integration/Continuous Deployment capabilities for SQL database deployments. In addition to easy-to-use deployment functions, it provides tracking functionality, ensuring that each script is deployed only once and in due order. It will also grant you with ability to organize scripts into builds and deploy them in a repeatable manner on top of any previously deployed version.
 
 The deployment functionality of the module is provided by [DbUp](https://github.com/DbUp/DbUp) .Net library, which has proven its flexibility and reliability during deployments. 
 
@@ -123,3 +118,7 @@ Get-DBOPackageArtifact -Path myPackage.zip -Repository \\data\repo | Install-DBO
 * SQLCMD support
 * Deployments to multiple databases at once
 * Optional rollback scripts
+
+## Contacts
+Submitting issues - [GitHub issues](https://github.com/nvarscar/powerup/issues)
+SQLCommunity Slack: https://sqlcommunity.slack.com #devops or @nvarscar

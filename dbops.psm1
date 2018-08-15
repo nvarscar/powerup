@@ -107,3 +107,8 @@ Set-PSFConfig -FullName dbops.Encrypt -Value $false -Initialize -Validation bool
 Set-PSFConfig -FullName dbops.Silent -Value $false -Initialize -Validation bool -Description "Silent execution with no output to the console."
 Set-PSFConfig -FullName dbops.Credential -Value $null -Initialize -Description "Database credentials to authenticate with."
 Set-PSFConfig -FullName dbops.Variables -Value $null -Initialize -Validation hashtable -Description "A hashtable with key/value pairs representing #{variables} that will be swapped during execution."
+
+# defining aliases
+
+New-Alias -Name Write-Message -Value Write-PSFMessage
+New-Alias -Name Stop-Function -Value Stop-PSFFunction

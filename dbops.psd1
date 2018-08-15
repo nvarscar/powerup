@@ -4,7 +4,7 @@
 	RootModule = 'dbops.psm1'
 	
 	# Version number of this module.
-	ModuleVersion = '0.2.4'
+	ModuleVersion = '0.3.0'
 	
 	# ID used to uniquely identify this module
 	GUID = '16dff216-533a-4fa3-9b2e-4408dbe15e63'
@@ -75,8 +75,11 @@
         'Get-DBOModuleFileList',
         'Test-DBOSupportedSystem',
         'Install-DBOSupportLibrary',
-		'Get-DBODefaultSetting',
-		'Set-DBODefaultSetting'
+        'Get-DBODefaultSetting',
+        'Set-DBODefaultSetting',
+        'Invoke-DBOPackageCI',
+        'Get-DBOPackageArtifact',
+        'Publish-DBOPackageArtifact'
 	)
 	
 	# Cmdlets to export from this module
@@ -101,7 +104,7 @@
 		PSData = @{
 		
 			# Tags applied to this module. These help with module discovery in online galleries.
-			Tags = @('SqlServer','SQL','Deployment','Deploy','Automation','dbops','DbUp','CI','DevOps')
+			Tags = @('SqlServer','SQL','Deployment','Deploy','Automation','dbops','DbUp','CI','DevOps','Oracle','CD')
 		
 			# A URL to the license for this module.
 			LicenseUri = 'https://github.com/nvarscar/powerup/blob/master/license.txt'
