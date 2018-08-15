@@ -30,12 +30,12 @@ Function Get-DBOPackage {
 	.NOTES
 	
 	#>
-    [CmdletBinding()]
+    [CmdletBinding(DefaultParameterSetName = 'Default')]
     Param(
-        [Parameter(Mandatory = $false)]
+        [Parameter(Mandatory = $false, ParameterSetName = 'Default', Position = 1)]
         [Alias('FileName', 'Name', 'Package')]
         [string[]]$Path,
-        [Parameter(Mandatory = $false, ValueFromPipeline = $true)]
+        [Parameter(Mandatory = $false, ValueFromPipeline = $true, ParameterSetName = 'Pipeline')]
         [object]$InputObject,
         [switch]$Unpacked
     )
@@ -43,7 +43,7 @@ Function Get-DBOPackage {
 
     }
     process {
-        if ($PSBoundParameters.ContainsKey('InputObject')) {
+        if ($PsCmdlet.ParameterSetName -eq 'Pipeline') {
             if ($InputObject) {
                 if ($InputObject -is [DBOpsPackageBase]) {
                     Write-Verbose "Loading package file from pipelined object"
@@ -65,8 +65,8 @@ Function Get-DBOPackage {
                 throw "The object was not found"
             }
         }
-        elseif ($PSBoundParameters.ContainsKey('Path')) {
-            foreach ($pathItem in (Get-Item $Path)) {
+        elseif ($PsCmdlet.ParameterSetName -eq 'Default') {
+            foreach ($pathItem in (Get-Item $Path -ErrorAction Stop)) {
                 if ($Unpacked) {
                     if ($pathItem.PSIsContainer) {
                         $packageFileName = [DBOpsConfig]::GetPackageFileName()

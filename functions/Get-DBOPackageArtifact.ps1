@@ -53,8 +53,9 @@ Function Get-DBOPackageArtifact {
     [CmdletBinding()]
     Param(
         [Parameter(Mandatory = $true)]
+        [Alias('RepositoryPath')]
         [object]$Repository,
-        [Parameter(Mandatory = $false)]
+        [Parameter(Mandatory = $true)]
         [Alias('FileName', 'Package')]
         [string]$Name,
         [Version]$Version
