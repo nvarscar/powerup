@@ -2,6 +2,7 @@
 |---|---|
 | [![Build status](https://ci.appveyor.com/api/projects/status/m0ml0392r631tp60/branch/master?svg=true)](https://ci.appveyor.com/project/nvarscar/powerup/branch/master) | [![Build status](https://ci.appveyor.com/api/projects/status/m0ml0392r631tp60/branch/development?svg=true)](https://ci.appveyor.com/project/nvarscar/powerup/branch/development) |
 
+![dbops](https://nvarscar.github.io/powerup/img/dbops.jpg)
 # DBOps
 DBOps is a Powershell module that provides Continuous Integration/Continuous Deployment capabilities for SQL database deployments. In addition to easy-to-use deployment functions, it provides tracking functionality, ensuring that each script is deployed only once and in due order. It will also grant you with ability to organize scripts into builds and deploy them in a repeatable manner on top of any previously deployed version.
 
