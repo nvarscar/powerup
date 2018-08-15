@@ -61,10 +61,10 @@ Function Publish-DBOPackageArtifact {
 	#>
     [CmdletBinding(SupportsShouldProcess = $true, DefaultParameterSetName = 'Default')]
     Param(
-        [Parameter(Mandatory = $true)]
+        [Parameter(Mandatory = $true, Position = 1)]
         [Alias('RepositoryPath')]
         [object]$Repository,
-        [Parameter(Mandatory = $true, ParameterSetName = 'Default')]
+        [Parameter(Mandatory = $true, ParameterSetName = 'Default', Position = 2)]
         [Alias('FileName', 'Package', 'Name')]
         [string]$Path,
         [Parameter(Mandatory = $true,
@@ -78,7 +78,12 @@ Function Publish-DBOPackageArtifact {
         $repo = Get-Item $Repository -ErrorAction Stop
     }
     process {
-        $package = Get-DBOPackage -Path $Path
+        if ($PsCmdlet.ParameterSetName -eq 'Default') {
+            $package = Get-DBOPackage -Path $Path
+        }
+        elseif ($PsCmdlet.ParameterSetName -eq 'Pipeline') {
+            $package = Get-DBOPackage -InputObject $InputObject
+        }
         $pkgName = Split-Path ($package.FullName -replace '\.zip$', '') -Leaf
         if ((Test-Path $repo\Current) -and (Test-Path $repo\Versions)) {
             Write-Message -Level Verbose -Message "Valid folder structure found in $repo"

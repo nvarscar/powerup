@@ -39,9 +39,9 @@ Describe "Publish-DBOPackageArtifact tests" -Tag $commandName, UnitTests {
         Test-Path "$projectPath\Versions\1.0\TempDeployment.zip" | Should Be $true
         Get-DBOPackage "$projectPath\Versions\1.0\TempDeployment.zip" | % Version | Should Be '1.0'
     }
-    It "should save a 2.0 version of the artifact" {
-        $null = Add-DBOBuild -ScriptPath $v2scripts -Path $packageName -Build 2.0
-        $result = Publish-DBOPackageArtifact -Repository $workFolder -Path $packageName
+    It "should save a 2.0 version of the artifact using pipeline" {
+        $pkg = Add-DBOBuild -ScriptPath $v2scripts -Path $packageName -Build 2.0
+        $result = $pkg | Publish-DBOPackageArtifact -Repository $workFolder
         Get-DBOPackage $result | % Version | Should Be '2.0'
         $result.FullName | Should Be "$projectPath\Current\TempDeployment.zip"
         Test-Path "$projectPath\Current\TempDeployment.zip" | Should Be $true
