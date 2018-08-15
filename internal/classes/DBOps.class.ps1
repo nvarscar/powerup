@@ -984,158 +984,155 @@ class DBOpsScriptFile : DBOpsFile {
 #######################
 
 class DBOpsConfig : DBOps {
-	#Properties
-	[string]$ApplicationName
-	[string]$SqlInstance
-	[string]$Database
-	[string]$DeploymentMethod
-	[System.Nullable[int]]$ConnectionTimeout
-	[System.Nullable[int]]$ExecutionTimeout
-	[System.Nullable[bool]]$Encrypt
-	[pscredential]$Credential
-	[string]$Username
-	[string]$Password
-	[string]$SchemaVersionTable
-	[System.Nullable[bool]]$Silent
-	[psobject]$Variables
+    #Properties
+    [string]$ApplicationName
+    [string]$SqlInstance
+    [string]$Database
+    [string]$DeploymentMethod
+    [System.Nullable[int]]$ConnectionTimeout
+    [System.Nullable[int]]$ExecutionTimeout
+    [System.Nullable[bool]]$Encrypt
+    [pscredential]$Credential
+    [string]$Username
+    [string]$Password
+    [string]$SchemaVersionTable
+    [System.Nullable[bool]]$Silent
+    [psobject]$Variables
+	[string]$Schema
 
-	hidden [DBOpsPackageBase]$Parent
+    hidden [DBOpsPackageBase]$Parent
 
-	#Constructors
-	DBOpsConfig () {
-		$this.Init()
-	}
-	DBOpsConfig ([string]$jsonString) {
-		if (!$jsonString) {
-			$this.ThrowArgumentException($this, "Input string has not been defined")
-		}
-		$this.Init()
+    #Constructors
+    DBOpsConfig () {
+        $this.Init()
+    }
+    DBOpsConfig ([string]$jsonString) {
+        if (!$jsonString) {
+            $this.ThrowArgumentException($this, "Input string has not been defined")
+        }
+        $this.Init()
 
-		$jsonConfig = $jsonString | ConvertFrom-Json -ErrorAction Stop
+        $jsonConfig = $jsonString | ConvertFrom-Json -ErrorAction Stop
 		
-		foreach ($property in $jsonConfig.psobject.properties.Name) {
-			if ($property -in [DBOpsConfig]::EnumProperties()) {
-				$this.SetValue($property, $jsonConfig.$property)
-			}
-			else {
-				$this.ThrowArgumentException($this, "$property is not a valid configuration item")
-			}
-		}
-	}
-	#Hidden methods 
-	hidden [void] Init () {
-		#Defining default values
-		$this.ApplicationName = [NullString]::Value
-		$this.SqlInstance = [NullString]::Value
-		$this.Database = [NullString]::Value
-		$this.DeploymentMethod = [NullString]::Value
-		$this.Username = [NullString]::Value
-		$this.Password = [NullString]::Value
-		$this.SchemaVersionTable = 'dbo.SchemaVersions'
-	}
+        foreach ($property in $jsonConfig.psobject.properties.Name) {
+            if ($property -in [DBOpsConfig]::EnumProperties()) {
+                $this.SetValue($property, $jsonConfig.$property)
+            }
+            else {
+                $this.ThrowArgumentException($this, "$property is not a valid configuration item")
+            }
+        }
+    }
+    #Hidden methods 
+    hidden [void] Init () {
+        #Reading default values from PSF
+        foreach ($prop in [DBOpsConfig]::EnumProperties()) {
+			$this.SetValue($prop, (Get-PSFConfigValue -FullName dbops.$prop))
+        }
+    }
 
-	#Methods 
-	[hashtable] AsHashtable () {
-		$ht = @{}
-		foreach ($property in $this.psobject.Properties.Name) {
-			$ht += @{ $property = $this.$property }
-		}
-		return $ht
-	}
+    #Methods 
+    [hashtable] AsHashtable () {
+        $ht = @{}
+        foreach ($property in $this.psobject.Properties.Name) {
+            $ht += @{ $property = $this.$property }
+        }
+        return $ht
+    }
 
-	[void] SetValue ([string]$Property, [object]$Value) {
-		if ([DBOpsConfig]::EnumProperties() -notcontains $Property) {
-			$this.ThrowArgumentException($this, "$Property is not a valid configuration item")
-		}
-		#set proper NullString for String properties
-		if ($Value -eq $null -and $Property -in ($this.PsObject.Properties | Where-Object TypeNameOfValue -like 'System.String*').Name) {
-			$this.$Property = [NullString]::Value
-		}
-		else {
-			$this.$Property = $Value
-		}
-	}
-	# Returns a JSON string representin the object
-	[string] ExportToJson() {
-		return $this | Select-Object -Property ([DBOpsConfig]::EnumProperties()) | ConvertTo-Json -Depth 2
-	}
-	# Save package to an opened zip file
-	[void] Save([ZipArchive]$zipFile) {
-		$fileContent = [Text.Encoding]::ASCII.GetBytes($this.ExportToJson())
-		if ($this.Parent.ConfigurationFile) {
-			$filePath = $this.Parent.ConfigurationFile.PackagePath
-		}
-		else {
-			$filePath = [DBOpsConfig]::GetConfigurationFileName()
-			$newFile = [DBOpsRootFile]::new(@{PackagePath = $filePath})
-			$this.Parent.AddFile($newFile, 'ConfigurationFile')
-		}
-		$this.Parent.ConfigurationFile.SetContent($fileContent)
-		[DBOpsHelper]::WriteZipFile($zipFile, $filePath, $fileContent)
-	}
-	#Initiates package update saving the configuration file in the package
-	[void] Alter() {
-		#only do something if it's a part of a package
-		if ($this.Parent -is [DBOpsPackageBase]) {
-			#Open new file stream
-			$writeMode = [System.IO.FileMode]::Open
-			$stream = [FileStream]::new($this.Parent.FileName, $writeMode, [System.IO.FileAccess]::ReadWrite)
-			try {
-				#Open zip file
-				$zip = [ZipArchive]::new($stream, [ZipArchiveMode]::Update)
-				try {
-					#Write file
-					$this.Save($zip)
-				}
-				catch { throw $_ }
-				finally { $zip.Dispose() }	
-			}
-			catch { throw $_ }
-			finally { $stream.Dispose()	}
+    [void] SetValue ([string]$Property, [object]$Value) {
+        if ([DBOpsConfig]::EnumProperties() -notcontains $Property) {
+            $this.ThrowArgumentException($this, "$Property is not a valid configuration item")
+        }
+        #set proper NullString for String properties
+        if ($Value -eq $null -and $Property -in ($this.PsObject.Properties | Where-Object TypeNameOfValue -like 'System.String*').Name) {
+            $this.$Property = [NullString]::Value
+        }
+        else {
+            $this.$Property = $Value
+        }
+    }
+    # Returns a JSON string representin the object
+    [string] ExportToJson() {
+        return $this | Select-Object -Property ([DBOpsConfig]::EnumProperties()) | ConvertTo-Json -Depth 2
+    }
+    # Save package to an opened zip file
+    [void] Save([ZipArchive]$zipFile) {
+        $fileContent = [Text.Encoding]::ASCII.GetBytes($this.ExportToJson())
+        if ($this.Parent.ConfigurationFile) {
+            $filePath = $this.Parent.ConfigurationFile.PackagePath
+        }
+        else {
+            $filePath = [DBOpsConfig]::GetConfigurationFileName()
+            $newFile = [DBOpsRootFile]::new(@{PackagePath = $filePath})
+            $this.Parent.AddFile($newFile, 'ConfigurationFile')
+        }
+        $this.Parent.ConfigurationFile.SetContent($fileContent)
+        [DBOpsHelper]::WriteZipFile($zipFile, $filePath, $fileContent)
+    }
+    #Initiates package update saving the configuration file in the package
+    [void] Alter() {
+        #only do something if it's a part of a package
+        if ($this.Parent -is [DBOpsPackageBase]) {
+            #Open new file stream
+            $writeMode = [System.IO.FileMode]::Open
+            $stream = [FileStream]::new($this.Parent.FileName, $writeMode, [System.IO.FileAccess]::ReadWrite)
+            try {
+                #Open zip file
+                $zip = [ZipArchive]::new($stream, [ZipArchiveMode]::Update)
+                try {
+                    #Write file
+                    $this.Save($zip)
+                }
+                catch { throw $_ }
+                finally { $zip.Dispose() }	
+            }
+            catch { throw $_ }
+            finally { $stream.Dispose()	}
 
-			# Refreshing regular file properties for parent object
-			$this.Parent.RefreshFileProperties()
-		}
-	}
-	#Merge two configurations
-	[void] Merge([DBOpsConfig]$config) {
-		$this.Merge($config.AsHashtable())
-	}
-	[void] Merge([hashtable]$config) {
-		foreach ($key in $config.Keys) {
-			$this.SetValue($key, $config.$key)
-		}
-	}
+            # Refreshing regular file properties for parent object
+            $this.Parent.RefreshFileProperties()
+        }
+    }
+    #Merge two configurations
+    [void] Merge([DBOpsConfig]$config) {
+        $this.Merge($config.AsHashtable())
+    }
+    [void] Merge([hashtable]$config) {
+        foreach ($key in $config.Keys) {
+            $this.SetValue($key, $config.$key)
+        }
+    }
 	
 
-	#Static Methods
-	static [DBOpsConfig] FromJsonString ([string]$jsonString) {
-		return [DBOpsConfig]::new($jsonString)
-	}
-	static [DBOpsConfig] FromFile ([string]$path) {
-		if (!(Test-Path $path)) {
-			throw "Config file $path not found. Aborting."
-		}
-		return [DBOpsConfig]::FromJsonString((Get-Content $path -Raw -ErrorAction Stop))
-	}
+    #Static Methods
+    static [DBOpsConfig] FromJsonString ([string]$jsonString) {
+        return [DBOpsConfig]::new($jsonString)
+    }
+    static [DBOpsConfig] FromFile ([string]$path) {
+        if (!(Test-Path $path)) {
+            throw "Config file $path not found. Aborting."
+        }
+        return [DBOpsConfig]::FromJsonString((Get-Content $path -Raw -ErrorAction Stop))
+    }
 
-	static [string] GetPackageFileName () {
-		return 'dbops.package.json'
-	}
+    static [string] GetPackageFileName () {
+        return 'dbops.package.json'
+    }
 
-	static [string] GetConfigurationFileName () {
-		return 'dbops.config.json'
-	}
+    static [string] GetConfigurationFileName () {
+        return 'dbops.config.json'
+    }
 
-	static [string[]] EnumProperties () {
-		return @('ApplicationName', 'SqlInstance', 'Database', 'DeploymentMethod',
-			'ConnectionTimeout', 'ExecutionTimeout', 'Encrypt', 'Credential', 'Username',
-			'Password', 'SchemaVersionTable', 'Silent', 'Variables'
-		)
-	}
+    static [string[]] EnumProperties () {
+        return @('ApplicationName', 'SqlInstance', 'Database', 'DeploymentMethod',
+            'ConnectionTimeout', 'ExecutionTimeout', 'Encrypt', 'Credential', 'Username',
+            'Password', 'SchemaVersionTable', 'Silent', 'Variables', 'Schema'
+        )
+    }
 
-	#Returns deploy file name
-	static [object]GetDeployFile() {
-		return (Get-DBOModuleFileList | Where-Object { $_.Type -eq 'Misc' -and $_.Name -eq "Deploy.ps1"})
-	}
+    #Returns deploy file name
+    static [object]GetDeployFile() {
+        return (Get-DBOModuleFileList | Where-Object { $_.Type -eq 'Misc' -and $_.Name -eq "Deploy.ps1"})
+    }
 }

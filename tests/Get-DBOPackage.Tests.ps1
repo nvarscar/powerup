@@ -9,7 +9,6 @@ if (!$Batch) {
 	# Is not a part of the global batch => import module
 	#Explicitly import the module for testing
 	Import-Module "$here\..\dbops.psd1" -Force
-	Import-Module "$here\etc\modules\ZipHelper" -Force
 }
 else {
 	# Is a part of a batch, output some eye-catching happiness
@@ -29,6 +28,7 @@ $v3scripts = Join-Path $scriptFolder '3.sql'
 Describe "Get-DBOPackage tests" -Tag $commandName, UnitTests {	
 	
 	BeforeAll {
+		if ((Test-Path $workFolder) -and $workFolder -like '*.Tests.dbops') { Remove-Item $workFolder -Recurse }
 		$null = New-Item $workFolder -ItemType Directory -Force
 		$null = New-Item $unpackedFolder -ItemType Directory -Force
 		$null = New-DBOPackage -ScriptPath $v1scripts -Name $packageName -Build 1.0 -Force -ConfigurationFile "$here\etc\full_config.json"
@@ -39,6 +39,10 @@ Describe "Get-DBOPackage tests" -Tag $commandName, UnitTests {
 		if ((Test-Path $workFolder) -and $workFolder -like '*.Tests.dbops') { Remove-Item $workFolder -Recurse }
 	}
 	Context "Negative tests" {
+		BeforeAll { 
+			Copy-Item $packageName "$packageName.Temp.zip"
+			Remove-ArchiveItem -Path "$packageName.Temp.zip" -Item dbops.package.json
+		}
         It "returns error when path does not exist" {
             { Get-DBOPackage -Path 'asduwheiruwnfelwefo\sdfpoijfdsf.zip' -ErrorAction Stop} | Should Throw
         }
@@ -50,7 +54,11 @@ Describe "Get-DBOPackage tests" -Tag $commandName, UnitTests {
         }
         It "returns error when unsupported object is pipelined" {
             { @{a=1} | Get-DBOPackage -ErrorAction Stop } | Should Throw
-        }
+		}
+		It "returns error when package is in an incorrect format" {
+			{ $null = Get-DBOPackage -Path $v1scripts } | Should Throw
+			{ $null = Get-DBOPackage -Path "$packageName.Temp.zip" } | Should Throw
+		}
 	}
 	Context "Returns package properties" {
 		It "returns existing builds" {
@@ -104,6 +112,7 @@ Describe "Get-DBOPackage tests" -Tag $commandName, UnitTests {
             $result.Configuration.SchemaVersionTable | Should Be "test.Table"
             $result.Configuration.Silent | Should Be $true
             $result.Configuration.Variables | Should Be $null
+            $result.Configuration.Schema | Should Be 'testschema'
         }
         It "properly returns pipelined package object" {
             $result = Get-DBOPackage -Path $packageName | Get-DBOPackage 
@@ -166,7 +175,8 @@ Describe "Get-DBOPackage tests" -Tag $commandName, UnitTests {
 			$result.Configuration.Password | Should Be "TestPassword"
 			$result.Configuration.SchemaVersionTable | Should Be "test.Table"
 			$result.Configuration.Silent | Should Be $true
-			$result.Configuration.Variables | Should Be $null
+            $result.Configuration.Variables | Should Be $null
+            $result.Configuration.Schema | Should Be 'testschema'
 		}
 	}
 }
